@@ -86,3 +86,12 @@ func NormalizeMnemonics(lines []string) ([]string, error) {
 	}
 	return out, nil
 }
+
+// Wordlist returns a copy of the official 1024-word SLIP-39 list, in index
+// order. The recovery page ships it to the browser so it can complete words
+// offline, exactly as this package does server-side.
+func Wordlist() []string {
+	out := make([]string, len(wordlist))
+	copy(out, wordlist)
+	return out
+}

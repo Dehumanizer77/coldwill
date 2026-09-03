@@ -5,20 +5,183 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Obnova — inh</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/wordlist.js"></script>
 </head>
 <body>
 <main>
   <h1>Obnova key-filu</h1>
-  <p class="muted">Vlož časti — <strong>každú ako jeden riadok</strong> (23 slov oddelených medzerou).
-  Treba aspoň toľko častí, koľko bol prah (štandardne 2).</p>
-  <p class="muted">Píš slová <strong>presne tak, ako sú na kove</strong> — ak sú tam len
-  4-písmenové skratky, staré dobré <code>acad rive kern…</code>, nič nedopĺňaj, nástroj to
-  urobí za teba. Čísla a interpunkciu môžeš nechať, ignorujú sa.</p>
-  <form method="post" action="/recover">
-    <textarea name="mnemonics" rows="8" placeholder="časť 1: slovo slovo slovo ...&#10;časť 2: slovo slovo slovo ..."></textarea>
+  <p class="muted">Prepíš slová z kovových častí — <strong>každú časť do svojho bloku</strong>.
+  Stačia <strong>prvé 4 písmená</strong> tak, ako sú vyryté; celé slovo sa doplní samo
+  a kurzor skočí na ďalšie pole. Treba aspoň toľko častí, koľko bol prah (štandardne 2).</p>
+
+  <form method="post" action="/recover" class="wide" id="recform">
+    <div class="row noprint">
+      <label class="inline">Slov v časti
+        <select id="wordcount">
+          <option value="20">20</option>
+          <option value="23" selected>23</option>
+          <option value="26">26</option>
+          <option value="33">33</option>
+        </select>
+      </label>
+      <button type="button" class="addbtn" id="addpart">+ ďalšia časť</button>
+    </div>
+
+    <div id="parts">
+      {{range $p := .Parts}}
+      <section class="part" data-part="{{$p}}">
+        <h3>Časť {{inc $p}} <span class="count muted"></span></h3>
+        <div class="wordgrid">
+          {{range $w := $.Words}}
+          <label><span class="n">{{inc $w}}.</span><input type="text" name="p{{$p}}w{{$w}}"
+            autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+            inputmode="latin" data-part="{{$p}}" data-idx="{{$w}}"></label>
+          {{end}}
+        </div>
+      </section>
+      {{end}}
+    </div>
+
     <button type="submit">Zložiť key-file</button>
+
+    <details>
+      <summary>Alebo vlož časti naraz ako text</summary>
+      <p class="muted">Každá časť na svoj riadok. Použi, ak máš slová v súbore — inak vypĺňaj polia vyššie.</p>
+      <textarea name="mnemonics" rows="5" placeholder="časť 1: slovo slovo slovo …&#10;časť 2: slovo slovo slovo …"></textarea>
+    </details>
   </form>
   <p><a href="/">← späť</a></p>
 </main>
+
+<script>
+(function () {
+  var WORDS = window.SLIP39_WORDS || [], N = window.SLIP39_PREFIX || 4;
+  if (!WORDS.length) return;                 // bez zoznamu radšej nechaj polia tak
+  var byPrefix = {};
+  WORDS.forEach(function (w) { byPrefix[w.slice(0, N)] = w; });
+
+  var form = document.getElementById("recform");
+  var parts = document.getElementById("parts");
+
+  function inputs(part) {
+    return Array.prototype.slice.call(part.querySelectorAll("input[type=text]"));
+  }
+  function allInputs() {
+    return Array.prototype.slice.call(parts.querySelectorAll("input[type=text]"));
+  }
+  function clean(v) { return v.toLowerCase().replace(/[^a-z]/g, ""); }
+
+  // Complete a field: exact word wins, otherwise the four engraved letters do.
+  function resolve(v) {
+    if (!v) return null;
+    if (WORDS.indexOf(v) >= 0) return v;
+    if (v.length < N) return null;
+    var full = byPrefix[v.slice(0, N)];
+    return (full && full.indexOf(v) === 0) ? full : null;
+  }
+
+  function mark(el) {
+    var v = clean(el.value);
+    el.classList.remove("ok", "bad");
+    if (!v) return;
+    var full = resolve(v);
+    if (full) { el.value = full; el.classList.add("ok"); }
+    else if (v.length >= N) { el.classList.add("bad"); }
+  }
+
+  function counts() {
+    Array.prototype.forEach.call(parts.querySelectorAll(".part"), function (p) {
+      var ins = inputs(p), done = ins.filter(function (i) { return i.classList.contains("ok"); }).length;
+      var badge = p.querySelector(".count");
+      if (badge) badge.textContent = done + "/" + ins.length;
+    });
+  }
+
+  function onInput(e) {
+    var el = e.target;
+    if (el.tagName !== "INPUT") return;
+    var v = clean(el.value);
+    if (el.value !== v) el.value = v;
+    var full = resolve(v);
+    if (full && v.length >= N) {
+      el.value = full;
+      el.classList.remove("bad"); el.classList.add("ok");
+      var all = allInputs(), i = all.indexOf(el);
+      if (i >= 0 && i + 1 < all.length) all[i + 1].focus();
+    } else {
+      el.classList.remove("ok");
+      if (v.length >= N) el.classList.add("bad"); else el.classList.remove("bad");
+    }
+    counts();
+  }
+
+  // Pasting a whole part into one box fills the boxes after it.
+  function onPaste(e) {
+    var el = e.target;
+    if (el.tagName !== "INPUT") return;
+    var text = (e.clipboardData || window.clipboardData).getData("text") || "";
+    var words = text.toLowerCase().split(/[^a-z]+/).filter(Boolean);
+    if (words.length < 2) return;
+    e.preventDefault();
+    var all = allInputs(), start = all.indexOf(el);
+    words.forEach(function (w, k) {
+      var target = all[start + k];
+      if (!target) return;
+      target.value = w;
+      mark(target);
+    });
+    var next = all[Math.min(start + words.length, all.length - 1)];
+    if (next) next.focus();
+    counts();
+  }
+
+  form.addEventListener("input", onInput);
+  form.addEventListener("paste", onPaste);
+  form.addEventListener("blur", function (e) {
+    if (e.target.tagName === "INPUT") { mark(e.target); counts(); }
+  }, true);
+
+  // Enter moves on instead of submitting a half-filled form.
+  form.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+    e.preventDefault();
+    var all = allInputs(), i = all.indexOf(e.target);
+    if (i >= 0 && i + 1 < all.length) all[i + 1].focus(); else form.submit();
+  });
+
+  function buildPart(index, words) {
+    var sec = document.createElement("section");
+    sec.className = "part";
+    sec.setAttribute("data-part", index);
+    var grid = '<div class="wordgrid">';
+    for (var i = 0; i < words; i++) {
+      grid += '<label><span class="n">' + (i + 1) + '.</span><input type="text" name="p' +
+        index + 'w' + i + '" autocomplete="off" autocapitalize="off" spellcheck="false"></label>';
+    }
+    grid += "</div>";
+    sec.innerHTML = "<h3>Časť " + (index + 1) + ' <span class="count muted"></span></h3>' + grid;
+    return sec;
+  }
+
+  document.getElementById("addpart").addEventListener("click", function () {
+    var n = parts.querySelectorAll(".part").length;
+    var words = inputs(parts.querySelector(".part")).length;
+    parts.appendChild(buildPart(n, words));
+    counts();
+  });
+
+  document.getElementById("wordcount").addEventListener("change", function () {
+    var words = parseInt(this.value, 10);
+    var filled = allInputs().some(function (i) { return i.value; });
+    if (filled && !confirm("Zmena dĺžky vymaže zadané slová. Pokračovať?")) return;
+    var n = parts.querySelectorAll(".part").length;
+    parts.innerHTML = "";
+    for (var p = 0; p < n; p++) parts.appendChild(buildPart(p, words));
+    counts();
+  });
+
+  counts();
+})();
+</script>
 </body>
 </html>

@@ -36,12 +36,18 @@ round-trip); ak zlyhá, nástroj sa nespustí.
 - **Nový backup** → vygeneruje 160-bit key-file, rozdelí ho na N častí po 23
   slov s prahom K (default 2-z-3), zobrazí ich na vyrytie, ponúkne stiahnutie
   key-filu a hex.
-- **Obnova** → vložíš ≥ K častí (každú na svojom riadku) → zloží key-file.
+- **Obnova** → **samostatné pole na každé slovo** (predvolene 2 časti × 23 slov,
+  časť sa dá pridať a dĺžka prepnúť na 20/26/33). Po štvrtom písmene sa slovo
+  doplní celé, pole zozelenie a kurzor skočí na ďalšie; vloženie celej časti zo
+  schránky rozhádže slová do polí. Nezmyselné slovo pole očervenie. Pod
+  formulárom ostáva aj **vloženie častí ako textu**.
   Slová píšeš **tak, ako sú na kove**: platničky majú miesto len na **4 písmená**
   a nástroj si zvyšok doplní (v SLIP-39 zozname je slovo prvými štyrmi písmenami
   určené jednoznačne — 1024 slov, 1024 rôznych prefixov). Tri písmená sú
   nejednoznačné, tie nástroj odmietne a povie ktoré slovo. Veľkosť písmen,
-  číslovanie riadkov a interpunkcia sa ignorujú.
+  číslovanie riadkov a interpunkcia sa ignorujú. Formulár renderuje server, takže
+  **funguje aj s vypnutým JavaScriptom** — skript len dopĺňa slová a posúva
+  kurzor; kontrola a zloženie kľúča prebiehajú vždy na serveri.
 - **Runbook** → vyplníš „kto-čo-kde" → vygeneruje tlačiteľný návod pre rodinu
   (klik *Vytlačiť / Uložiť ako PDF*). Dokument **neobsahuje žiadne tajomstvá**.
 

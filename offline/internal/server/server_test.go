@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"html"
 	"html/template"
 	"io"
@@ -20,7 +21,7 @@ import (
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
 	// Templates live in offline/web; tests run with CWD = this package dir.
-	tmpl, err := template.ParseGlob("../../web/*.html")
+	tmpl, err := template.New("").Funcs(TemplateFuncs()).ParseGlob("../../web/*.html")
 	if err != nil {
 		t.Fatalf("parse templates: %v", err)
 	}
@@ -276,5 +277,71 @@ func TestSetupMarksEngravedPrefix(t *testing.T) {
 	}
 	if !strings.Contains(body, "<li><strong>") {
 		t.Errorf("setup result does not highlight the engraved prefix")
+	}
+}
+
+// The recovery form must work with JavaScript disabled, so the fields are
+// rendered by the server and the parts are assembled from them on POST.
+func TestRecoverFormRendersWordFields(t *testing.T) {
+	s := newTestServer(t)
+	rr := do(s, http.MethodGet, "/recover", nil)
+	if rr.Code != 200 {
+		t.Fatalf("status %d", rr.Code)
+	}
+	body := rr.Body.String()
+	for _, want := range []string{`name="p0w0"`, `name="p0w22"`, `name="p1w22"`, `id="addpart"`, "prvé 4 písmená"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("recover form missing %q", want)
+		}
+	}
+	// data-idx marks the server-rendered inputs; the script that builds extra
+	// parts does not emit it, so this counts only what works without JS.
+	if n := strings.Count(body, `data-idx="`); n != 46 {
+		t.Errorf("rendered %d word fields, want 46 (2 parts x 23)", n)
+	}
+}
+
+func TestRecoverFromPerWordFields(t *testing.T) {
+	s := newTestServer(t)
+	key := []byte("twenty-byte key!! ok")
+	shares, err := slip39.Generate(key, 2, 3, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	form := url.Values{}
+	for p, share := range []string{shares[0], shares[2]} {
+		for i, w := range strings.Fields(share) {
+			// as engraved: four letters per field
+			form.Set(fmt.Sprintf("p%dw%d", p, i), w[:slip39.PrefixLen])
+		}
+	}
+	rr := do(s, http.MethodPost, "/recover", form)
+	body := rr.Body.String()
+	if !strings.Contains(body, "Kľúč obnovený") {
+		t.Fatalf("recovery from word fields failed: %s", firstLine(body))
+	}
+	if !strings.Contains(body, hex.EncodeToString(key)) {
+		t.Errorf("recovered hex not in the response")
+	}
+}
+
+// The page completes words offline, so it needs the wordlist itself.
+func TestWordlistJS(t *testing.T) {
+	s := newTestServer(t)
+	rr := do(s, http.MethodGet, "/wordlist.js", nil)
+	if rr.Code != 200 {
+		t.Fatalf("status %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if n := strings.Count(body, `"`) / 2; n != 1024 {
+		t.Errorf("got %d quoted words, want 1024", n)
+	}
+	for _, want := range []string{"window.SLIP39_WORDS=[", `"academic"`, "window.SLIP39_PREFIX=4;"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("wordlist.js missing %q", want)
+		}
+	}
+	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "javascript") {
+		t.Errorf("Content-Type = %q", ct)
 	}
 }

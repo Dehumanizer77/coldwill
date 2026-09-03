@@ -28,6 +28,15 @@ type Server struct {
 	css  []byte
 }
 
+// TemplateFuncs are the helpers the templates need. Exported so the binary and
+// the tests parse the templates exactly the same way.
+func TemplateFuncs() template.FuncMap {
+	return template.FuncMap{
+		// inc turns a 0-based range index into a human 1-based label.
+		"inc": func(i int) int { return i + 1 },
+	}
+}
+
 func New(tmpl *template.Template, css []byte) *Server {
 	s := &Server{mux: http.NewServeMux(), tmpl: tmpl, css: css}
 	s.mux.HandleFunc("/", s.handleIndex)
@@ -35,6 +44,7 @@ func New(tmpl *template.Template, css []byte) *Server {
 	s.mux.HandleFunc("/recover", s.handleRecover)
 	s.mux.HandleFunc("/runbook", s.handleRunbook)
 	s.mux.HandleFunc("/style.css", s.handleCSS)
+	s.mux.HandleFunc("/wordlist.js", s.handleWordlistJS)
 	return s
 }
 
@@ -154,6 +164,26 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// recoverForm drives the word grid. The fields are rendered server-side so the
+// page works with JavaScript disabled; the script only adds completion, focus
+// jumps and extra parts on top of them.
+type recoverForm struct {
+	Parts        []int
+	Words        []int
+	WordsPerPart int
+}
+
+func newRecoverForm(parts, words int) recoverForm {
+	f := recoverForm{Parts: make([]int, parts), Words: make([]int, words), WordsPerPart: words}
+	for i := range f.Parts {
+		f.Parts[i] = i
+	}
+	for i := range f.Words {
+		f.Words[i] = i
+	}
+	return f
+}
+
 type recoverData struct {
 	NumShares int
 	KeyHex    string
@@ -162,15 +192,12 @@ type recoverData struct {
 
 func (s *Server) handleRecover(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		s.render(w, "recover.html", nil)
+		// Two parts of 23 words is what this tool produces by default; the page
+		// can add parts and switch the length.
+		s.render(w, "recover.html", newRecoverForm(2, 23))
 		return
 	}
-	var lines []string
-	for _, ln := range strings.Split(r.FormValue("mnemonics"), "\n") {
-		if t := strings.TrimSpace(ln); t != "" {
-			lines = append(lines, t)
-		}
-	}
+	lines := collectParts(r)
 	if len(lines) == 0 {
 		s.renderErr(w, "Nezadal si žiadnu časť.")
 		return
@@ -194,6 +221,47 @@ func (s *Server) handleRecover(w http.ResponseWriter, r *http.Request) {
 		KeyHex:    hex.EncodeToString(key),
 		KeyURL:    keyDataURL(key),
 	})
+}
+
+// collectParts reads the parts either from the per-word inputs (p0w0, p0w1, …)
+// or from the paste-everything textarea, whichever the person used.
+func collectParts(r *http.Request) []string {
+	var lines []string
+	for p := 0; p < maxParts; p++ {
+		var words []string
+		for i := 0; i < maxWordsPerPart; i++ {
+			if v := strings.TrimSpace(r.FormValue(fmt.Sprintf("p%dw%d", p, i))); v != "" {
+				words = append(words, v)
+			}
+		}
+		if len(words) > 0 {
+			lines = append(lines, strings.Join(words, " "))
+		}
+	}
+	for _, ln := range strings.Split(r.FormValue("mnemonics"), "\n") {
+		if t := strings.TrimSpace(ln); t != "" {
+			lines = append(lines, t)
+		}
+	}
+	return lines
+}
+
+// Generous bounds for the recovery form; SLIP-39 mnemonics are 20-33 words.
+const (
+	maxParts        = 16
+	maxWordsPerPart = 40
+)
+
+func (s *Server) handleWordlistJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.Write([]byte("window.SLIP39_WORDS=["))
+	for i, word := range slip39.Wordlist() {
+		if i > 0 {
+			w.Write([]byte(","))
+		}
+		fmt.Fprintf(w, "%q", word)
+	}
+	fmt.Fprintf(w, "];window.SLIP39_PREFIX=%d;", slip39.PrefixLen)
 }
 
 // Person is one trusted party in the runbook. Tech marks whether they are

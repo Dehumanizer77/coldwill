@@ -41,7 +41,7 @@ func main() {
 		log.Fatalf("refusing to listen on non-loopback address %q (air-gap safety)", *addr)
 	}
 
-	tmpl := template.Must(template.ParseFS(webFS, "web/*.html"))
+	tmpl := template.Must(template.New("").Funcs(server.TemplateFuncs()).ParseFS(webFS, "web/*.html"))
 	srv := server.New(tmpl, styleCSS)
 
 	// Bind first so the socket is ready before we launch the browser.

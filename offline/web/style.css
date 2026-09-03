@@ -135,3 +135,17 @@ body.runbook th { background: #f0f0f0; }
   body.runbook h2 { page-break-after: avoid; }
   body.runbook section, body.runbook table { page-break-inside: avoid; }
 }
+
+/* ---- Obnova: mriežka slov ---- */
+form.wide { max-width: 900px; }
+label.inline { flex-direction: row; align-items: center; gap: 8px; }
+.part { border: 1px solid #2a2e37; border-radius: 12px; padding: 14px 16px; margin: 0 0 14px; }
+.part h3 { margin: 0 0 10px; border: 0; }
+.part .count { font-weight: 400; font-size: .9rem; margin-left: 6px; }
+.wordgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.wordgrid label { flex-direction: row; align-items: center; gap: 6px; }
+.wordgrid .n { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.wordgrid input { flex: 1 1 auto; min-width: 0; padding: 8px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.wordgrid input.ok { border-color: #2f7d4f; }
+.wordgrid input.bad { border-color: #b3455e; background: #2a1b21; }
+details summary { cursor: pointer; color: var(--muted); }
