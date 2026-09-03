@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runbook — inh</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Runbook — návod pre rodinu</h1>
+  <p class="muted">Vyplň údaje; vygeneruje sa <strong>tlačiteľný návod „kto-čo-kde"</strong>.
+  Dokument <strong>neobsahuje žiadne tajomstvá</strong> — len mapu a postup.
+  Aj tak ho drž u dôveryhodných osôb (prezrádza, kde čo hľadať).</p>
+
+  <form method="post" action="/runbook">
+    <fieldset>
+      <legend>Základ</legend>
+      <label>Tvoje meno <input name="author" value="{{.Author}}"></label>
+      <label>Dátum <input name="date" value="{{.Date}}"></label>
+      <label>Meno hlavného dediča (komu je list určený) <input name="wife" value="{{.Wife}}"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Schéma</legend>
+      <label>Prah (koľko častí treba na obnovu) <input type="number" name="threshold" value="{{.Threshold}}" min="1" max="16"></label>
+      <label>Počet častí <input type="number" id="count" name="count" value="{{.Count}}" min="1" max="16"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Časti a kto ich drží</legend>
+      <p class="muted">Počet riadkov sa riadi podľa <strong>„Počet častí"</strong> vyššie.
+      Pri každej časti uveď, <strong>kto ju drží</strong> (časť je uložená u tejto osoby) a kontakt —
+      a či je <strong>technicky zdatná</strong> (volá sa jej o pomoc, dostane obálku) alebo netechnická.</p>
+      <div id="parts">
+        {{range .Persons}}
+        <div class="row">
+          <span class="rownum"></span>
+          <input name="person_name" placeholder="kto drží túto časť — meno" value="{{.Name}}">
+          <input name="person_contact" placeholder="kontakt (tel. / e-mail)" value="{{.Contact}}">
+          <select name="person_tech">
+            <option value="nontech"{{if not .Tech}} selected{{end}}>netechnická</option>
+            <option value="tech"{{if .Tech}} selected{{end}}>technicky zdatná</option>
+          </select>
+        </div>
+        {{end}}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Obálka a kópie</legend>
+      <label>Obálka (passphrase) — banka <input name="bank" value="{{.Bank}}" placeholder="názov banky, pobočka, číslo schránky"></label>
+      <label>Kópie zašifrovanej .kdbx — kde
+        <textarea name="kdbx_copies" rows="3" placeholder="napr. cloud, doma, bankový trezor, u osôb">{{.KdbxCopies}}</textarea>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Doplnky</legend>
+      <label>Peňaženka — poznámky <input name="wallet_notes" value="{{.WalletNotes}}"></label>
+      <label>Odkaz pre rodinu (voľný text)
+        <textarea name="family_notes" rows="3">{{.FamilyNotes}}</textarea>
+      </label>
+    </fieldset>
+
+    <button type="submit">Vygenerovať runbook</button>
+  </form>
+  <p><a href="/">← domov</a></p>
+
+  <template id="part-tpl">
+    <div class="row">
+      <span class="rownum"></span>
+      <input name="person_name" placeholder="kto drží túto časť — meno">
+      <input name="person_contact" placeholder="kontakt (tel. / e-mail)">
+      <select name="person_tech">
+        <option value="nontech">netechnická</option>
+        <option value="tech">technicky zdatná</option>
+      </select>
+    </div>
+  </template>
+
+  <script>
+    function renumber(c) {
+      for (var i = 0; i < c.children.length; i++) {
+        var s = c.children[i].querySelector('.rownum');
+        if (s) s.textContent = 'Časť ' + (i + 1) + ':';
+      }
+    }
+    function setRows(n) {
+      var c = document.getElementById('parts');
+      var tpl = document.getElementById('part-tpl');
+      while (c.children.length > n) c.removeChild(c.lastElementChild);
+      while (c.children.length < n) c.appendChild(tpl.content.cloneNode(true));
+      renumber(c);
+    }
+    function syncRows() {
+      var n = parseInt(document.getElementById('count').value, 10);
+      if (isNaN(n) || n < 1) n = 1;
+      if (n > 16) n = 16;
+      setRows(n);
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('count').addEventListener('input', syncRows);
+      var c = document.getElementById('parts');
+      if (c.children.length === 0) syncRows(); // fresh form: build from count
+      else renumber(c);                        // pre-filled (edit): keep rows
+    });
+  </script>
+</main>
+</body>
+</html>

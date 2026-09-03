@@ -1,0 +1,40 @@
+# Deployment na server. Spúšťa sa cez ./deploy.sh (alebo ručne, viď README).
+# Signal je voliteľný a je za profilom, takže bez neho beží všetko na e-maile:
+#
+#   docker compose up -d                      # len e-mail
+#   docker compose --profile signal up -d     # + Signal kanál
+#
+# INH_DATA_DIR presmeruje dáta (default /opt/inh-dms) — používa to test-režim
+# deploy.sh, aby si mohol skúšobný beh spustiť vedľa ostrého.
+services:
+  dms:
+    build: .
+    image: inh-dms
+    container_name: inh-dms
+    restart: unless-stopped
+    # /data patrí nasadzujúcemu používateľovi a config.json je 0600 — image síce
+    # beží ako nonroot (65532), ale čítať to musí pod jeho uid. deploy.sh
+    # INH_UID/INH_GID exportuje; ručne: INH_UID=$(id -u) INH_GID=$(id -g) docker compose up -d
+    user: "${INH_UID:-1000}:${INH_GID:-1000}"
+    # host sieť: dosiahne lokálny postfix na 127.0.0.1:25, signal-cli na
+    # 127.0.0.1:8080, a naviaže sa na hostiteľský loopback 127.0.0.1:8088
+    # (Apache proxy pred tým rieši TLS).
+    network_mode: host
+    volumes:
+      - ${INH_DATA_DIR:-/opt/inh-dms}/data:/data   # config.json, envelope.asc, state.json
+
+  signal:
+    profiles: ["signal"]
+    # TODO pri deployi: nahradiť konkrétnym digestom (docker pull … &&
+    # docker images --digests) a image odložiť do tarballu k archívu.
+    image: bbernhard/signal-cli-rest-api:latest
+    container_name: inh-signal
+    restart: unless-stopped
+    environment:
+      - MODE=native
+      # Občasný receive drží session pri živote a vyprázdni frontu; my len posielame.
+      - AUTO_RECEIVE_SCHEDULE=0 4 * * *
+    ports:
+      - "127.0.0.1:8080:8080"        # len loopback, nikdy nie navonok
+    volumes:
+      - ${INH_DATA_DIR:-/opt/inh-dms}/signal:/home/.local/share/signal-cli

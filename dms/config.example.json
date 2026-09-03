@@ -1,0 +1,33 @@
+{
+  "listen_addr": "127.0.0.1:8088",
+  "public_base_url": "https://dms.example.com",
+  "smtp_addr": "127.0.0.1:25",
+  "from_email": "dms@example.com",
+  "user_email": "you@example.com",
+  "friend_email": "friend@example.com",
+
+  "_signal": "Voliteľný druhý kanál. Vynechaj celý blok `signal` aj všetky `*_signal` čísla = všetko ide len e-mailom.",
+  "signal": {
+    "api_url": "http://127.0.0.1:8080",
+    "from_number": "+15550000000",
+    "timeout": "20s"
+  },
+  "user_signal": "+15550000001",
+  "friend_signal": "+15550000002",
+
+  "confirmers": [
+    { "id": "friend", "name": "Friend", "email": "friend@example.com", "signal": "+15550000002" },
+    { "id": "brother", "name": "Brother", "email": "brother@example.com" }
+  ],
+  "envelope_path": "/data/envelope.asc",
+  "state_path": "/data/state.json",
+  "hmac_secret": "CHANGE-ME-to-a-long-random-string-min-16-chars",
+  "check_in_interval": "30d",
+  "reminder_interval": "7d",
+  "silence_threshold": "60d",
+  "release_delay": "7d",
+  "health_beat_interval": "7d",
+  "warning_interval": "1d",
+  "alert_interval": "1d",
+  "tick_interval": "1h"
+}

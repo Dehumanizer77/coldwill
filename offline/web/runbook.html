@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runbook — inštrukcie pre rodinu</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="runbook">
+<main>
+  <div class="toolbar noprint">
+    <button onclick="window.print()">🖨 Vytlačiť / Uložiť ako PDF</button>
+    <form method="post" action="/runbook" style="display:inline">
+      <input type="hidden" name="edit" value="1">
+      <input type="hidden" name="author" value="{{.Author}}">
+      <input type="hidden" name="date" value="{{.Date}}">
+      <input type="hidden" name="wife" value="{{.Wife}}">
+      <input type="hidden" name="threshold" value="{{.Threshold}}">
+      <input type="hidden" name="count" value="{{.Count}}">
+      <input type="hidden" name="bank" value="{{.Bank}}">
+      <input type="hidden" name="kdbx_copies" value="{{.KdbxCopies}}">
+      <input type="hidden" name="wallet_notes" value="{{.WalletNotes}}">
+      <input type="hidden" name="family_notes" value="{{.FamilyNotes}}">
+      {{range .AllPersons}}
+      <input type="hidden" name="person_name" value="{{.Name}}">
+      <input type="hidden" name="person_contact" value="{{.Contact}}">
+      <input type="hidden" name="person_tech" value="{{if .Tech}}tech{{else}}nontech{{end}}">
+      {{end}}
+      <button type="submit">✏️ Upraviť</button>
+    </form>
+    <a href="/runbook" style="margin-left:12px">← nový formulár</a>
+    <p class="muted" style="margin:6px 0 0">Pri tlači nechaj okraje na „Predvolené".</p>
+  </div>
+
+  <h1>Bitcoin — inštrukcie pre prípad mojej smrti</h1>
+  <p>{{if .Author}}Autor: <strong>{{.Author}}</strong>. {{end}}{{if .Date}}Dátum: {{.Date}}.{{end}}</p>
+
+  <p class="warn">Tento dokument <strong>neobsahuje žiadne tajomstvá</strong> (žiadny seed, heslo, passphrase ani časti) — je to len <strong>mapa a postup</strong>. Prezrádza však, kde čo hľadať, preto ho nezverejňuj a drž len u dôveryhodných osôb.</p>
+
+  <section>
+    <h2>Úvod</h2>
+    {{if .Wife}}<p>Adresát: <strong>{{.Wife}}</strong></p>{{end}}
+    <p>Tieto peniaze (Bitcoin) sú v bezpečí a dajú sa získať späť. Nie si v tom sám/-a —
+    najprv zavolaj technicky zdatnú osobu (nižšie), ktorá ťa celým postupom prevedie.
+    Neponáhľaj sa, rob to po krokoch a nikomu cudziemu nedávaj nič.</p>
+    <p><strong>Čo je „časť":</strong> zoznam <strong>23 slov</strong>, uložený na trvanlivom médiu —
+    napríklad na kovovej platničke alebo inom zálohovacom médiu. Jedna časť samotná je nanič —
+    treba ich <strong>{{.Threshold}} z {{.Count}}</strong>, aby sa z nich zložil „key-file"
+    (kľúč k databáze). Jednotlivé časti držia rôzne dôveryhodné osoby (nižšie).</p>
+  </section>
+
+  <section>
+    <h2>Ako to funguje (automatický systém)</h2>
+    <p>Kým žijem, chodia mi pravidelné kontrolné e-maily. Ak sa dlhšie neozvem
+    a niektorá z dôveryhodných osôb to potvrdí, systém po ochrannej lehote (niekoľko dní)
+    <strong>automaticky pošle obálku s passphrase e-mailom technicky zdatnej osobe{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}</strong>.
+    Tá istá obálka je aj v bankovom trezore — takže ak by automat zlyhal, cesta cez banku ostáva.</p>
+  </section>
+
+  <section>
+    <h2>1) Koho zavolať</h2>
+    {{if .TechPersons}}
+    <p><strong>Technicky zdatné osoby</strong> — volaj ich, prevedú ťa celým postupom:</p>
+    <ul>
+      {{range .TechPersons}}<li><strong>{{.Name}}</strong>{{if .Contact}} — {{.Contact}}{{end}}</li>{{end}}
+    </ul>
+    {{else}}
+    <p class="warn">Nie je uvedená žiadna technicky zdatná osoba — doplň aspoň jednu, inak nebude mať kto pomôcť.</p>
+    {{end}}
+    {{if .OtherPersons}}
+    <p><strong>Ostatní držitelia častí:</strong></p>
+    <ul>
+      {{range .OtherPersons}}<li>{{.Name}}{{if .Contact}} — {{.Contact}}{{end}}</li>{{end}}
+    </ul>
+    {{end}}
+  </section>
+
+  <section>
+    <h2>2) Čo treba získať (dve veci)</h2>
+    <p>Na prístup k Bitcoinu treba <strong>oboje</strong>:</p>
+    <ul>
+      <li><strong>{{.Threshold}} z {{.Count}} častí</strong> (každá je 23 slov) — z nich sa zloží „key-file".</li>
+      <li><strong>Obálku s passphrase</strong> — druhé tajomstvo, bez ktorého sa k Bitcoinu nedá dostať.</li>
+    </ul>
+    <p>Ani jedno samo o sebe nestačí — preto je to bezpečné.</p>
+  </section>
+
+  <section>
+    <h2>3) Mapa — kde čo je</h2>
+    <table>
+      <tr><th>Položka</th><th>Kde / u koho</th></tr>
+      {{range .Parts}}<tr><td>Časť {{.Num}}</td><td>{{if .Holder}}drží: {{.Holder}}{{else}}—{{end}}</td></tr>{{end}}
+      <tr><td>Obálka (passphrase) — banka</td><td>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</td></tr>
+      <tr><td>Zašifrovaná databáza (.kdbx) — kópie</td><td class="pre">{{if .KdbxCopies}}{{.KdbxCopies}}{{else}}—{{end}}</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>4) Postup krok za krokom</h2>
+    <p>Ako to do seba zapadá (treba <strong>tri veci</strong>, nie jednu):</p>
+    <pre class="chain">①  {{.Threshold}} z {{.Count}} častí
+       │   (nástroj ich poskladá dokopy)
+       ▼
+   key-file (20 bajtov)
+       │   + databáza .kdbx (KeePass)
+       ▼
+②  SEED + ďalšie informácie a prístupy
+       │   + passphrase (z OBÁLKY: banka alebo e-mailom)
+       ▼
+③  obnova peňaženky  →  Bitcoin ₿</pre>
+    <ol>
+      <li>Zavolaj technicky zdatnú osobu (bod 1) — povedie ťa cez video.</li>
+      <li>Zožeň <strong>aspoň {{.Threshold}} časti</strong> (bod 3). Stačí ich odfotiť / prečítať.</li>
+      <li>Zožeň <strong>obálku s passphrase</strong> — z banky, alebo ju automaticky e-mailom dostane technicky zdatná osoba{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}.</li>
+      <li>Na <strong>offline</strong> počítači spusti nástroj <em>inh-offline</em> → <em>Obnova</em> → vlož {{.Threshold}} časti → dostaneš <em>key-file</em>.</li>
+      <li>V programe <strong>KeePassXC</strong> otvor databázu <code>.kdbx</code>; ako ochranu zvoľ <em>Key file</em> = ten súbor. <strong>Do poľa Heslo nezadávaj nič.</strong> Dostaneš sa k <strong>seedu</strong> a ďalším informáciám a prístupom.</li>
+      <li>Na hardvérovej peňaženke obnov peňaženku zo <strong>seedu + passphrase</strong> (z obálky). Bitcoin je prístupný.</li>
+      <li><em>(voliteľné)</em> Pre istotu môžeš presunúť prostriedky do novej peňaženky, ktorú ovládaš ty.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>5) Núdzový (manuálny) postup, ak nástroj nefunguje</h2>
+    <p>Časti sú v štandarde <strong>SLIP-39</strong> — zložia sa hocijakým SLIP-39 nástrojom
+    (napr. referenčná knižnica <code>shamir-mnemonic</code>, alebo Trezor). Výsledkom je
+    <strong>master secret (hex)</strong>, ktorý <strong>je obsahom key-filu</strong>.</p>
+    <p>Tu sa dá ľahko pomýliť: do súboru patria <strong>surové bajty</strong>, nie ten hex
+    zapísaný ako text — inak KeePassXC databázu neotvorí. Na Linuxe/macOS:</p>
+    <pre class="chain">printf '%s' HEX | xxd -r -p &gt; keyfile
+
+# ak xxd na tom stroji nie je (na holom Debiane často nebýva):
+perl -e 'print pack "H*", "HEX"' &gt; keyfile
+python3 -c 'import sys;sys.stdout.buffer.write(bytes.fromhex("HEX"))' &gt; keyfile</pre>
+    <p>Kontrola: súbor má mať polovicu dĺžky hexu (40 hex znakov → 20 bajtov). Potom ho
+    v KeePassXC použi ako <em>Key file</em> a heslo nechaj prázdne. Databáza <code>.kdbx</code>
+    je otvorený formát (KeePassXC, KeePass, KeePassDX, Strongbox, …).</p>
+    <p>Ak tomuto nerozumieš, daj to prečítať technicky zdatnej osobe{{if .PrimaryHelper}} (napr. {{.PrimaryHelper}}){{end}}.</p>
+  </section>
+
+  <section>
+    <h2>6) Bezpečnosť — na čo si dať pozor</h2>
+    <ul>
+      <li><strong>Seed nikdy nevkladaj nikam inam</strong> ako do tohto nástroja (alebo pri núdzovej obnove do príslušného SLIP-39 nástroja).</li>
+      <li>Nikomu cudziemu (ani „technickej podpore") nedávaj slová, seed ani passphrase.</li>
+      <li><em>(voliteľné)</em> Po obnove presuň prostriedky do novej peňaženky.</li>
+      <li>Neponáhľaj sa; ak niečo nesedí, zastav a poraď sa s technicky zdatnou osobou{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}.</li>
+    </ul>
+  </section>
+
+  {{if .WalletNotes}}
+  <section>
+    <h2>Peňaženka — poznámky</h2>
+    <p class="pre">{{.WalletNotes}}</p>
+  </section>
+  {{end}}
+
+  {{if .FamilyNotes}}
+  <section>
+    <h2>Odkaz</h2>
+    <p class="pre">{{.FamilyNotes}}</p>
+  </section>
+  {{end}}
+</main>
+</body>
+</html>

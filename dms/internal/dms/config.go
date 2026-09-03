@@ -1,0 +1,186 @@
+package dms
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// Duration is a time.Duration that unmarshals from JSON strings like "30d",
+// "12h", "90m". Plain Go durations (time.ParseDuration) also work; the extra
+// "d" suffix means days.
+type Duration time.Duration
+
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	v, err := parseDur(s)
+	if err != nil {
+		return err
+	}
+	*d = Duration(v)
+	return nil
+}
+
+func (d Duration) D() time.Duration { return time.Duration(d) }
+
+func parseDur(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	if strings.HasSuffix(s, "d") {
+		n, err := strconv.Atoi(strings.TrimSuffix(s, "d"))
+		if err != nil {
+			return 0, fmt.Errorf("invalid day duration %q: %w", s, err)
+		}
+		return time.Duration(n) * 24 * time.Hour, nil
+	}
+	return time.ParseDuration(s)
+}
+
+type Confirmer struct {
+	ID     string `json:"id"`               // short token id, e.g. "friend"
+	Name   string `json:"name"`             // display name
+	Email  string `json:"email"`            // where the confirmation request is sent
+	Signal string `json:"signal,omitempty"` // optional E.164 number, second channel
+}
+
+// SignalConfig points at a signal-cli-rest-api container. Signal is the
+// secondary channel; leave it out and everything runs on e-mail alone.
+type SignalConfig struct {
+	APIURL     string   `json:"api_url"`     // e.g. http://127.0.0.1:8080
+	FromNumber string   `json:"from_number"` // linked sender number, E.164
+	Timeout    Duration `json:"timeout"`     // per-request timeout
+}
+
+func (s SignalConfig) Enabled() bool { return s.APIURL != "" && s.FromNumber != "" }
+
+type Config struct {
+	ListenAddr    string `json:"listen_addr"`     // local port, behind Apache, e.g. 127.0.0.1:8088
+	PublicBaseURL string `json:"public_base_url"` // e.g. https://dms.example.com
+	SMTPAddr      string `json:"smtp_addr"`       // local postfix, e.g. 127.0.0.1:25
+	FromEmail     string `json:"from_email"`
+	UserEmail     string `json:"user_email"`   // me (check-in / health / warnings)
+	FriendEmail   string `json:"friend_email"` // envelope recipient on fire (the friend)
+
+	UserSignal   string       `json:"user_signal,omitempty"`   // my E.164 number, second channel
+	FriendSignal string       `json:"friend_signal,omitempty"` // friend's E.164 number, second channel
+	Signal       SignalConfig `json:"signal,omitempty"`        // Signal transport (omit = e-mail only)
+
+	Confirmers []Confirmer `json:"confirmers"`
+
+	EnvelopePath string `json:"envelope_path"` // GPG-encrypted envelope (ciphertext only)
+	StatePath    string `json:"state_path"`    // JSON state file
+	HMACSecret   string `json:"hmac_secret"`   // random secret for link tokens
+
+	CheckInInterval    Duration `json:"check_in_interval"`    // remind me to check in
+	ReminderInterval   Duration `json:"reminder_interval"`    // gap between reminders
+	SilenceThreshold   Duration `json:"silence_threshold"`    // silence -> ask confirmers
+	ReleaseDelay       Duration `json:"release_delay"`        // confirm -> fire
+	HealthBeatInterval Duration `json:"health_beat_interval"` // DMS -> me "healthy"
+	WarningInterval    Duration `json:"warning_interval"`     // countdown warnings to me
+	AlertInterval      Duration `json:"alert_interval"`       // min gap between fault alerts
+	TickInterval       Duration `json:"tick_interval"`        // evaluation cadence
+}
+
+func LoadConfig(path string) (Config, error) {
+	var c Config
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return c, err
+	}
+	if err := json.Unmarshal(b, &c); err != nil {
+		return c, err
+	}
+	c.applyDefaults()
+	return c, c.validate()
+}
+
+func (c *Config) applyDefaults() {
+	set := func(d *Duration, def time.Duration) {
+		if d.D() == 0 {
+			*d = Duration(def)
+		}
+	}
+	set(&c.CheckInInterval, 30*24*time.Hour)
+	set(&c.ReminderInterval, 7*24*time.Hour)
+	set(&c.SilenceThreshold, 60*24*time.Hour)
+	set(&c.ReleaseDelay, 7*24*time.Hour)
+	set(&c.HealthBeatInterval, 7*24*time.Hour)
+	set(&c.WarningInterval, 24*time.Hour)
+	set(&c.AlertInterval, 24*time.Hour)
+	set(&c.TickInterval, time.Hour)
+	if c.SMTPAddr == "" {
+		c.SMTPAddr = "127.0.0.1:25"
+	}
+	if c.ListenAddr == "" {
+		c.ListenAddr = "127.0.0.1:8088"
+	}
+	if c.Signal.Timeout.D() == 0 {
+		c.Signal.Timeout = Duration(20 * time.Second)
+	}
+}
+
+func (c Config) validate() error {
+	switch {
+	case c.PublicBaseURL == "":
+		return fmt.Errorf("public_base_url required")
+	case c.FromEmail == "":
+		return fmt.Errorf("from_email required")
+	case c.UserEmail == "":
+		return fmt.Errorf("user_email required")
+	case c.FriendEmail == "":
+		return fmt.Errorf("friend_email required")
+	case c.EnvelopePath == "":
+		return fmt.Errorf("envelope_path required")
+	case c.StatePath == "":
+		return fmt.Errorf("state_path required")
+	case len(c.HMACSecret) < 16:
+		return fmt.Errorf("hmac_secret must be at least 16 chars")
+	case len(c.Confirmers) == 0:
+		return fmt.Errorf("at least one confirmer required")
+	}
+	if c.SilenceThreshold.D() <= c.CheckInInterval.D() {
+		return fmt.Errorf("silence_threshold must exceed check_in_interval")
+	}
+	return c.validateSignal()
+}
+
+// validateSignal refuses half-configured Signal: a number without a transport
+// would silently drop that channel, which is exactly what must not happen
+// quietly in a system nobody looks at for years.
+func (c Config) validateSignal() error {
+	numbers := map[string]string{"user_signal": c.UserSignal, "friend_signal": c.FriendSignal}
+	for _, cf := range c.Confirmers {
+		numbers["confirmer "+cf.ID+" signal"] = cf.Signal
+	}
+	used := false
+	for what, n := range numbers {
+		if n == "" {
+			continue
+		}
+		used = true
+		if !strings.HasPrefix(n, "+") {
+			return fmt.Errorf("%s: %q must be an E.164 number starting with +", what, n)
+		}
+	}
+	if !c.Signal.Enabled() {
+		if used {
+			return fmt.Errorf("signal numbers configured but signal.api_url/from_number missing")
+		}
+		if c.Signal.APIURL != "" || c.Signal.FromNumber != "" {
+			return fmt.Errorf("signal needs both api_url and from_number")
+		}
+		return nil
+	}
+	if !strings.HasPrefix(c.Signal.FromNumber, "+") {
+		return fmt.Errorf("signal.from_number: %q must be an E.164 number starting with +", c.Signal.FromNumber)
+	}
+	if !used {
+		return fmt.Errorf("signal configured but no recipient has a signal number")
+	}
+	return nil
+}

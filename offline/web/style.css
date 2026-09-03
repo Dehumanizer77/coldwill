@@ -1,0 +1,137 @@
+:root {
+  --bg: #0f1115;
+  --panel: #1a1d24;
+  --fg: #e6e8ec;
+  --muted: #9aa3b2;
+  --accent: #5b9dff;
+  --ok: #3fb950;
+  --err: #f85149;
+  --warn: #d29922;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid #2a2e37; padding-bottom: .3rem; }
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+.ok { color: var(--ok); font-weight: 600; }
+.err { color: var(--err); font-weight: 600; }
+.warn {
+  background: #2a230f;
+  border: 1px solid var(--warn);
+  color: #f0d590;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+.cards { display: flex; gap: 16px; margin-top: 24px; flex-wrap: wrap; }
+.card {
+  flex: 1 1 280px;
+  background: var(--panel);
+  border: 1px solid #2a2e37;
+  border-radius: 12px;
+  padding: 20px;
+  text-decoration: none;
+  color: var(--fg);
+}
+.card:hover { border-color: var(--accent); }
+.card h2 { border: 0; margin: 0 0 .4rem; }
+form { display: flex; flex-direction: column; gap: 14px; max-width: 520px; }
+label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+input, textarea, select, button {
+  font: inherit;
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid #2a2e37;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+button, .btn {
+  background: var(--accent);
+  color: #06122b;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 8px;
+}
+button:hover, .btn:hover { filter: brightness(1.08); }
+.row { display: flex; gap: 8px; margin: 6px 0; align-items: center; flex-wrap: wrap; }
+.row input { flex: 1 1 140px; }
+.rownum { min-width: 64px; color: var(--muted); font-weight: 600; }
+.addbtn { background: #2a2e37; color: var(--fg); font-weight: 600; margin-top: 8px; }
+.rmbtn { background: #3a2230; color: #f3a9bb; padding: 8px 12px; }
+.share {
+  background: var(--panel);
+  border: 1px solid #2a2e37;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 14px 0;
+}
+.share h3 { margin: 0 0 10px; font-size: 1.05rem; }
+ol.words {
+  columns: 4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin: 0;
+  padding-left: 2.2em;
+}
+ol.words li { padding: 1px 0; }
+.hex code {
+  background: var(--panel);
+  border: 1px solid #2a2e37;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+.chain {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
+  overflow-x: auto;
+  line-height: 1.4;
+  font-size: 13px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid #2a2e37;
+}
+body.runbook .chain { background: #f6f6f6; border-color: #bbb; color: #111; }
+
+/* ---- Runbook: light theme, print-friendly ---- */
+body.runbook { background: #fff; color: #111; }
+body.runbook a { color: #14467a; }
+body.runbook h1, body.runbook h2, body.runbook h3 { color: #111; }
+body.runbook h2 { border-bottom: 1px solid #ccc; }
+body.runbook .warn { background: #fff7e0; color: #6b4e00; border-color: #d29922; }
+body.runbook table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+body.runbook th, body.runbook td {
+  border: 1px solid #999;
+  padding: 6px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+body.runbook th { background: #f0f0f0; }
+.pre { white-space: pre-wrap; }
+.toolbar { margin: 0 0 18px; }
+@page { margin: 16mm 14mm; }
+@media print {
+  .noprint { display: none !important; }
+  body.runbook { background: #fff; color: #000; font-size: 11.5pt; }
+  /* keep a fallback inset even if the print dialog uses "Margins: None" */
+  body.runbook main { max-width: none; padding: 8mm; }
+  body.runbook a { color: #000; text-decoration: none; }
+  body.runbook h2 { page-break-after: avoid; }
+  body.runbook section, body.runbook table { page-break-inside: avoid; }
+}

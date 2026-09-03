@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Backup vygenerovaný — inh</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Backup vygenerovaný ({{.Threshold}}-z-{{.Count}})</h1>
+  {{if .Verified}}
+    <p class="ok">✓ Self-test: {{.Threshold}} časti správne zložili kľúč späť.</p>
+  {{else}}
+    <p class="err">✗ Self-test ZLYHAL — nepoužívaj tento výstup, zopakuj generovanie.</p>
+  {{end}}
+
+  <h2>Časti — každú vyryť zvlášť</h2>
+  <p class="muted">Každá časť je {{.WordsPerShare}} očíslovaných slov; vyryj ich presne v poradí. Na obnovu stačia ľubovoľné {{.Threshold}}.</p>
+  {{range .Shares}}
+    <section class="share">
+      <h3>{{.Holder}}</h3>
+      <ol class="words">
+        {{range .Words}}<li>{{.}}</li>{{end}}
+      </ol>
+    </section>
+  {{end}}
+
+  <h2>Key-file</h2>
+  <p class="muted">Týmto súborom zamkneš KeePass DB. Po vytvorení DB ho zmaž — vždy ho znova zložíš z {{.Threshold}} častí.</p>
+  <p><a class="btn" download="inheritance.key" href="{{.KeyURL}}">⬇ Stiahnuť key-file</a></p>
+  <p class="hex">hex: <code>{{.KeyHex}}</code></p>
+  <p class="muted">⚠️ Toto je obsah key-filu (tých istých 16 bajtov), len na <strong>okamžité vytvorenie DB</strong> a prípadné overenie. <strong>NEZAPISUJ ho do runbooku ani nikam inam</strong> — kľúč má žiť len ako {{.Count}} časti; jeho uložením kdekoľvek by si obišiel ochranu {{.Threshold}}-z-{{.Count}}.</p>
+
+  <h2>Ďalej</h2>
+  <ol>
+    <li>Vyryj všetky časti na kovové platničky a rozdaj podľa plánu.</li>
+    <li>V KeePassXC vytvor novú databázu, ako ochranu zvoľ <em>Key file</em> = stiahnutý súbor (<strong>do poľa Heslo nič nezadávaj</strong>).</li>
+    <li>Do DB ulož seed a ostatné prístupy. <strong>passphrase k peňaženke do DB NEDÁVAJ</strong> — tá ide do posmrtnej obálky.</li>
+    <li>Rozkopíruj zašifrovanú <code>.kdbx</code> (cloud, banka, u všetkých). Key-file z disku zmaž.</li>
+  </ol>
+  <p><a href="/">← domov</a></p>
+</main>
+</body>
+</html>

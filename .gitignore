@@ -1,0 +1,46 @@
+# --- NIKDY necommitovať reálne tajomstvá ---
+*.kdbx
+*.key
+*.keyfile
+*.seed
+*.mnemonic
+*.share
+*.shares
+shares/
+secrets/
+envelope*
+*passphrase*
+*.gpg
+*.age
+.env
+.env.*
+
+# --- build / runtime ---
+inh-offline
+offline/inh-offline
+inh-dms
+dms/inh-dms
+config.json
+state.json
+dms/data/
+
+# --- local-only (NIKDY nepushovať): reálna mapa, kľúče, poznámky ---
+keys/*.asc
+*.pdf
+TODO.local.md
+*.local.md
+
+# --- nástroje asistenta, nie súčasť projektu ---
+CLAUDE.md
+.claude/
+graphify-out/
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+node_modules/
+dist/
+build/
+*.egg-info/
+.DS_Store
