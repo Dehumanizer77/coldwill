@@ -122,8 +122,12 @@
   <section>
     <h2>5) Núdzový (manuálny) postup, ak nástroj nefunguje</h2>
     <p>Časti sú v štandarde <strong>SLIP-39</strong> — zložia sa hocijakým SLIP-39 nástrojom
-    (napr. referenčná knižnica <code>shamir-mnemonic</code>, alebo Trezor). Výsledkom je
+    (napr. referenčná knižnica <code>shamir-mnemonic</code>). Výsledkom je
     <strong>master secret (hex)</strong>, ktorý <strong>je obsahom key-filu</strong>.</p>
+    <p>Na kove sú slová často len ako <strong>4-písmenové skratky</strong> — to nie je chyba,
+    v SLIP-39 zozname je slovo prvými štyrmi písmenami určené jednoznačne. Nástroj
+    <em>inh-offline</em> ich doplní sám; ak použiješ iný nástroj, ktorý skratky neprijme,
+    dohľadaj celé slová v oficiálnom SLIP-39 zozname (1024 slov, je v každom SLIP-39 nástroji).</p>
     <p>Tu sa dá ľahko pomýliť: do súboru patria <strong>surové bajty</strong>, nie ten hex
     zapísaný ako text — inak KeePassXC databázu neotvorí. Na Linuxe/macOS:</p>
     <pre class="chain">printf '%s' HEX | xxd -r -p &gt; keyfile

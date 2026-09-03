@@ -24,6 +24,7 @@ func init() {
 	for i, w := range wordlist {
 		wordIndex[w] = i
 	}
+	initPrefixIndex()
 }
 
 // itoa is a tiny helper to avoid importing strconv just for a panic message.

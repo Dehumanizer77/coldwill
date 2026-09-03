@@ -84,9 +84,13 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "index.html", nil)
 }
 
+// wordView splits a word into the four letters that are engraved and the rest,
+// so the setup page can show exactly what goes on the plate.
+type wordView struct{ Head, Tail string }
+
 type shareView struct {
 	Holder string
-	Words  []string
+	Words  []wordView
 }
 
 type setupData struct {
@@ -130,7 +134,12 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	wps := 0
 	for i, m := range mnems {
 		words := strings.Fields(m)
-		shares[i] = shareView{Holder: holders[i], Words: words}
+		wv := make([]wordView, len(words))
+		for j, w := range words {
+			// Metal plates only fit four letters; show which four they are.
+			wv[j] = wordView{Head: w[:slip39.PrefixLen], Tail: w[slip39.PrefixLen:]}
+		}
+		shares[i] = shareView{Holder: holders[i], Words: wv}
 		wps = len(words)
 	}
 
@@ -163,12 +172,21 @@ func (s *Server) handleRecover(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(lines) == 0 {
-		s.renderErr(w, "Nezadal si žiadny podiel.")
+		s.renderErr(w, "Nezadal si žiadnu časť.")
+		return
+	}
+	// Plates carry four-letter abbreviations, so that is what people type in.
+	// Expanding here means the person recovering never has to know that the
+	// engraved words are shortened at all.
+	lines, err := slip39.NormalizeMnemonics(lines)
+	if err != nil {
+		s.renderErr(w, "Nerozumiem zadaným slovám — "+err.Error()+
+			". Slová píš tak, ako sú na kove (stačia prvé 4 písmená), každú časť na svoj riadok.")
 		return
 	}
 	key, err := slip39.Combine(lines, nil)
 	if err != nil {
-		s.renderErr(w, "Obnova zlyhala: "+err.Error()+" — skontroluj, či sú slová a počet podielov správne.")
+		s.renderErr(w, "Obnova zlyhala: "+err.Error()+" — skontroluj, či sú slová a počet častí správne.")
 		return
 	}
 	s.render(w, "recover_result.html", recoverData{

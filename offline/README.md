@@ -37,12 +37,19 @@ round-trip); ak zlyhá, nástroj sa nespustí.
   slov s prahom K (default 2-z-3), zobrazí ich na vyrytie, ponúkne stiahnutie
   key-filu a hex.
 - **Obnova** → vložíš ≥ K častí (každú na svojom riadku) → zloží key-file.
+  Slová píšeš **tak, ako sú na kove**: platničky majú miesto len na **4 písmená**
+  a nástroj si zvyšok doplní (v SLIP-39 zozname je slovo prvými štyrmi písmenami
+  určené jednoznačne — 1024 slov, 1024 rôznych prefixov). Tri písmená sú
+  nejednoznačné, tie nástroj odmietne a povie ktoré slovo. Veľkosť písmen,
+  číslovanie riadkov a interpunkcia sa ignorujú.
 - **Runbook** → vyplníš „kto-čo-kde" → vygeneruje tlačiteľný návod pre rodinu
   (klik *Vytlačiť / Uložiť ako PDF*). Dokument **neobsahuje žiadne tajomstvá**.
 
 ## Ako to zapadá
 
-- Časti sa ryjú na **kovové platničky** (médium musí pojať 23 slov), jedna na držiteľa/lokalitu.
+- Časti sa ryjú na **kovové platničky** (médium musí pojať 23 slov), jedna na
+  držiteľa/lokalitu. Ryjú sa len **prvé 4 písmená** každého slova — setup ich na
+  výstupe zvýrazní tučným, aby bolo jasné, čo ide na kov.
 - Key-file zamyká **KeePass DB** (KeePassXC: ochrana = *Key file*). KeePassXC
   súbor, ktorý nie je 32 B / 64 hex / KeyFile-XML, deterministicky **zahashuje
   (SHA-256)** — náš **20-bajtový** (160-bit) súbor teda funguje a pri obnove sa

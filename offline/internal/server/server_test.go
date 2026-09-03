@@ -222,3 +222,59 @@ func TestKeyFileDownloadSurvivesAttributeEscaping(t *testing.T) {
 		t.Errorf("key-file is %d B, want 20 (160-bit)", len(got))
 	}
 }
+
+// What a person actually types during recovery is what the metal plate says:
+// four letters per word. The HTTP layer has to accept that, or the whole
+// engraved backup is unusable without a wordlist at hand.
+func TestRecoverAcceptsEngravedAbbreviations(t *testing.T) {
+	s := newTestServer(t)
+	key := []byte("twenty-byte key!! ok")
+	shares, err := slip39.Generate(key, 2, 3, nil)
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	abbrev := func(m string) string {
+		w := strings.Fields(m)
+		for i := range w {
+			w[i] = w[i][:slip39.PrefixLen]
+		}
+		return strings.Join(w, " ")
+	}
+
+	rr := do(s, http.MethodPost, "/recover", url.Values{
+		"mnemonics": {abbrev(shares[0]) + "\n" + abbrev(shares[1])},
+	})
+	if rr.Code != 200 {
+		t.Fatalf("status %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "Kľúč obnovený") {
+		t.Fatalf("recover from abbreviations failed: %s", firstLine(body))
+	}
+	if !strings.Contains(body, hex.EncodeToString(key)) {
+		t.Errorf("recovered hex not in the response")
+	}
+}
+
+// A wrong word must be named, not silently guessed at.
+func TestRecoverRejectsAmbiguousWord(t *testing.T) {
+	s := newTestServer(t)
+	rr := do(s, http.MethodPost, "/recover", url.Values{"mnemonics": {"aca acid acro"}})
+	body := rr.Body.String()
+	if !strings.Contains(body, "príliš krátke") {
+		t.Errorf("expected a message about the too-short word, got: %s", firstLine(body))
+	}
+}
+
+// The setup page must show which four letters go on the plate.
+func TestSetupMarksEngravedPrefix(t *testing.T) {
+	s := newTestServer(t)
+	rr := do(s, http.MethodPost, "/setup", url.Values{"threshold": {"2"}, "count": {"3"}})
+	body := rr.Body.String()
+	if !strings.Contains(body, "prvé 4 písmená") {
+		t.Errorf("setup result does not explain the four-letter abbreviation")
+	}
+	if !strings.Contains(body, "<li><strong>") {
+		t.Errorf("setup result does not highlight the engraved prefix")
+	}
+}

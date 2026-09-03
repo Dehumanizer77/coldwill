@@ -17,11 +17,12 @@
 
   <h2>Časti — každú vyryť zvlášť</h2>
   <p class="muted">Každá časť je {{.WordsPerShare}} očíslovaných slov; vyryj ich presne v poradí. Na obnovu stačia ľubovoľné {{.Threshold}}.</p>
+  <p class="muted">Na kov stačí <strong>prvé 4 písmená</strong> (zvýraznené) — v SLIP-39 zozname je nimi slovo určené jednoznačne, preto majú kovové platničky len 4 pozície. Obnovovací nástroj si zvyšok doplní sám.</p>
   {{range .Shares}}
     <section class="share">
       <h3>{{.Holder}}</h3>
       <ol class="words">
-        {{range .Words}}<li>{{.}}</li>{{end}}
+        {{range .Words}}<li><strong>{{.Head}}</strong>{{.Tail}}</li>{{end}}
       </ol>
     </section>
   {{end}}
@@ -30,7 +31,7 @@
   <p class="muted">Týmto súborom zamkneš KeePass DB. Po vytvorení DB ho zmaž — vždy ho znova zložíš z {{.Threshold}} častí.</p>
   <p><a class="btn" download="inheritance.key" href="{{.KeyURL}}">⬇ Stiahnuť key-file</a></p>
   <p class="hex">hex: <code>{{.KeyHex}}</code></p>
-  <p class="muted">⚠️ Toto je obsah key-filu (tých istých 16 bajtov), len na <strong>okamžité vytvorenie DB</strong> a prípadné overenie. <strong>NEZAPISUJ ho do runbooku ani nikam inam</strong> — kľúč má žiť len ako {{.Count}} časti; jeho uložením kdekoľvek by si obišiel ochranu {{.Threshold}}-z-{{.Count}}.</p>
+  <p class="muted">⚠️ Toto je obsah key-filu (tých istých 20 bajtov), len na <strong>okamžité vytvorenie DB</strong> a prípadné overenie. <strong>NEZAPISUJ ho do runbooku ani nikam inam</strong> — kľúč má žiť len ako {{.Count}} časti; jeho uložením kdekoľvek by si obišiel ochranu {{.Threshold}}-z-{{.Count}}.</p>
 
   <h2>Ďalej</h2>
   <ol>

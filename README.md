@@ -130,9 +130,16 @@ cesta vedie cez banku.
 6. Na peňaženke obnoví zo **seedu + passphrase** (z obálky) → BTC.
 7. (Voliteľné) presunie BTC do vlastnej novej peňaženky.
 
+Na kove sú slová spravidla len ako **4-písmenové skratky** — platnička viac
+pozícií nemá. Nie je to problém: SLIP-39 zoznam je navrhnutý tak, že prvé štyri
+písmená určujú slovo jednoznačne (1024 slov, 1024 rôznych prefixov), a
+obnovovací nástroj si zvyšok doplní sám. Tri písmená by už jednoznačné neboli,
+tie nástroj odmietne a povie, ktoré slovo prepísať.
+
 Runbook obsahuje aj **núdzový postup** bez týchto nástrojov: časti sú štandardný
 SLIP-39, zloží ich hocijaký SLIP-39 nástroj, výsledný *master secret* v hexe **je
-obsahom key-filu**.
+obsahom key-filu**. Ak taký nástroj skratky neprijme, celé slová sa dohľadajú
+v oficiálnom SLIP-39 zozname.
 
 ## Komponenty
 
