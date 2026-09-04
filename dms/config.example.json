@@ -4,7 +4,25 @@
   "smtp_addr": "127.0.0.1:25",
   "from_email": "dms@example.com",
   "user_email": "you@example.com",
-  "friend_email": "friend@example.com",
+
+  "_envelopes": "Každá obálka má vlastný súbor a vlastných príjemcov: tá istá obálka viacerým = záloha, rôzne obálky rôznym ľuďom = rozdelenie znalostí. Starý zápis envelope_path + friend_email stále funguje.",
+  "envelopes": [
+    {
+      "id": "passphrase",
+      "path": "/data/envelope-passphrase.asc",
+      "subject": "Dôležité — dedičstvo: passphrase",
+      "to": [
+        { "name": "Prvá", "email": "prva@example.com", "signal": "+15550000002" },
+        { "name": "Druhá", "email": "druha@example.com" }
+      ]
+    },
+    {
+      "id": "pristupy",
+      "path": "/data/envelope-pristupy.asc",
+      "note": "Vnútri sú ostatné prístupy, nie passphrase k peňaženke.",
+      "to": [ { "name": "Tretia", "email": "tretia@example.com" } ]
+    }
+  ],
 
   "_signal": "Voliteľný druhý kanál. Vynechaj celý blok `signal` aj všetky `*_signal` čísla = všetko ide len e-mailom.",
   "signal": {
@@ -13,13 +31,11 @@
     "timeout": "20s"
   },
   "user_signal": "+15550000001",
-  "friend_signal": "+15550000002",
 
   "confirmers": [
     { "id": "friend", "name": "Friend", "email": "friend@example.com", "signal": "+15550000002" },
     { "id": "brother", "name": "Brother", "email": "brother@example.com" }
   ],
-  "envelope_path": "/data/envelope.asc",
   "state_path": "/data/state.json",
   "hmac_secret": "CHANGE-ME-to-a-long-random-string-min-16-chars",
   "check_in_interval": "30d",

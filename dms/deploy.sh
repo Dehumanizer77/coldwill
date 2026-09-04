@@ -3,6 +3,8 @@
 #
 #   ./deploy.sh --envelope ~/envelope.asc            # ostré nasadenie (e-mail)
 #   ./deploy.sh --envelope ~/envelope.asc --signal   # + Signal kanál
+#   ./deploy.sh --envelope passphrase=~/a.asc --envelope pristupy=~/b.asc
+#                                                    # viac obálok, každá vlastným príjemcom
 #   ./deploy.sh --check                              # len preflight, nič nemení
 #   ./deploy.sh --config-only --force-config         # len prepíš config.json
 #   ./deploy.sh --envelope … --no-compose            # bez compose, čisté docker príkazy
@@ -13,7 +15,9 @@ set -euo pipefail
 
 DATA_ROOT="${INH_DATA_DIR:-/opt/inh-dms}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENVELOPE_SRC=""
+ENV_IDS=()
+ENV_SRCS=()
+ENV_DSTS=()
 WITH_SIGNAL=0
 CHECK_ONLY=0
 CONFIG_ONLY=0
@@ -32,7 +36,13 @@ usage() { sed -n '2,${/^#/!q;s/^# \{0,1\}//;p;}' "${BASH_SOURCE[0]}"; exit 0; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --envelope)     ENVELOPE_SRC="${2:?--envelope potrebuje cestu}"; shift 2 ;;
+    --envelope)
+      spec="${2:?--envelope potrebuje cestu (alebo id=cesta)}"
+      case "$spec" in
+        *=*) ENV_IDS+=("${spec%%=*}"); ENV_SRCS+=("${spec#*=}") ;;
+        *)   ENV_IDS+=("default");     ENV_SRCS+=("$spec") ;;
+      esac
+      shift 2 ;;
     --signal)       WITH_SIGNAL=1; shift ;;
     --check)        CHECK_ONLY=1; shift ;;
     --force-config) FORCE_CONFIG=1; shift ;;
@@ -116,21 +126,29 @@ fi
 chmod 700 "$DATA_ROOT" "$DATA" 2>/dev/null || true
 ok "$DATA"
 
-# -------------------------------------------------------------------- obálka --
-say "Obálka (GPG ciphertext)"
-if [ -n "$ENVELOPE_SRC" ]; then
-  [ -f "$ENVELOPE_SRC" ] || die "obálka '$ENVELOPE_SRC' neexistuje"
-  grep -q "BEGIN PGP MESSAGE" "$ENVELOPE_SRC" || die "'$ENVELOPE_SRC' nevyzerá ako ASCII-armored PGP správa"
-  if [ "$ENVELOPE_SRC" -ef "$DATA/envelope.asc" ]; then
-    ok "už na mieste ($DATA/envelope.asc, $(wc -c <"$DATA/envelope.asc") B)"
-  else
-    install -m 600 "$ENVELOPE_SRC" "$DATA/envelope.asc"
-    ok "skopírovaná do $DATA/envelope.asc ($(wc -c <"$DATA/envelope.asc") B)"
-  fi
+# ------------------------------------------------------------------- obálky --
+say "Obálky (GPG ciphertext)"
+if [ ${#ENV_IDS[@]} -gt 0 ]; then
+  for i in "${!ENV_IDS[@]}"; do
+    id="${ENV_IDS[$i]}"; src="${ENV_SRCS[$i]}"
+    case "$id" in *[!a-zA-Z0-9_-]*) die "id obálky '$id' smie mať len písmená, číslice, - a _";; esac
+    [ -f "$src" ] || die "obálka '$src' neexistuje"
+    grep -q "BEGIN PGP MESSAGE" "$src" || die "'$src' nevyzerá ako ASCII-armored PGP správa"
+    dst="$DATA/envelope-$id.asc"
+    [ "$id" = "default" ] && dst="$DATA/envelope.asc"
+    if [ "$src" -ef "$dst" ]; then
+      ok "$id: už na mieste ($dst, $(wc -c <"$dst") B)"
+    else
+      install -m 600 "$src" "$dst"
+      ok "$id → $dst ($(wc -c <"$dst") B)"
+    fi
+    ENV_DSTS+=("$dst")
+  done
 elif [ -f "$DATA/envelope.asc" ]; then
-  ok "už na mieste (nechávam tak)"
+  ENV_IDS=("default"); ENV_DSTS=("$DATA/envelope.asc")
+  ok "envelope.asc už na mieste (nechávam tak)"
 else
-  die "chýba obálka — spusti s --envelope /cesta/envelope.asc (vyrob ju offline, viď README)"
+  die "chýba obálka — spusti s --envelope /cesta/envelope.asc (alebo viackrát --envelope id=cesta; vyrob ju offline, viď README)"
 fi
 
 # --------------------------------------------------------------------- config --
@@ -146,22 +164,53 @@ else
   BASE_URL=$(ask "Verejná URL DMS (https://…)" "https://dms.example.com")
   FROM=$(ask     "From adresa e-mailov" "dms@${BASE_URL#https://}")
   USER_MAIL=$(ask "Tvoj e-mail (check-in, alerty)")
-  FRIEND_MAIL=$(ask "E-mail príjemcu obálky (technicky zdatná osoba)")
-  for v in "$BASE_URL" "$FROM" "$USER_MAIL" "$FRIEND_MAIL"; do json_safe "$v"; done
-  [ -n "$USER_MAIL" ] && [ -n "$FRIEND_MAIL" ] || die "user_email a friend_email sú povinné"
+  for v in "$BASE_URL" "$FROM" "$USER_MAIL"; do json_safe "$v"; done
+  [ -n "$USER_MAIL" ] || die "user_email je povinný"
 
-  USER_SIG=""; FRIEND_SIG=""; SIGNAL_BLOCK=""
+  USER_SIG=""; SIGNAL_BLOCK=""
   if [ "$WITH_SIGNAL" = 1 ]; then
     SIG_FROM=$(ask "Signal číslo, z ktorého DMS posiela (E.164, +…)")
     USER_SIG=$(ask "Tvoje Signal číslo (Enter = nepoužiť)")
-    FRIEND_SIG=$(ask "Signal číslo príjemcu obálky (Enter = nepoužiť)")
-    for v in "$SIG_FROM" "$USER_SIG" "$FRIEND_SIG"; do json_safe "$v"; done
+    for v in "$SIG_FROM" "$USER_SIG"; do json_safe "$v"; done
     case "$SIG_FROM" in +*) ;; *) die "signal from_number musí začínať '+'";; esac
     SIGNAL_BLOCK=$(printf '  "signal": { "api_url": "http://127.0.0.1:%s", "from_number": "%s", "timeout": "20s" },' "$PORT_SIGNAL" "$SIG_FROM")
-    [ -n "$USER_SIG" ]   && SIGNAL_BLOCK="$SIGNAL_BLOCK\n$(printf '  "user_signal": "%s",' "$USER_SIG")"
-    [ -n "$FRIEND_SIG" ] && SIGNAL_BLOCK="$SIGNAL_BLOCK\n$(printf '  "friend_signal": "%s",' "$FRIEND_SIG")"
+    [ -n "$USER_SIG" ] && SIGNAL_BLOCK="$SIGNAL_BLOCK\n$(printf '  "user_signal": "%s",' "$USER_SIG")"
   fi
 
+  # --- príjemcovia každej obálky ---
+  ENVELOPES=""
+  for i in "${!ENV_IDS[@]}"; do
+    eid="${ENV_IDS[$i]}"; epath="${ENV_DSTS[$i]}"
+    # Config je pre kontajner, ktorý má $DATA namountovaný ako /data.
+    cpath="/data/$(basename "$epath")"
+    echo "   -- obálka: $eid ($cpath) --"
+    ETO=""
+    if [ "$TEST_TIMINGS" = 1 ]; then
+      echo "      test: táto obálka pôjde tebe, $USER_MAIL"
+      SIGJSON=""
+      [ -n "$USER_SIG" ] && SIGJSON=$(printf ', "signal": "%s"' "$USER_SIG")
+      ETO=$(printf '{ "name": "test", "email": "%s"%s }' "$USER_MAIL" "$SIGJSON")
+    else
+      RN=$(ask "  koľko príjemcov tejto obálky?" "1")
+      for r in $(seq 1 "$RN"); do
+        RNAME=$(ask "    $r. meno")
+        RMAIL=$(ask "    $r. e-mail")
+        RSIG=""
+        if [ "$WITH_SIGNAL" = 1 ]; then RSIG=$(ask "    $r. Signal číslo, Enter = bez Signalu"); fi
+        for v in "$RNAME" "$RMAIL" "$RSIG"; do json_safe "$v"; done
+        if [ -z "$RMAIL" ] && [ -z "$RSIG" ]; then die "príjemca potrebuje aspoň e-mail alebo Signal číslo"; fi
+        SIGJSON=""
+        [ -n "$RSIG" ] && SIGJSON=$(printf ', "signal": "%s"' "$RSIG")
+        ONE=$(printf '{ "name": "%s", "email": "%s"%s }' "$RNAME" "$RMAIL" "$SIGJSON")
+        [ -n "$ETO" ] && ETO="$ETO, "
+        ETO="$ETO$ONE"
+      done
+    fi
+    [ -z "$ETO" ] && die "obálka '$eid' nemá ani jedného príjemcu"
+    [ -n "$ENVELOPES" ] && ENVELOPES="$ENVELOPES,\n"
+    ONE=$(printf '    { "id": "%s", "path": "%s", "to": [ %s ] }' "$eid" "$cpath" "$ETO")
+    ENVELOPES="$ENVELOPES$ONE"
+  done
   N=$(ask "Koľko potvrdzovateľov (ľudí, ktorí vedia potvrdiť úmrtie)?" "2")
   CONFIRMERS=""
   for i in $(seq 1 "$N"); do
@@ -186,8 +235,7 @@ else
   done
 
   if [ "$TEST_TIMINGS" = 1 ]; then
-    warn "TEST režim: minútové intervaly; obálka aj výzvy potvrdzovateľom idú TEBE ($USER_MAIL)"
-    FRIEND_MAIL="$USER_MAIL"; FRIEND_SIG="$USER_SIG"
+    warn "TEST režim: minútové intervaly; obálky aj výzvy potvrdzovateľom idú TEBE ($USER_MAIL)"
     T_CHECKIN='"5m"'; T_REMIND='"2m"'; T_SILENCE='"10m"'; T_RELEASE='"5m"'
     T_HEALTH='"5m"';  T_WARN='"1m"';  T_ALERT='"5m"';     T_TICK='"30s"'
   else
@@ -204,10 +252,9 @@ else
     printf '  "smtp_addr": "127.0.0.1:25",\n'
     printf '  "from_email": "%s",\n' "$FROM"
     printf '  "user_email": "%s",\n' "$USER_MAIL"
-    printf '  "friend_email": "%s",\n' "$FRIEND_MAIL"
     [ -n "$SIGNAL_BLOCK" ] && printf '%b\n' "$SIGNAL_BLOCK"
     printf '  "confirmers": [\n%b\n  ],\n' "$CONFIRMERS"
-    printf '  "envelope_path": "/data/envelope.asc",\n'
+    printf '  "envelopes": [\n%b\n  ],\n' "$ENVELOPES"
     printf '  "state_path": "/data/state.json",\n'
     printf '  "hmac_secret": "%s",\n' "$SECRET"
     printf '  "check_in_interval": %s,\n'    "$T_CHECKIN"

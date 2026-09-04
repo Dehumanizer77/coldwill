@@ -28,6 +28,7 @@ type fakeMailer struct {
 	sent     []sentMail
 	checkErr error
 	sendErr  error
+	failTo   map[string]bool // addresses whose delivery fails
 }
 
 func (m *fakeMailer) Send(to []string, subject, body string) error {
@@ -35,6 +36,11 @@ func (m *fakeMailer) Send(to []string, subject, body string) error {
 	defer m.mu.Unlock()
 	if m.sendErr != nil {
 		return m.sendErr
+	}
+	for _, t := range to {
+		if m.failTo[t] {
+			return errors.New("mailbox unavailable: " + t)
+		}
 	}
 	m.sent = append(m.sent, sentMail{to, subject, body})
 	return nil
@@ -71,7 +77,8 @@ func (m *fakeMailer) sentTo(addr, subjContains string) (sentMail, bool) {
 }
 
 // testConfig is an e-mail-only config over a fresh temp dir with a dummy
-// envelope; Signal tests start from it and add the second channel.
+// envelope, in the single-envelope form. Callers apply defaults themselves
+// after any edits, exactly as LoadConfig does.
 func testConfig(t *testing.T) Config {
 	t.Helper()
 	dir := t.TempDir()
@@ -106,7 +113,9 @@ func newClock() *clk { return &clk{t: time.Date(2026, 1, 1, 12, 0, 0, 0, time.UT
 func newSvc(t *testing.T) (*Service, *fakeMailer, *clk) {
 	t.Helper()
 	c, fm := newClock(), &fakeMailer{}
-	svc, err := New(testConfig(t), c.now, fm, nil)
+	cfg := testConfig(t)
+	cfg.applyDefaults() // same order as LoadConfig: defaults (incl. envelope folding) then use
+	svc, err := New(cfg, c.now, fm, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

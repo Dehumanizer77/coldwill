@@ -29,6 +29,10 @@ type State struct {
 	LastAlertAt      time.Time `json:"last_alert_at,omitempty"`
 	Healthy          bool      `json:"healthy"`
 
+	// Envelopes already delivered, by id. A partial fire retries only the rest,
+	// so nobody gets the same envelope twice while another is still stuck.
+	Delivered []string `json:"delivered,omitempty"`
+
 	// Secondary channel health; degraded Signal alerts but never blocks firing.
 	SignalOK          bool      `json:"signal_ok"`
 	LastSignalAlertAt time.Time `json:"last_signal_alert_at,omitempty"`
@@ -65,6 +69,15 @@ func (s State) save(path string) error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+func (s State) wasDelivered(id string) bool {
+	for _, d := range s.Delivered {
+		if d == id {
+			return true
+		}
+	}
+	return false
 }
 
 func ensureDir(path string) error {

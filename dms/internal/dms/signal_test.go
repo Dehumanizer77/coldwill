@@ -65,6 +65,7 @@ func newSignalSvc(t *testing.T) (*Service, *fakeMailer, *fakeSignal, *clk) {
 	cfg.Confirmers[0].Signal = numFriend
 	cfg.Confirmers[1].Signal = numBrother
 	cfg.Signal = SignalConfig{APIURL: "http://127.0.0.1:8080", FromNumber: "+15550000000", Timeout: Duration(5 * time.Second)}
+	cfg.applyDefaults()
 	if err := cfg.validate(); err != nil {
 		t.Fatalf("test config invalid: %v", err)
 	}
@@ -294,6 +295,7 @@ func TestSignalConfigValidation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := testConfig(t)
 			tc.mutate(&cfg)
+			cfg.applyDefaults()
 			err := cfg.validate()
 			switch {
 			case tc.wantErr == "" && err != nil:

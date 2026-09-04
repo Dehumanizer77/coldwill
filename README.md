@@ -51,7 +51,9 @@ Návrhové rozhodnutia, z ktorých všetko ostatné vyplýva:
 - **Faktor A — „posmrtná obálka":** obsahuje **passphrase k peňaženke**. Uložená
   len tam, kam sa rodina dostane až po smrti vlastníka: zapečatená v **bankovom
   trezore** a doručí ju **DMS** (zašifrovaná na technicky zdatnú osobu). Kým
-  vlastník žije, passphrase má len on → **BTC kontroluje on**.
+  vlastník žije, passphrase má len on → **BTC kontroluje on**. Obálok môže byť
+  aj viac — tá istá viacerým ľuďom kvôli zálohe, alebo rôzne obálky rôznym ľuďom,
+  aby nikto sám nemal všetko (viď [`dms/README.md`](dms/README.md)).
 - **Faktor B — kovové časti:** key-file ku KeePass DB rozdelený cez **SLIP-39
   (K-z-N)** na slová, vyryté do kovu, časti rozmiestnené po lokalitách.
 

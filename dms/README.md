@@ -9,8 +9,10 @@ ide na všetky kanály, ktoré má daný adresát nastavené.
 
 ## Bezpečnostný model
 
-- **Nikdy nedrží plaintext.** Drží len `envelope.asc` (ciphertext zašifrovaný na
-  GPG kľúč technicky zdatnej osoby) a pri výstrele ho len pošle.
+- **Nikdy nedrží plaintext.** Drží len ciphertext obálok (zašifrovaných na GPG
+  kľúče príjemcov) a pri výstrele ich len pošle. Kto obálku otvorí, sa rozhoduje
+  **offline pri jej výrobe** — tým, na ktorý kľúč ju zašifruješ; config hovorí
+  len, kam sa pošle.
 - **Fail-safe:** ak self-test zlyhá (mail nedostupný, obálka chýba/nie je PGP,
   stav sa nedá zapísať), DMS **alertuje, ale NEODPÁLI**.
 - **Dvojkrokové odkazy:** check-in aj confirm sú GET stránka + POST tlačidlo, aby
@@ -37,6 +39,41 @@ check-in mesačne → po 60 dňoch ticha: výzva potvrdzovateľom (dôveryhodné
 DMS → vlastníkovi týždenne „som zdravý"; pri poruche alert.
 ```
 
+## Obálky: koľko ich je a komu idú
+
+Obálok môže byť viac a **každá má vlastných príjemcov**:
+
+```json
+"envelopes": [
+  { "id": "passphrase", "path": "/data/envelope-passphrase.asc",
+    "to": [ {"name":"Prvá","email":"prva@…","signal":"+…"},
+            {"name":"Druhá","email":"druha@…"} ] },
+  { "id": "pristupy",   "path": "/data/envelope-pristupy.asc",
+    "note": "Vnútri sú ostatné prístupy, nie passphrase.",
+    "to": [ {"name":"Tretia","email":"tretia@…"} ] }
+]
+```
+
+Pokrýva to dva rôzne zámery:
+
+- **tá istá obálka viacerým ľuďom** = záloha, aby jeden nedostupný človek
+  neodrezal celú DMS cestu (napr. keď zomrieš aj ty aj on),
+- **rôzne obálky rôznym ľuďom** = rozdelenie znalostí; nikto sám nemá všetko.
+
+Pravidlá, ktoré si služba stráži: obálka bez príjemcu alebo dve s rovnakým `id`
+sa odmietnu pri štarte; self-test kontroluje **každý** súbor (chýbajúci alebo
+nie-PGP = porucha a **nevystrelí sa vôbec**, nie polovica); pri výstrele si
+pamätá, ktoré obálky už odišli, takže sa doposiela len zvyšok a nikomu nepríde
+tá istá dvakrát. Check-in (veto) túto pamäť **zmaže** — po ňom musí ísť pri
+ďalšom ostrom výstrele von zase všetko.
+
+Starý zápis `envelope_path` + `friend_email` naďalej funguje ako jedna obálka
+s jedným príjemcom.
+
+> **Pozor pri rozdeľovaní obsahu:** v bankovom trezore musí byť **všetko**. DMS
+> je best-effort, banka je istá cesta — inak si rozdelením vyrobíš scenár, kde
+> jeden nereagujúci príjemca odreže časť dedičstva.
+
 ## Vytvorenie obálky (offline, ručne)
 
 Do súboru daj len **passphrase k peňaženke** (+ prípadne krátky pokyn) a zašifruj na
@@ -49,6 +86,9 @@ gpg --armor --encrypt --recipient friend@example.com passphrase.txt
 mv passphrase.txt.asc envelope.asc      # toto ide do /data, nie do gitu
 shred -u passphrase.txt
 ```
+
+Ak má tú istú obálku vedieť otvoriť viac ľudí, zašifruj ju na viac kľúčov naraz
+(`--recipient A --recipient B`) — to je nezávislé od toho, komu sa doručí.
 
 ## Deployment
 
@@ -63,6 +103,7 @@ Staré `docker-compose` v1 vedome ignoruje — je EOL a nevie ani
 ```bash
 ./deploy.sh --check                              # len preflight, nič nemení
 ./deploy.sh --envelope ~/envelope.asc            # ostré nasadenie (e-mail)
+./deploy.sh --envelope passphrase=~/a.asc --envelope pristupy=~/b.asc  # viac obálok
 ./deploy.sh --envelope ~/envelope.asc --signal   # + Signal kanál
 ./deploy.sh --config-only --force-config         # len prepíš config.json
 ./deploy.sh --envelope ~/envelope.asc --no-compose      # bez compose
@@ -140,8 +181,9 @@ Overenie po štarte (skript to kontroluje sám, ale vedieť to treba):
 Viď `config.example.json` (alebo si ho nechaj vygenerovať cez `deploy.sh`).
 Trvania prijímajú `30d`, `7d`, `12h`, `90m`. `inh-dms --validate` config načíta,
 skontroluje a skončí — hodí sa po ručnej úprave, kým službu reštartneš.
-Povinné: `public_base_url`, `from_email`, `user_email`, `friend_email`,
-`envelope_path`, `state_path`, `hmac_secret` (≥16 znakov), aspoň 1 `confirmer`.
+Povinné: `public_base_url`, `from_email`, `user_email`, `state_path`,
+`hmac_secret` (≥16 znakov), aspoň 1 `confirmer` a aspoň jedna obálka
+(`envelopes[]`, alebo starý `envelope_path` + `friend_email`).
 
 ## Signal (druhý kanál)
 

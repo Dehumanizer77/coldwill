@@ -58,6 +58,41 @@ type SignalConfig struct {
 
 func (s SignalConfig) Enabled() bool { return s.APIURL != "" && s.FromNumber != "" }
 
+// EnvelopeRecipient is one person an envelope is delivered to. Who can actually
+// open it is decided when the envelope is encrypted, offline; this only says
+// where the ciphertext is sent.
+type EnvelopeRecipient struct {
+	Name   string `json:"name,omitempty"`
+	Email  string `json:"email,omitempty"`
+	Signal string `json:"signal,omitempty"`
+}
+
+// Envelope is one sealed message with its own recipients. Several envelopes let
+// the same secret reach more than one person (redundancy) or different secrets
+// reach different people (separation), without the DMS ever reading any of them.
+type Envelope struct {
+	ID      string              `json:"id"`                // short, stable; used in state and logs
+	Path    string              `json:"path"`              // GPG ciphertext on disk
+	Subject string              `json:"subject,omitempty"` // optional, defaults below
+	Note    string              `json:"note,omitempty"`    // optional line for the recipients
+	To      []EnvelopeRecipient `json:"to"`
+}
+
+func (e Envelope) subject() string {
+	if e.Subject != "" {
+		return e.Subject
+	}
+	return "Dôležité — dedičstvo: zašifrovaná obálka"
+}
+
+func (e Envelope) recipients() []Recipient {
+	out := make([]Recipient, 0, len(e.To))
+	for _, t := range e.To {
+		out = append(out, Recipient{Name: t.Name, Email: t.Email, Signal: t.Signal})
+	}
+	return out
+}
+
 type Config struct {
 	ListenAddr    string `json:"listen_addr"`     // local port, behind Apache, e.g. 127.0.0.1:8088
 	PublicBaseURL string `json:"public_base_url"` // e.g. https://dms.example.com
@@ -72,9 +107,13 @@ type Config struct {
 
 	Confirmers []Confirmer `json:"confirmers"`
 
-	EnvelopePath string `json:"envelope_path"` // GPG-encrypted envelope (ciphertext only)
-	StatePath    string `json:"state_path"`    // JSON state file
-	HMACSecret   string `json:"hmac_secret"`   // random secret for link tokens
+	// Envelopes is the general form. envelope_path + friend_email below are the
+	// older single-envelope config and still work; applyDefaults folds them in.
+	Envelopes []Envelope `json:"envelopes,omitempty"`
+
+	EnvelopePath string `json:"envelope_path,omitempty"` // GPG-encrypted envelope (ciphertext only)
+	StatePath    string `json:"state_path"`              // JSON state file
+	HMACSecret   string `json:"hmac_secret"`             // random secret for link tokens
 
 	CheckInInterval    Duration `json:"check_in_interval"`    // remind me to check in
 	ReminderInterval   Duration `json:"reminder_interval"`    // gap between reminders
@@ -122,6 +161,20 @@ func (c *Config) applyDefaults() {
 	if c.Signal.Timeout.D() == 0 {
 		c.Signal.Timeout = Duration(20 * time.Second)
 	}
+	// Single-envelope config keeps working: fold it into the general form so the
+	// rest of the service only ever deals with a list.
+	if len(c.Envelopes) == 0 && c.EnvelopePath != "" {
+		c.Envelopes = []Envelope{{
+			ID:   "default",
+			Path: c.EnvelopePath,
+			To:   []EnvelopeRecipient{{Email: c.FriendEmail, Signal: c.FriendSignal}},
+		}}
+	}
+	for i := range c.Envelopes {
+		if c.Envelopes[i].ID == "" {
+			c.Envelopes[i].ID = fmt.Sprintf("envelope-%d", i+1)
+		}
+	}
 }
 
 func (c Config) validate() error {
@@ -132,10 +185,6 @@ func (c Config) validate() error {
 		return fmt.Errorf("from_email required")
 	case c.UserEmail == "":
 		return fmt.Errorf("user_email required")
-	case c.FriendEmail == "":
-		return fmt.Errorf("friend_email required")
-	case c.EnvelopePath == "":
-		return fmt.Errorf("envelope_path required")
 	case c.StatePath == "":
 		return fmt.Errorf("state_path required")
 	case len(c.HMACSecret) < 16:
@@ -146,7 +195,38 @@ func (c Config) validate() error {
 	if c.SilenceThreshold.D() <= c.CheckInInterval.D() {
 		return fmt.Errorf("silence_threshold must exceed check_in_interval")
 	}
+	if err := c.validateEnvelopes(); err != nil {
+		return err
+	}
 	return c.validateSignal()
+}
+
+// validateEnvelopes refuses anything that would fail silently years from now:
+// no envelope at all, an envelope nobody receives, or two envelopes sharing an
+// id (the id is how delivery is remembered across retries).
+func (c Config) validateEnvelopes() error {
+	if len(c.Envelopes) == 0 {
+		return fmt.Errorf("at least one envelope required (envelopes[], or envelope_path + friend_email)")
+	}
+	ids := make(map[string]bool, len(c.Envelopes))
+	for _, e := range c.Envelopes {
+		if ids[e.ID] {
+			return fmt.Errorf("duplicate envelope id %q", e.ID)
+		}
+		ids[e.ID] = true
+		if e.Path == "" {
+			return fmt.Errorf("envelope %q: path required", e.ID)
+		}
+		if len(e.To) == 0 {
+			return fmt.Errorf("envelope %q: at least one recipient required", e.ID)
+		}
+		for i, t := range e.To {
+			if t.Email == "" && t.Signal == "" {
+				return fmt.Errorf("envelope %q: recipient %d has neither email nor signal", e.ID, i+1)
+			}
+		}
+	}
+	return nil
 }
 
 // validateSignal refuses half-configured Signal: a number without a transport
@@ -156,6 +236,11 @@ func (c Config) validateSignal() error {
 	numbers := map[string]string{"user_signal": c.UserSignal, "friend_signal": c.FriendSignal}
 	for _, cf := range c.Confirmers {
 		numbers["confirmer "+cf.ID+" signal"] = cf.Signal
+	}
+	for _, e := range c.Envelopes {
+		for i, t := range e.To {
+			numbers[fmt.Sprintf("envelope %s recipient %d signal", e.ID, i+1)] = t.Signal
+		}
 	}
 	used := false
 	for what, n := range numbers {

@@ -114,6 +114,9 @@ func (s *Service) CheckIn() {
 		s.st.ConfirmedAt = time.Time{}
 		s.st.ConfirmedBy = ""
 		s.st.LastWarningAt = time.Time{}
+		// If a partial fire had already sent something, forget it: after a veto
+		// the next real firing must deliver every envelope again.
+		s.st.Delivered = nil
 	}
 	log.Printf("dms: check-in recorded (phase now %s)", s.st.Phase)
 	s.persist()
@@ -159,29 +162,57 @@ func (s *Service) Phase() string {
 }
 
 func (s *Service) fire(now time.Time) {
-	data, err := os.ReadFile(s.cfg.EnvelopePath)
-	if err != nil || len(data) == 0 {
-		s.notifyOwner("[DMS] CHYBA pri výstrele",
-			"Obálka sa nedá načítať, výstrel sa NEUSKUTOČNIL. Skontroluj DMS.")
-		return
+	var sent, failed []string
+	for _, e := range s.cfg.Envelopes {
+		if s.st.wasDelivered(e.ID) {
+			continue
+		}
+		data, err := os.ReadFile(e.Path)
+		if err != nil || len(data) == 0 {
+			log.Printf("dms: envelope %s unreadable: %v", e.ID, err)
+			failed = append(failed, e.ID+" (nedá sa načítať)")
+			continue
+		}
+		// One channel through is enough for a given envelope; an envelope that
+		// reached nobody is retried on the next tick, one that got out is not.
+		delivered, err := s.notify(e.recipients(), e.subject(), s.bodyEnvelope(e, string(data)))
+		if delivered == 0 {
+			reason := e.ID
+			if err != nil {
+				reason += " (" + err.Error() + ")"
+			}
+			failed = append(failed, reason)
+			continue
+		}
+		s.st.Delivered = append(s.st.Delivered, e.ID)
+		sent = append(sent, e.ID)
+		log.Printf("dms: envelope %s delivered on %d channel(s)", e.ID, delivered)
 	}
-	// One channel through is enough; the phase only advances on a real delivery,
-	// so a total failure is retried on the next tick.
-	delivered, err := s.notify([]Recipient{s.friend()},
-		"Dôležité — dedičstvo: zašifrovaná obálka", s.bodyEnvelope(string(data)))
-	if delivered == 0 {
-		msg := "Obálku sa nepodarilo doručiť ani jedným kanálom, výstrel sa NEUSKUTOČNIL (skúsi sa znova)."
-		if err != nil {
-			msg += "\n\n" + err.Error()
+
+	if len(failed) > 0 {
+		// Stay in countdown so the next tick retries what is left.
+		msg := "Nepodarilo sa doručiť: " + strings.Join(failed, ", ") + "\nSkúsi sa znova pri ďalšom tiku."
+		if len(sent) > 0 {
+			msg = "Odoslané: " + strings.Join(sent, ", ") + "\n" + msg
 		}
 		s.notifyOwner("[DMS] CHYBA: obálku sa nepodarilo odoslať", msg)
 		return
 	}
+
 	s.st.Phase = PhaseFired
 	s.st.FiredAt = now
-	log.Printf("dms: FIRED — envelope delivered to friend on %d channel(s)", delivered)
-	s.notifyOwner("[DMS] Obálka odoslaná",
-		"Obálka bola odoslaná príjemcovi ("+s.cfg.FriendEmail+"). Ak je to omyl, kontaktuj ho.")
+	log.Printf("dms: FIRED — %d envelope(s) delivered", len(s.cfg.Envelopes))
+	s.notifyOwner("[DMS] Obálky odoslané",
+		"Odoslané obálky: "+strings.Join(envelopeIDs(s.cfg.Envelopes), ", ")+
+			".\nAk je to omyl, kontaktuj príjemcov.")
+}
+
+func envelopeIDs(es []Envelope) []string {
+	out := make([]string, len(es))
+	for i, e := range es {
+		out[i] = e.ID
+	}
+	return out
 }
 
 // checkSignal probes the secondary channel. A dead Signal is reported but never
@@ -213,15 +244,17 @@ func (s *Service) selfTest() (bool, string) {
 	if err := s.mail.Check(); err != nil {
 		return false, "mail transport: " + err.Error()
 	}
-	data, err := os.ReadFile(s.cfg.EnvelopePath)
-	if err != nil {
-		return false, "obálka sa nedá načítať: " + err.Error()
-	}
-	if len(data) == 0 {
-		return false, "obálka je prázdna"
-	}
-	if !strings.Contains(string(data), "BEGIN PGP MESSAGE") {
-		return false, "obálka nie je ASCII-armored PGP správa"
+	for _, e := range s.cfg.Envelopes {
+		data, err := os.ReadFile(e.Path)
+		if err != nil {
+			return false, "obálka " + e.ID + " sa nedá načítať: " + err.Error()
+		}
+		if len(data) == 0 {
+			return false, "obálka " + e.ID + " je prázdna"
+		}
+		if !strings.Contains(string(data), "BEGIN PGP MESSAGE") {
+			return false, "obálka " + e.ID + " nie je ASCII-armored PGP správa"
+		}
 	}
 	if err := s.st.save(s.cfg.StatePath); err != nil {
 		return false, "stav sa nedá zapísať: " + err.Error()
@@ -286,11 +319,15 @@ func (s *Service) bodyCountdown(left time.Duration) string {
 		"Ak žiješ, ZRUŠ to:\n\n" + s.checkinURL() + "\n— DMS"
 }
 
-func (s *Service) bodyEnvelope(ciphertext string) string {
+func (s *Service) bodyEnvelope(e Envelope, ciphertext string) string {
+	note := ""
+	if e.Note != "" {
+		note = e.Note + "\n\n"
+	}
 	return "Ahoj,\n\nak ti prišla táto správa, " + nameOrOwner(s.cfg) +
-		" pravdepodobne zomrel alebo je trvalo neschopný.\n\n" +
-		"Nižšie je GPG-zašifrovaná obálka — rozšifruj ju svojím kľúčom. Vnútri je\n" +
-		"passphrase k peňaženke a pokyny. Pomôž rodine podľa runbooku. Ďakujem.\n\n" +
+		" pravdepodobne zomrel alebo je trvalo neschopný.\n\n" + note +
+		"Nižšie je GPG-zašifrovaná obálka — rozšifruj ju svojím kľúčom.\n" +
+		"Pomôž rodine podľa runbooku. Ďakujem.\n\n" +
 		"-----\n" + ciphertext
 }
 

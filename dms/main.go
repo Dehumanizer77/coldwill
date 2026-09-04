@@ -29,8 +29,12 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 	if *validate {
-		log.Printf("config OK: %s, %d confirmer(s), signal %s",
-			cfg.PublicBaseURL, len(cfg.Confirmers),
+		rcpts := 0
+		for _, e := range cfg.Envelopes {
+			rcpts += len(e.To)
+		}
+		log.Printf("config OK: %s, %d envelope(s) to %d recipient(s), %d confirmer(s), signal %s",
+			cfg.PublicBaseURL, len(cfg.Envelopes), rcpts, len(cfg.Confirmers),
 			map[bool]string{true: "on", false: "off"}[cfg.Signal.Enabled()])
 		return
 	}
