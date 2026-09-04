@@ -2,7 +2,7 @@
 
 Online služba: pravidelne žiada vlastníka o **check-in**; po dlhom tichu požiada
 **dôveryhodné osoby** o potvrdenie; po potvrdení + ochrannej lehote pošle
-**GPG-zašifrovanú obálku** (ktorú sama nikdy nevie prečítať) technicky zdatnej osobe.
+**GPG-zašifrované obálky** (ktoré sama nikdy nevie prečítať) ich príjemcom.
 
 **Kanály:** e-mail (primárny) + voliteľne **Signal** (druhý kanál). Každá správa
 ide na všetky kanály, ktoré má daný adresát nastavené.
@@ -13,16 +13,16 @@ ide na všetky kanály, ktoré má daný adresát nastavené.
   kľúče príjemcov) a pri výstrele ich len pošle. Kto obálku otvorí, sa rozhoduje
   **offline pri jej výrobe** — tým, na ktorý kľúč ju zašifruješ; config hovorí
   len, kam sa pošle.
-- **Fail-safe:** ak self-test zlyhá (mail nedostupný, obálka chýba/nie je PGP,
-  stav sa nedá zapísať), DMS **alertuje, ale NEODPÁLI**.
+- **Fail-safe:** ak self-test zlyhá (mail nedostupný, niektorá obálka chýba
+  alebo nie je PGP, stav sa nedá zapísať), DMS **alertuje, ale NEODPÁLI**.
 - **Dvojkrokové odkazy:** check-in aj confirm sú GET stránka + POST tlačidlo, aby
   ich nespustil automatický „link prefetch" e-mailových skenerov.
 - **Tokeny** v odkazoch sú HMAC z `hmac_secret`. Aj keby odkaz unikol, najhorší
   prípad je bezpečný (check-in len oddiali výstrel; confirm aj tak potrebuje
   človeka + lehotu + kovové podiely).
 - **Druhý kanál nikdy nezablokuje výstrel.** Nefunkčný Signal = alert e-mailom,
-  nie porucha; obálka odíde, ak ju doručí **aspoň jeden** kanál (inak sa výstrel
-  neuskutoční a skúsi sa znova pri ďalšom tiku).
+  nie porucha; každá obálka odíde, ak ju doručí **aspoň jeden** kanál (čo sa
+  nedoručí, skúsi sa znova pri ďalšom tiku).
 - **Lokálny postfix bez TLS, cudzí relay len s TLS.** Na loopbacku sa STARTTLS
   zámerne nepoužíva: bajty nikdy neopustia stroj a postfix nemá (a nemôže mať)
   certifikát na „127.0.0.1" — Go by inak každý e-mail vrátane obálky odmietol
@@ -35,7 +35,7 @@ ide na všetky kanály, ktoré má daný adresát nastavené.
 ```
 check-in mesačne → po 60 dňoch ticha: výzva potvrdzovateľom (dôveryhodné osoby)
 → potvrdenie (ktorýkoľvek) → 7-dňový odklad s dennými upozorneniami vlastníkovi
-→ výstrel: obálka e-mailom technicky zdatnej osobe.   Check-in kedykoľvek všetko ruší.
+→ výstrel: obálky e-mailom svojim príjemcom.   Check-in kedykoľvek všetko ruší.
 DMS → vlastníkovi týždenne „som zdravý"; pri poruche alert.
 ```
 
@@ -74,7 +74,7 @@ s jedným príjemcom.
 > je best-effort, banka je istá cesta — inak si rozdelením vyrobíš scenár, kde
 > jeden nereagujúci príjemca odreže časť dedičstva.
 
-## Vytvorenie obálky (offline, ručne)
+## Vytvorenie obálok (offline, ručne)
 
 Do súboru daj len **passphrase k peňaženke** (+ prípadne krátky pokyn) a zašifruj na
 verejný GPG kľúč technicky zdatnej osoby (`keys/friend.asc`; fingerprint si over
@@ -111,26 +111,26 @@ Staré `docker-compose` v1 vedome ignoruje — je EOL a nevie ani
 ```
 
 Čo skript spraví: overí docker/compose/postfix/porty → založí `/opt/inh-dms/data`
-(0700) → skopíruje obálku (a odmietne ju, ak to nie je ASCII-armored PGP) →
+(0700) → skopíruje obálky (a odmietne tú, ktorá nie je ASCII-armored PGP) →
 interaktívne vypýta adresy, čísla a potvrdzovateľov a zapíše `config.json`
 (0600, `hmac_secret` z `openssl rand -hex 32`) → **overí config cez `inh-dms
 --validate`** → zbuildí a spustí kontajner → skontroluje HTTP, log a `state.json`
 → vypíše Apache vhost a **tvoj check-in odkaz do záložiek**.
 
-Beží idempotentne: existujúci `config.json` ani obálku neprepíše (na to je
+Beží idempotentne: existujúci `config.json` ani obálky neprepíše (na to je
 `--force-config`, ktorý starý config zálohuje), takže sa dá pustiť znova.
 
 `--test-timings` je skúšobná inštancia: intervaly v minútach namiesto dní,
 vlastný dátový adresár (`/opt/inh-dms-test`), štart z čistého stavu (starý
-`state.json` zmaže) a **obálka aj výzvy potvrdzovateľom idú tebe** — skúška
+`state.json` zmaže) a **obálky aj výzvy potvrdzovateľom idú tebe** — skúška
 nesmie napísať skutočným ľuďom, lebo vo fáze čakania sa výzva opakuje každých
 pár minút — celý reťazec (check-in → ticho → potvrdenie → odpočet → výstrel) sa
 tak dá prejsť za pár minút bez toho, aby si niekoho vystrašil. Po doskúšaní
 `docker compose down && rm -rf /opt/inh-dms-test`.
 
 Ručne je to to isté: `mkdir -p /opt/inh-dms/data`, `config.json` z
-`config.example.json` (`hmac_secret` = `openssl rand -hex 32`), obálku do
-`/opt/inh-dms/data/envelope.asc`, potom
+`config.example.json` (`hmac_secret` = `openssl rand -hex 32`), obálky do
+`/opt/inh-dms/data/` (cesty v configu sú z pohľadu kontajnera, `/data/…`), potom
 `INH_UID=$(id -u) INH_GID=$(id -g) docker compose up -d` (e-mail) alebo to isté
 s `--profile signal` (+ Signal). Bez compose:
 
@@ -165,7 +165,7 @@ Overenie po štarte (skript to kontroluje sám, ale vedieť to treba):
 
 1. `curl -s https://dms.example.com/` → „Služba beží."
 2. do minúty príde e-mail **[DMS] v poriadku** (a ak je zapnutý Signal, aj správa
-   na Signale) — to je zároveň dôkaz, že self-test prešiel a obálka je čitateľná,
+   na Signale) — to je zároveň dôkaz, že self-test prešiel a všetky obálky sú čitateľné,
 3. klikni v ňom check-in odkaz → „Ďakujem" a v `state.json` sa zmení `last_check_in`,
 4. `docker logs inh-dms` neobsahuje `failed`,
 5. **check-in odkaz si ulož do záložiek / KeePass DB** — je stabilný, ale závisí

@@ -95,7 +95,7 @@ Príklad pre 2-z-3; častí môže byť ľubovoľný počet:
 | **lokalita B** – dôveryhodná osoba | časť #2 | — | kópia |
 | **lokalita C** – technicky zdatná osoba | časť #3 | (od DMS po spustení, šifrovaná na ňu) | kópia |
 | **Cloud** | — | — | kópia (šifrovaná) |
-| **DMS** | — | obálka šifrovaná na technicky zdatnú osobu | — |
+| **DMS** | — | obálky šifrované na svojich príjemcov | — |
 
 Recovery BTC vyžaduje **K z N častí + obálku** (z banky alebo od DMS) → čiže
 „hlavný dedič + jeden dôveryhodný pomocník". Jedna časť sama o sebe je
@@ -112,8 +112,8 @@ bezcenná, preto je riziko u jednotlivých držiteľov nízke.
    počas nej chodí vlastníkovi denné upozornenie „obálka sa pošle o X dní".
 5. **Check-in vlastníka kedykoľvek všetko ruší** — veto vždy vyhráva, aj počas
    odpočtu.
-6. Po uplynutí lehoty bez veta → odošle sa obálka (GPG, rozšifruje ju len
-   technicky zdatná osoba).
+6. Po uplynutí lehoty bez veta → odošlú sa obálky (GPG, rozšifruje ich len ten,
+   na koho kľúč boli zašifrované).
 7. Falošné či zlomyseľné potvrdenie nie je katastrofa — obálka je **bez dostatku
    kovových častí zbytočná**.
 
@@ -125,7 +125,7 @@ cesta vedie cez banku.
 
 1. Otvorí tlačený **runbook** (kópie sú v banke aj u dôveryhodných osôb).
 2. Zavolá **technicky zdatnej osobe**, ktorá ho prevedie postupom (aj cez video).
-3. Získa **obálku** — z bankového trezoru, alebo ju už poslal DMS.
+3. Získa **obálku s passphrase** — z bankového trezoru, alebo ju už poslal DMS.
 4. Pozbiera **K častí** od držiteľov.
 5. V **offline nástroji**: SLIP-39 slová → key-file → otvorí KeePass DB
    (štandardnou appkou) → dostane sa k seedu a všetkým prístupom.
@@ -148,7 +148,7 @@ v oficiálnom SLIP-39 zozname.
 | | |
 |---|---|
 | [`offline/`](offline/) | Air-gapped nástroj: generovanie 160-bit key-filu, SLIP-39 split na N častí po 23 slov, obnova z K častí, a **generátor runbooku** (tlačiteľný návod pre rodinu, bez tajomstiev). Jeden statický Go binár s web UI, počúva len na loopbacku. |
-| [`dms/`](dms/) | Dead-man's switch: check-in, upomienky, potvrdenie, ochranná lehota, výstrel. E-mail + voliteľne Signal. Nikdy nedrží plaintext — len obálku zašifrovanú na príjemcu. Docker, nasadenie cez `dms/deploy.sh`. |
+| [`dms/`](dms/) | Dead-man's switch: check-in, upomienky, potvrdenie, ochranná lehota, výstrel. E-mail + voliteľne Signal. Nikdy nedrží plaintext — len obálky zašifrované na svojich príjemcov. Docker, nasadenie cez `dms/deploy.sh`. |
 | [`keys/`](keys/) | Miesto pre **verejný** GPG kľúč príjemcu obálky (gitignorované). |
 
 Stack je **Go** — statické binárky a „Go 1 compatibility promise", jeden jazyk
