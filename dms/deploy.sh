@@ -368,9 +368,10 @@ TOKEN=$(printf 'checkin' | openssl dgst -sha256 -hmac "$SECRET" -r | cut -d' ' -
 
 say "Čo ešte musíš spraviť ty"
 cat <<TXT
-1) Apache (potrebuje root) — vhost, ktorý pustí $BASE_URL na 127.0.0.1:$PORT_APP:
+1) Reverse proxy s TLS (potrebuje root) — pustí $BASE_URL na 127.0.0.1:$PORT_APP.
 
-     a2enmod proxy proxy_http headers
+   Apache (a2enmod proxy proxy_http headers; potom systemctl reload apache2):
+
      <VirtualHost *:443>
        ServerName ${BASE_URL#https://}
        ProxyPreserveHost On
@@ -378,7 +379,22 @@ cat <<TXT
        ProxyPassReverse / http://127.0.0.1:$PORT_APP/
        RequestHeader set X-Forwarded-Proto https
      </VirtualHost>
-   (TLS doplní certbot; potom: systemctl reload apache2)
+
+   alebo nginx (potom systemctl reload nginx):
+
+     server {
+         listen 443 ssl;
+         server_name ${BASE_URL#https://};
+         location / {
+             proxy_pass http://127.0.0.1:$PORT_APP;
+             proxy_set_header Host              \$host;
+             proxy_set_header X-Real-IP         \$remote_addr;
+             proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+             proxy_set_header X-Forwarded-Proto https;
+         }
+     }
+
+   (TLS certifikát v oboch prípadoch doplní certbot)
 
 2) Ulož si check-in odkaz do záložiek a do KeePass DB — je stabilný:
 

@@ -6,6 +6,46 @@ kustodiánov, notárov a tretích strán. Repozitár obsahuje návrh a dva nást
 offline generátor/obnovu kľúča s tlačiteľným runbookom a online dead-man's
 switch.
 
+## Ako to funguje (v kocke)
+
+**Za života** ovládaš Bitcoin len ty. **Po smrti** ho rodina zloží z dvoch
+nezávislých vecí — ani jedna z nich sama nestačí.
+
+```
+   ČASŤ #1          ČASŤ #2          ČASŤ #3            ZAPEČATENÁ OBÁLKA
+ kov, osoba A     kov, osoba B     kov, osoba C       bankový trezor + DMS
+      │                │                │                      │
+      └────────┬───────┴────────────────┘                      │
+               │   stačia ľubovoľné 2 z 3                      │
+               ▼                                               │
+          KEY-FILE                                             │
+               │                                               │
+               ▼   otvorí (bez hesla)                          │
+        KeePass databáza  ──►  SEED + ostatné heslá            │
+                                     │                         │
+                                     │                    PASSPHRASE
+                                     └───────────┬─────────────┘
+                                                 ▼
+                                            ₿  BITCOIN
+```
+
+- **Kovové časti** (SLIP-39 slová vyryté do kovu) držia rôzni ľudia na rôznych
+  miestach. Ktorékoľvek **2 z 3** zložia *key-file* — súbor, ktorým sa odomkne
+  KeePass databáza so **seedom** a všetkými ostatnými prístupmi.
+- **Zapečatená obálka** obsahuje **passphrase k peňaženke**. Leží v bankovom
+  trezore a navyše ju po tvojej smrti pošle *dead-man's switch* e-mailom.
+- **Bitcoin = seed + passphrase.** Kto má len časti, vidí databázu, ale mince
+  neminie. Kto má len obálku, má heslo, ktoré bez seedu nie je na nič. Jedna
+  časť sama o sebe je bezcenná.
+
+**Dead-man's switch** je len pohodlie: pravidelne sa ťa pýta „žiješ?", a keď sa
+dlho neozveš a dvaja dôveryhodní ľudia to potvrdia, po ochrannej lehote pošle
+obálku. Istá cesta vedie cez banku — DMS sa dá kedykoľvek vypnúť a dedičstvu to
+neublíži.
+
+Podrobnosti nižšie; kto chce len vedieť „ako sa k tomu rodina dostane", môže
+skončiť tu a prečítať si [Recovery](#recovery-postup-pre-netechnického-dediča).
+
 > ⚠️ **BEZPEČNOSTNÉ PRAVIDLO č. 1**
 >
 > Do tohto repozitára **nikdy** nepatria reálne tajomstvá:
@@ -20,6 +60,7 @@ switch.
 
 ## Obsah
 
+- [Ako to funguje (v kocke)](#ako-to-funguje-v-kocke) — celý systém na jednej obrazovke
 - [Návrh](#návrh) — čo to rieši, architektúra, rozmiestnenie, recovery, údržba
 - [Nástroje](#nástroje)
   - [Offline nástroj (`offline/`)](#offline-nástroj-offline) — key-file, SLIP-39 časti, runbook
@@ -432,7 +473,9 @@ patrí tebe a `config.json` je 0600 — bez toho kontajner skončí na
 `127.0.0.1:8080` a `listen_addr` sa naviaže na hostiteľský loopback, kam ide
 Apache proxy.
 
-Apache ako reverse proxy (`a2enmod proxy proxy_http headers`, TLS cez certbot):
+Pred službu patrí reverse proxy s TLS (DMS počúva len na loopbacku a HTTP).
+
+Apache (`a2enmod proxy proxy_http headers`, TLS cez certbot):
 
 ```apache
 <VirtualHost *:443>
@@ -443,6 +486,24 @@ Apache ako reverse proxy (`a2enmod proxy proxy_http headers`, TLS cez certbot):
   RequestHeader set X-Forwarded-Proto https
   # TLS direktívy doplní certbot
 </VirtualHost>
+```
+
+nginx (to isté, TLS tiež cez certbot):
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name dms.example.com;
+    # ssl_certificate / ssl_certificate_key doplní certbot
+
+    location / {
+        proxy_pass http://127.0.0.1:8088;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
 ```
 
 Overenie po štarte (skript to kontroluje sám, ale vedieť to treba):
