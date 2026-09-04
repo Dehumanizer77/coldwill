@@ -73,6 +73,12 @@
   }
   function clean(v) { return v.toLowerCase().replace(/[^a-z]/g, ""); }
 
+  // Only the word boxes get completion. The controls above the grid are inputs
+  // too, and stripping non-letters from a number field empties it.
+  function isWord(el) {
+    return !!el && el.tagName === "INPUT" && el.type === "text" && parts.contains(el);
+  }
+
   // Complete a field: exact word wins, otherwise the four engraved letters do.
   function resolve(v) {
     if (!v) return null;
@@ -101,7 +107,7 @@
 
   function onInput(e) {
     var el = e.target;
-    if (el.tagName !== "INPUT") return;
+    if (!isWord(el)) return;
     var v = clean(el.value);
     if (el.value !== v) el.value = v;
     var full = resolve(v);
@@ -120,7 +126,7 @@
   // Pasting a whole part into one box fills the boxes after it.
   function onPaste(e) {
     var el = e.target;
-    if (el.tagName !== "INPUT") return;
+    if (!isWord(el)) return;
     var text = (e.clipboardData || window.clipboardData).getData("text") || "";
     var words = text.toLowerCase().split(/[^a-z]+/).filter(Boolean);
     if (words.length < 2) return;
@@ -140,12 +146,12 @@
   form.addEventListener("input", onInput);
   form.addEventListener("paste", onPaste);
   form.addEventListener("blur", function (e) {
-    if (e.target.tagName === "INPUT") { mark(e.target); counts(); }
+    if (isWord(e.target)) { mark(e.target); counts(); }
   }, true);
 
   // Enter moves on instead of submitting a half-filled form.
   form.addEventListener("keydown", function (e) {
-    if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+    if (e.key !== "Enter" || !isWord(e.target)) return;
     e.preventDefault();
     var all = allInputs(), i = all.indexOf(e.target);
     if (i >= 0 && i + 1 < all.length) all[i + 1].focus(); else form.submit();
