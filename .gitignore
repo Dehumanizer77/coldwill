@@ -8,7 +8,9 @@
 *.shares
 shares/
 secrets/
-envelope*
+envelope*.asc
+envelope*.txt
+*.asc
 *passphrase*
 *.gpg
 *.age
