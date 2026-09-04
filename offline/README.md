@@ -36,8 +36,10 @@ round-trip); ak zlyhá, nástroj sa nespustí.
 - **Nový backup** → vygeneruje 160-bit key-file, rozdelí ho na N častí po 23
   slov s prahom K (default 2-z-3), zobrazí ich na vyrytie, ponúkne stiahnutie
   key-filu a hex.
-- **Obnova** → **samostatné pole na každé slovo** (predvolene 2 časti × 23 slov,
-  časť sa dá pridať a dĺžka prepnúť na 20/26/33). Po štvrtom písmene sa slovo
+- **Obnova** → **samostatné pole na každé slovo**; **počet častí** aj **počet
+  slov v časti** (20/23/26/33) sa nastavujú číselníkom, ktorý bloky rovno pridá
+  alebo odoberie (predvolene 2 časti × 23 slov). Ak by sa odobratím stratili už
+  zadané slová, najprv sa opýta. Po štvrtom písmene sa slovo
   doplní celé, pole zozelenie a kurzor skočí na ďalšie; vloženie celej časti zo
   schránky rozhádže slová do polí. Nezmyselné slovo pole očervenie. Pod
   formulárom ostáva aj **vloženie častí ako textu**.

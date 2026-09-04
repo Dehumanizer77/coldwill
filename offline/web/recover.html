@@ -16,6 +16,9 @@
 
   <form method="post" action="/recover" class="wide" id="recform">
     <div class="row noprint">
+      <label class="inline">Počet častí
+        <input type="number" id="partcount" value="2" min="1" max="16">
+      </label>
       <label class="inline">Slov v časti
         <select id="wordcount">
           <option value="20">20</option>
@@ -24,7 +27,6 @@
           <option value="33">33</option>
         </select>
       </label>
-      <button type="button" class="addbtn" id="addpart">+ ďalšia časť</button>
     </div>
 
     <div id="parts">
@@ -163,18 +165,45 @@
     return sec;
   }
 
-  document.getElementById("addpart").addEventListener("click", function () {
-    var n = parts.querySelectorAll(".part").length;
-    var words = inputs(parts.querySelector(".part")).length;
-    parts.appendChild(buildPart(n, words));
+  var partCount = document.getElementById("partcount");
+
+  function partSections() {
+    return Array.prototype.slice.call(parts.querySelectorAll(".part"));
+  }
+
+  // Growing keeps what is already typed; shrinking asks before throwing
+  // anything away.
+  function setPartCount(n) {
+    var secs = partSections(), cur = secs.length;
+    if (n === cur) return;
+    var words = inputs(secs[0]).length;
+    if (n > cur) {
+      for (var i = cur; i < n; i++) parts.appendChild(buildPart(i, words));
+    } else {
+      var loses = secs.slice(n).some(function (sec) {
+        return inputs(sec).some(function (i) { return i.value !== ""; });
+      });
+      if (loses && !confirm("Odobratím sa vymažú slová zadané v tých častiach. Pokračovať?")) {
+        partCount.value = cur;
+        return;
+      }
+      for (var j = cur - 1; j >= n; j--) parts.removeChild(secs[j]);
+    }
     counts();
+  }
+
+  partCount.addEventListener("change", function () {
+    var n = parseInt(this.value, 10);
+    var cur = partSections().length;
+    if (!(n >= 1 && n <= 16)) { this.value = cur; return; }
+    setPartCount(n);
   });
 
   document.getElementById("wordcount").addEventListener("change", function () {
     var words = parseInt(this.value, 10);
     var filled = allInputs().some(function (i) { return i.value; });
     if (filled && !confirm("Zmena dĺžky vymaže zadané slová. Pokračovať?")) return;
-    var n = parts.querySelectorAll(".part").length;
+    var n = partSections().length;
     parts.innerHTML = "";
     for (var p = 0; p < n; p++) parts.appendChild(buildPart(p, words));
     counts();

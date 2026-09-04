@@ -289,7 +289,7 @@ func TestRecoverFormRendersWordFields(t *testing.T) {
 		t.Fatalf("status %d", rr.Code)
 	}
 	body := rr.Body.String()
-	for _, want := range []string{`name="p0w0"`, `name="p0w22"`, `name="p1w22"`, `id="addpart"`, "prvé 4 písmená"} {
+	for _, want := range []string{`name="p0w0"`, `name="p0w22"`, `name="p1w22"`, `id="partcount"`, `id="wordcount"`, "prvé 4 písmená"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("recover form missing %q", want)
 		}
