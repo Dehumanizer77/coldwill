@@ -84,6 +84,18 @@ func (s State) wasDelivered(id string) bool {
 	return false
 }
 
+// stateWritable checks that the state directory still accepts writes, without
+// touching the state file itself — the self-test runs outside the state lock.
+func stateWritable(path string) error {
+	f, err := os.CreateTemp(filepath.Dir(path), ".probe-*")
+	if err != nil {
+		return err
+	}
+	name := f.Name()
+	f.Close()
+	return os.Remove(name)
+}
+
 func ensureDir(path string) error {
 	return os.MkdirAll(filepath.Dir(path), 0o700)
 }

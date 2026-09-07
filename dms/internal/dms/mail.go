@@ -18,13 +18,28 @@ type Mailer interface {
 }
 
 // SMTPMailer talks to a local MTA (e.g. postfix on 127.0.0.1:25), no auth.
+//
+// Every conversation is bounded by Timeout. A relay that accepts the connection
+// and then stops answering is the dangerous case: without a deadline the send
+// blocks forever, and with it the tick that started it.
 type SMTPMailer struct {
-	Addr string
-	From string
+	Addr    string
+	From    string
+	Timeout time.Duration // zero means DefaultMailTimeout
+}
+
+// DefaultMailTimeout bounds a whole SMTP conversation (dial, handshake, DATA).
+const DefaultMailTimeout = 30 * time.Second
+
+func (m *SMTPMailer) timeout() time.Duration {
+	if m.Timeout > 0 {
+		return m.Timeout
+	}
+	return DefaultMailTimeout
 }
 
 func (m *SMTPMailer) Check() error {
-	c, err := net.DialTimeout("tcp", m.Addr, 5*time.Second)
+	c, err := net.DialTimeout("tcp", m.Addr, m.timeout())
 	if err != nil {
 		return fmt.Errorf("smtp dial %s: %w", m.Addr, err)
 	}
@@ -43,9 +58,20 @@ func (m *SMTPMailer) Send(to []string, subject, body string) error {
 	if err != nil {
 		return fmt.Errorf("smtp addr %q: %w", m.Addr, err)
 	}
-	c, err := smtp.Dial(m.Addr)
+	conn, err := net.DialTimeout("tcp", m.Addr, m.timeout())
 	if err != nil {
 		return fmt.Errorf("smtp dial %s: %w", m.Addr, err)
+	}
+	// One deadline for the whole conversation, so a server that goes quiet
+	// mid-transaction fails in bounded time instead of hanging the caller.
+	if err := conn.SetDeadline(time.Now().Add(m.timeout())); err != nil {
+		conn.Close()
+		return fmt.Errorf("smtp deadline %s: %w", m.Addr, err)
+	}
+	c, err := smtp.NewClient(conn, host)
+	if err != nil {
+		conn.Close()
+		return fmt.Errorf("smtp greeting %s: %w", m.Addr, err)
 	}
 	defer c.Close()
 

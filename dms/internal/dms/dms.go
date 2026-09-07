@@ -36,27 +36,64 @@ func New(cfg Config, clock func() time.Time, mailer Mailer, signal SignalSender)
 
 func (s *Service) now() time.Time { return s.clock() }
 
-// Tick performs one evaluation: self-test, health beat, phase transitions, and
-// (when due and healthy) firing. Safe to call on any cadence; it is idempotent
-// between meaningful time boundaries.
+// outgoing is a message the tick decided to send. Bodies are built while the
+// state lock is held (they read state); the sending itself happens after it is
+// released, so a stalled SMTP server cannot block the owner's veto.
+type outgoing struct {
+	to       []Recipient
+	subject  string
+	body     string
+	mailOnly bool // used for the alert about Signal itself being down
+}
+
+// Tick performs one evaluation: probes, phase transitions, and (when due and
+// healthy) releasing the envelopes. Safe to call on any cadence; it is
+// idempotent between meaningful time boundaries.
+//
+// Network work deliberately happens outside the state lock. Everything the DMS
+// talks to can stall — postfix, the Signal container, a relay that accepts a
+// connection and then goes quiet — and a tick that held the lock while waiting
+// would also block CheckIn, which is the owner's veto.
 func (s *Service) Tick() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	now := s.now()
 
+	// Probes first, with no lock held.
 	healthy, reason := s.selfTest()
+	sigErr := s.probeSignal()
+
+	s.mu.Lock()
 	s.st.Healthy = healthy
-	s.checkSignal(now)
+	var outbox []outgoing
+	add := func(subject, body string, to ...Recipient) {
+		outbox = append(outbox, outgoing{to: to, subject: subject, body: body})
+	}
+
+	if s.sig != nil {
+		s.st.SignalOK = sigErr == nil
+		if sigErr != nil && now.Sub(s.st.LastSignalAlertAt) >= s.cfg.AlertInterval.D() {
+			// The broken channel cannot carry its own alarm, so this goes by e-mail.
+			outbox = append(outbox, outgoing{
+				to:      []Recipient{s.owner()},
+				subject: "[DMS] Signal nefunguje",
+				body: "Druhý kanál (Signal) neodpovedá: " + sigErr.Error() +
+					"\n\nE-mail funguje ďalej a DMS beží normálne — oprav Signal, keď budeš môcť.\n— DMS",
+				mailOnly: true,
+			})
+			s.st.LastSignalAlertAt = now
+		}
+	}
+
 	if !healthy {
 		if now.Sub(s.st.LastAlertAt) >= s.cfg.AlertInterval.D() {
-			s.notifyOwner("[DMS] PORUCHA — skontroluj", s.bodyFault(reason))
+			add("[DMS] PORUCHA — skontroluj", s.bodyFault(reason), s.owner())
 			s.st.LastAlertAt = now
 		}
 	} else if now.Sub(s.st.LastHealthBeatAt) >= s.cfg.HealthBeatInterval.D() {
-		s.notifyOwner("[DMS] v poriadku", s.bodyHealth())
+		add("[DMS] v poriadku", s.bodyHealth(), s.owner())
 		s.st.LastHealthBeatAt = now
 	}
 
+	fireNow := false
 	switch s.st.Phase {
 	case PhaseNormal:
 		silence := now.Sub(s.st.LastCheckIn)
@@ -64,49 +101,67 @@ func (s *Service) Tick() {
 		case silence >= s.cfg.SilenceThreshold.D():
 			cycle := newCycleID()
 			if cycle == "" {
-				s.notifyOwner("[DMS] PORUCHA — skontroluj",
+				add("[DMS] PORUCHA — skontroluj",
 					"Nepodarilo sa vygenerovať id cyklu (chyba generátora náhody); "+
-						"výzva potvrdzovateľom sa NEODOSLALA. Skúsi sa znova.")
+						"výzva potvrdzovateľom sa NEODOSLALA. Skúsi sa znova.", s.owner())
 				break
 			}
 			s.st.Phase = PhaseAwaiting
 			s.st.CycleID = cycle
 			s.st.LastConfirmReqAt = now
 			s.st.LastReminderAt = now
-			s.askConfirmers()
-			s.notifyOwner("[DMS] Spustená kontrola po dlhom tichu", s.bodyAwaitingUser(silence))
+			for _, c := range s.cfg.Confirmers {
+				add("[DMS] Prosba o potvrdenie", s.bodyConfirmReq(c), c.recipient())
+			}
+			add("[DMS] Spustená kontrola po dlhom tichu", s.bodyAwaitingUser(silence), s.owner())
 		case silence >= s.cfg.CheckInInterval.D():
 			if now.Sub(s.st.LastReminderAt) >= s.cfg.ReminderInterval.D() {
-				s.notifyOwner("[DMS] Ozvi sa — check-in", s.bodyCheckin(false))
+				add("[DMS] Ozvi sa — check-in", s.bodyCheckin(false), s.owner())
 				s.st.LastReminderAt = now
 			}
 		}
 
 	case PhaseAwaiting:
 		if now.Sub(s.st.LastReminderAt) >= s.cfg.ReminderInterval.D() {
-			s.notifyOwner("[DMS] STÁLE čakám — ozvi sa", s.bodyCheckin(true))
+			add("[DMS] STÁLE čakám — ozvi sa", s.bodyCheckin(true), s.owner())
 			s.st.LastReminderAt = now
 		}
 		if now.Sub(s.st.LastConfirmReqAt) >= s.cfg.ReminderInterval.D() {
-			s.askConfirmers()
+			for _, c := range s.cfg.Confirmers {
+				add("[DMS] Prosba o potvrdenie", s.bodyConfirmReq(c), c.recipient())
+			}
 			s.st.LastConfirmReqAt = now
 		}
 
 	case PhaseCountdown:
 		if now.Sub(s.st.LastWarningAt) >= s.cfg.WarningInterval.D() {
 			left := s.cfg.ReleaseDelay.D() - now.Sub(s.st.ConfirmedAt)
-			s.notifyOwner("[DMS] Obálka sa čoskoro pošle", s.bodyCountdown(left))
+			add("[DMS] Obálka sa čoskoro pošle", s.bodyCountdown(left), s.owner())
 			s.st.LastWarningAt = now
 		}
-		if healthy && now.Sub(s.st.ConfirmedAt) >= s.cfg.ReleaseDelay.D() {
-			s.fire(now)
-		}
+		fireNow = healthy && now.Sub(s.st.ConfirmedAt) >= s.cfg.ReleaseDelay.D()
 
 	case PhaseFired:
 		// terminal — nothing to do
 	}
-
 	s.persist()
+	s.mu.Unlock()
+
+	s.deliver(outbox)
+	if fireNow {
+		s.releaseEnvelopes(now)
+	}
+}
+
+// deliver sends what the tick decided to send, with no lock held.
+func (s *Service) deliver(outbox []outgoing) {
+	for _, m := range outbox {
+		if m.mailOnly {
+			s.mailOwner(m.subject, m.body)
+			continue
+		}
+		s.notify(m.to, m.subject, m.body)
+	}
 }
 
 // CheckIn records that the user is alive. It cancels any in-progress
@@ -137,7 +192,12 @@ func (s *Service) CheckIn() {
 // release countdown. Idempotent if already counting down.
 func (s *Service) Confirm(id string) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	locked := true
+	defer func() {
+		if locked {
+			s.mu.Unlock()
+		}
+	}()
 	var name string
 	known := false
 	for _, c := range s.cfg.Confirmers {
@@ -160,8 +220,14 @@ func (s *Service) Confirm(id string) error {
 	s.st.ConfirmedBy = id
 	s.st.LastWarningAt = time.Time{}
 	log.Printf("dms: confirmed by %s; countdown started", id)
-	s.notifyOwner("[DMS] Potvrdené — odpočet beží", s.bodyConfirmed(name))
+	body := s.bodyConfirmed(name)
 	s.persist()
+	s.mu.Unlock()
+	locked = false
+
+	// Sending happens with the lock released: a stalled relay here would
+	// otherwise block the owner's check-in, which is the veto.
+	s.notifyOwner("[DMS] Potvrdené — odpočet beží", body)
 	return nil
 }
 
@@ -172,12 +238,26 @@ func (s *Service) Phase() string {
 	return s.st.Phase
 }
 
-func (s *Service) fire(now time.Time) {
+// releaseEnvelopes delivers the envelopes that have not gone out yet. It runs
+// without the state lock (delivery is network work) and re-reads the phase
+// under the lock around every envelope: if the owner vetoes while a slow relay
+// is chewing on the first envelope, the rest must not be sent.
+func (s *Service) releaseEnvelopes(now time.Time) {
 	var sent, failed []string
+	vetoed := false
+
 	for _, e := range s.cfg.Envelopes {
-		if s.st.wasDelivered(e.ID) {
+		s.mu.Lock()
+		skip := s.st.Phase != PhaseCountdown || s.st.wasDelivered(e.ID)
+		vetoed = s.st.Phase != PhaseCountdown
+		s.mu.Unlock()
+		if vetoed {
+			break
+		}
+		if skip {
 			continue
 		}
+
 		data, err := os.ReadFile(e.Path)
 		if err != nil || len(data) == 0 {
 			log.Printf("dms: envelope %s unreadable: %v", e.ID, err)
@@ -187,17 +267,40 @@ func (s *Service) fire(now time.Time) {
 		// One channel through is enough for a given envelope; an envelope that
 		// reached nobody is retried on the next tick, one that got out is not.
 		delivered, err := s.notify(e.recipients(), e.subject(), s.bodyEnvelope(e, string(data)))
-		if delivered == 0 {
+
+		s.mu.Lock()
+		if s.st.Phase != PhaseCountdown {
+			// A check-in landed while this envelope was being delivered.
+			s.mu.Unlock()
+			vetoed = true
+			if delivered > 0 {
+				sent = append(sent, e.ID)
+			}
+			break
+		}
+		if delivered > 0 {
+			s.st.Delivered = append(s.st.Delivered, e.ID)
+			sent = append(sent, e.ID)
+			log.Printf("dms: envelope %s delivered on %d channel(s)", e.ID, delivered)
+		} else {
 			reason := e.ID
 			if err != nil {
 				reason += " (" + err.Error() + ")"
 			}
 			failed = append(failed, reason)
-			continue
 		}
-		s.st.Delivered = append(s.st.Delivered, e.ID)
-		sent = append(sent, e.ID)
-		log.Printf("dms: envelope %s delivered on %d channel(s)", e.ID, delivered)
+		s.persist()
+		s.mu.Unlock()
+	}
+
+	if vetoed {
+		msg := "Počas odosielania prišiel tvoj check-in, takže sa zvyšok obálok NEODOSLAL."
+		if len(sent) > 0 {
+			msg += "\nEšte predtým stihli odísť: " + strings.Join(sent, ", ") +
+				". Tie sa už vziať späť nedajú — daj príjemcom vedieť, že ide o planý poplach."
+		}
+		s.notifyOwner("[DMS] Odosielanie zrušené check-inom", msg)
+		return
 	}
 
 	if len(failed) > 0 {
@@ -210,8 +313,16 @@ func (s *Service) fire(now time.Time) {
 		return
 	}
 
+	s.mu.Lock()
+	if s.st.Phase != PhaseCountdown {
+		s.mu.Unlock()
+		return
+	}
 	s.st.Phase = PhaseFired
 	s.st.FiredAt = now
+	s.persist()
+	s.mu.Unlock()
+
 	log.Printf("dms: FIRED — %d envelope(s) delivered", len(s.cfg.Envelopes))
 	s.notifyOwner("[DMS] Obálky odoslané",
 		"Odoslané obálky: "+strings.Join(envelopeIDs(s.cfg.Envelopes), ", ")+
@@ -226,28 +337,24 @@ func envelopeIDs(es []Envelope) []string {
 	return out
 }
 
-// checkSignal probes the secondary channel. A dead Signal is reported but never
-// blocks firing: e-mail is the channel the envelope actually depends on, and a
-// second channel must not become a second way for the whole thing to jam.
-func (s *Service) checkSignal(now time.Time) {
+// probeSignal asks the Signal container whether it is still usable. It is a
+// pure network probe: the result is recorded and alerted on by Tick, under the
+// lock. A dead Signal never blocks firing — e-mail is the channel the envelope
+// actually depends on, and a second channel must not become a second way for
+// the whole thing to jam.
+func (s *Service) probeSignal() error {
 	if s.sig == nil {
-		return
+		return nil
 	}
 	err := s.sig.Check()
-	s.st.SignalOK = err == nil
-	if err == nil {
-		return
+	if err != nil {
+		log.Printf("dms: signal channel degraded: %v", err)
 	}
-	log.Printf("dms: signal channel degraded: %v", err)
-	if now.Sub(s.st.LastSignalAlertAt) >= s.cfg.AlertInterval.D() {
-		// The broken channel cannot carry its own alarm, so this goes by e-mail.
-		s.mailOwner("[DMS] Signal nefunguje",
-			"Druhý kanál (Signal) neodpovedá: "+err.Error()+
-				"\n\nE-mail funguje ďalej a DMS beží normálne — oprav Signal, keď budeš môcť.\n— DMS")
-		s.st.LastSignalAlertAt = now
-	}
+	return err
 }
 
+// selfTest checks everything that must hold before the DMS may fire. It takes
+// no lock and touches no state, so Tick can run it before locking.
 func (s *Service) selfTest() (bool, string) {
 	if len(s.cfg.HMACSecret) < 16 {
 		return false, "HMAC secret chýba alebo je krátky"
@@ -267,7 +374,7 @@ func (s *Service) selfTest() (bool, string) {
 			return false, "obálka " + e.ID + " nie je ASCII-armored PGP správa"
 		}
 	}
-	if err := s.st.save(s.cfg.StatePath); err != nil {
+	if err := stateWritable(s.cfg.StatePath); err != nil {
 		return false, "stav sa nedá zapísať: " + err.Error()
 	}
 	return true, ""

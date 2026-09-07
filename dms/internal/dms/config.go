@@ -101,12 +101,13 @@ func (e Envelope) recipients() []Recipient {
 }
 
 type Config struct {
-	ListenAddr    string `json:"listen_addr"`     // local port, behind Apache, e.g. 127.0.0.1:8088
-	PublicBaseURL string `json:"public_base_url"` // e.g. https://dms.example.com
-	SMTPAddr      string `json:"smtp_addr"`       // local postfix, e.g. 127.0.0.1:25
-	FromEmail     string `json:"from_email"`
-	UserEmail     string `json:"user_email"`   // me (check-in / health / warnings)
-	FriendEmail   string `json:"friend_email"` // envelope recipient on fire (the friend)
+	ListenAddr    string   `json:"listen_addr"`            // local port, behind Apache, e.g. 127.0.0.1:8088
+	PublicBaseURL string   `json:"public_base_url"`        // e.g. https://dms.example.com
+	SMTPAddr      string   `json:"smtp_addr"`              // local postfix, e.g. 127.0.0.1:25
+	SMTPTimeout   Duration `json:"smtp_timeout,omitempty"` // whole conversation; default 30s
+	FromEmail     string   `json:"from_email"`
+	UserEmail     string   `json:"user_email"`   // me (check-in / health / warnings)
+	FriendEmail   string   `json:"friend_email"` // envelope recipient on fire (the friend)
 
 	UserSignal   string       `json:"user_signal,omitempty"`   // my E.164 number, second channel
 	FriendSignal string       `json:"friend_signal,omitempty"` // friend's E.164 number, second channel
@@ -173,6 +174,9 @@ func (c *Config) applyDefaults() {
 	if c.Signal.Timeout.D() == 0 {
 		c.Signal.Timeout = Duration(20 * time.Second)
 	}
+	if c.SMTPTimeout.D() == 0 {
+		c.SMTPTimeout = Duration(DefaultMailTimeout)
+	}
 	// Single-envelope config keeps working: fold it into the general form so the
 	// rest of the service only ever deals with a list.
 	if len(c.Envelopes) == 0 && c.EnvelopePath != "" {
@@ -222,6 +226,7 @@ func (c Config) validate() error {
 		{"alert_interval", c.AlertInterval},
 		{"tick_interval", c.TickInterval},
 		{"signal.timeout", c.Signal.Timeout},
+		{"smtp_timeout", c.SMTPTimeout},
 	} {
 		if iv.d.D() <= 0 {
 			return fmt.Errorf("%s must be positive, got %s", iv.name, iv.d.D())

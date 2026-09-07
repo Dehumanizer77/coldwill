@@ -39,7 +39,7 @@ func main() {
 		return
 	}
 
-	mailer := &dms.SMTPMailer{Addr: cfg.SMTPAddr, From: cfg.FromEmail}
+	mailer := &dms.SMTPMailer{Addr: cfg.SMTPAddr, From: cfg.FromEmail, Timeout: cfg.SMTPTimeout.D()}
 
 	// Signal is optional and secondary: configured -> second channel, absent ->
 	// e-mail only. A nil sender keeps every send path on e-mail.
