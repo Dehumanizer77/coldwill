@@ -29,12 +29,19 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 
 func (d Duration) D() time.Duration { return time.Duration(d) }
 
+// maxDays bounds the "d" suffix so the multiplication below cannot overflow
+// int64 nanoseconds (~292 years) and silently produce a negative duration.
+const maxDays = 100000
+
 func parseDur(s string) (time.Duration, error) {
 	s = strings.TrimSpace(s)
 	if strings.HasSuffix(s, "d") {
 		n, err := strconv.Atoi(strings.TrimSuffix(s, "d"))
 		if err != nil {
 			return 0, fmt.Errorf("invalid day duration %q: %w", s, err)
+		}
+		if n < -maxDays || n > maxDays {
+			return 0, fmt.Errorf("day duration %q is out of range (max %d days)", s, maxDays)
 		}
 		return time.Duration(n) * 24 * time.Hour, nil
 	}
@@ -191,6 +198,27 @@ func (c Config) validate() error {
 		return fmt.Errorf("hmac_secret must be at least 16 chars")
 	case len(c.Confirmers) == 0:
 		return fmt.Errorf("at least one confirmer required")
+	}
+	// Every interval must be positive. A negative release_delay would let a
+	// confirmation fire on the very next tick with no grace period at all, and a
+	// negative tick_interval panics time.NewTicker at startup.
+	for _, iv := range []struct {
+		name string
+		d    Duration
+	}{
+		{"check_in_interval", c.CheckInInterval},
+		{"reminder_interval", c.ReminderInterval},
+		{"silence_threshold", c.SilenceThreshold},
+		{"release_delay", c.ReleaseDelay},
+		{"health_beat_interval", c.HealthBeatInterval},
+		{"warning_interval", c.WarningInterval},
+		{"alert_interval", c.AlertInterval},
+		{"tick_interval", c.TickInterval},
+		{"signal.timeout", c.Signal.Timeout},
+	} {
+		if iv.d.D() <= 0 {
+			return fmt.Errorf("%s must be positive, got %s", iv.name, iv.d.D())
+		}
 	}
 	if c.SilenceThreshold.D() <= c.CheckInInterval.D() {
 		return fmt.Errorf("silence_threshold must exceed check_in_interval")
