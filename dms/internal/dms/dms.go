@@ -62,7 +62,15 @@ func (s *Service) Tick() {
 		silence := now.Sub(s.st.LastCheckIn)
 		switch {
 		case silence >= s.cfg.SilenceThreshold.D():
+			cycle := newCycleID()
+			if cycle == "" {
+				s.notifyOwner("[DMS] PORUCHA — skontroluj",
+					"Nepodarilo sa vygenerovať id cyklu (chyba generátora náhody); "+
+						"výzva potvrdzovateľom sa NEODOSLALA. Skúsi sa znova.")
+				break
+			}
 			s.st.Phase = PhaseAwaiting
+			s.st.CycleID = cycle
 			s.st.LastConfirmReqAt = now
 			s.st.LastReminderAt = now
 			s.askConfirmers()
@@ -114,6 +122,9 @@ func (s *Service) CheckIn() {
 		s.st.ConfirmedAt = time.Time{}
 		s.st.ConfirmedBy = ""
 		s.st.LastWarningAt = time.Time{}
+		// A veto invalidates every confirmation link that was sent out: the next
+		// waiting cycle gets a new id, so an old link cannot be replayed.
+		s.st.CycleID = ""
 		// If a partial fire had already sent something, forget it: after a veto
 		// the next real firing must deliver every envelope again.
 		s.st.Delivered = nil
@@ -277,11 +288,20 @@ func (s *Service) persist() {
 // ---- links + email bodies ----
 
 func (s *Service) checkinURL() string {
-	return s.cfg.PublicBaseURL + "/checkin?token=" + s.token("checkin")
+	return s.cfg.PublicBaseURL + "/checkin?token=" + s.token(s.checkinAction())
 }
 
 func (s *Service) confirmURL(c Confirmer) string {
-	return s.cfg.PublicBaseURL + "/confirm?id=" + c.ID + "&token=" + s.token("confirm:"+c.ID)
+	return s.cfg.PublicBaseURL + "/confirm?id=" + c.ID +
+		"&token=" + s.token(s.confirmAction(c.ID, s.st.CycleID))
+}
+
+// currentCycle reads the cycle id for the HTTP layer, which verifies tokens
+// outside the state lock.
+func (s *Service) currentCycle() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.st.CycleID
 }
 
 func (s *Service) bodyCheckin(urgent bool) string {

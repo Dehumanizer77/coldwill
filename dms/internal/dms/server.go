@@ -26,7 +26,7 @@ func (s *Service) hRoot(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) hCheckin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		if !s.verifyToken("checkin", r.FormValue("token")) {
+		if !s.verifyToken(s.checkinAction(), r.FormValue("token")) {
 			forbidden(w)
 			return
 		}
@@ -34,7 +34,7 @@ func (s *Service) hCheckin(w http.ResponseWriter, r *http.Request) {
 		writePage(w, "Zaznamenané", `<p class="ok">✓ Ďakujem — zaznamenané, že žiješ. Časovač je vynulovaný.</p>`)
 		return
 	}
-	if !s.verifyToken("checkin", r.URL.Query().Get("token")) {
+	if !s.verifyToken(s.checkinAction(), r.URL.Query().Get("token")) {
 		forbidden(w)
 		return
 	}
@@ -43,13 +43,13 @@ func (s *Service) hCheckin(w http.ResponseWriter, r *http.Request) {
 		<form method="post" action="/checkin">
 			<input type="hidden" name="token" value="%s">
 			<button type="submit">Som živý/á — vynulovať časovač</button>
-		</form>`, s.token("checkin")))
+		</form>`, s.token(s.checkinAction())))
 }
 
 func (s *Service) hConfirm(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		id := r.FormValue("id")
-		if !s.verifyToken("confirm:"+id, r.FormValue("token")) {
+		if !s.verifyToken(s.confirmAction(id, s.currentCycle()), r.FormValue("token")) {
 			forbidden(w)
 			return
 		}
@@ -61,7 +61,8 @@ func (s *Service) hConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.URL.Query().Get("id")
-	if !s.verifyToken("confirm:"+id, r.URL.Query().Get("token")) {
+	cycle := s.currentCycle()
+	if !s.verifyToken(s.confirmAction(id, cycle), r.URL.Query().Get("token")) {
 		forbidden(w)
 		return
 	}
@@ -73,7 +74,7 @@ func (s *Service) hConfirm(w http.ResponseWriter, r *http.Request) {
 			<input type="hidden" name="id" value="%s">
 			<input type="hidden" name="token" value="%s">
 			<button type="submit">Potvrdzujem úmrtie / trvalú neschopnosť</button>
-		</form>`, htmlEscape(id), s.token("confirm:"+id)))
+		</form>`, htmlEscape(id), s.token(s.confirmAction(id, cycle))))
 }
 
 func writePage(w http.ResponseWriter, title, bodyHTML string) {

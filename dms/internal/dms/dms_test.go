@@ -283,7 +283,7 @@ func httpDo(h http.Handler, method, target string, form url.Values) *httptest.Re
 func TestCheckinHTTP(t *testing.T) {
 	svc, _, _ := newSvc(t)
 	h := svc.Handler()
-	tok := svc.token("checkin")
+	tok := svc.token(svc.checkinAction())
 
 	if rr := httpDo(h, "GET", "/checkin?token="+tok, nil); rr.Code != 200 || !strings.Contains(rr.Body.String(), "Som živý") {
 		t.Fatalf("GET checkin: code %d", rr.Code)
@@ -300,7 +300,7 @@ func TestConfirmHTTP(t *testing.T) {
 	svc, fm, c := newSvc(t)
 	toAwaiting(t, svc, fm, c)
 	h := svc.Handler()
-	tok := svc.token("confirm:friend")
+	tok := svc.token(svc.confirmAction("friend", svc.currentCycle()))
 
 	if rr := httpDo(h, "GET", "/confirm?id=friend&token="+tok, nil); rr.Code != 200 || !strings.Contains(rr.Body.String(), "Potvrdzujem") {
 		t.Fatalf("GET confirm: code %d", rr.Code)

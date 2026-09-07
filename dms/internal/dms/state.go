@@ -29,6 +29,10 @@ type State struct {
 	LastAlertAt      time.Time `json:"last_alert_at,omitempty"`
 	Healthy          bool      `json:"healthy"`
 
+	// CycleID identifies the current waiting cycle; confirmation links are
+	// bound to it, so they die when a check-in clears it or a new cycle starts.
+	CycleID string `json:"cycle_id,omitempty"`
+
 	// Envelopes already delivered, by id. A partial fire retries only the rest,
 	// so nobody gets the same envelope twice while another is still stuck.
 	Delivered []string `json:"delivered,omitempty"`

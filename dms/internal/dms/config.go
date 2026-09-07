@@ -122,6 +122,11 @@ type Config struct {
 	StatePath    string `json:"state_path"`              // JSON state file
 	HMACSecret   string `json:"hmac_secret"`             // random secret for link tokens
 
+	// CheckinKeyVersion revokes a leaked check-in link: bump it and restart,
+	// and every previously issued check-in URL stops working. The next reminder
+	// or health beat carries the new one.
+	CheckinKeyVersion int `json:"checkin_key_version,omitempty"`
+
 	CheckInInterval    Duration `json:"check_in_interval"`    // remind me to check in
 	ReminderInterval   Duration `json:"reminder_interval"`    // gap between reminders
 	SilenceThreshold   Duration `json:"silence_threshold"`    // silence -> ask confirmers
@@ -196,6 +201,8 @@ func (c Config) validate() error {
 		return fmt.Errorf("state_path required")
 	case len(c.HMACSecret) < 16:
 		return fmt.Errorf("hmac_secret must be at least 16 chars")
+	case c.CheckinKeyVersion < 0:
+		return fmt.Errorf("checkin_key_version must not be negative")
 	case len(c.Confirmers) == 0:
 		return fmt.Errorf("at least one confirmer required")
 	}
