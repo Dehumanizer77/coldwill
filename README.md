@@ -445,13 +445,24 @@ interaktívne vypýta adresy, čísla a potvrdzovateľov a zapíše `config.json
 Beží idempotentne: existujúci `config.json` ani obálky neprepíše (na to je
 `--force-config`, ktorý starý config zálohuje), takže sa dá pustiť znova.
 
-`--test-timings` je skúšobná inštancia: intervaly v minútach namiesto dní,
-vlastný dátový adresár (`/opt/inh-dms-test`), štart z čistého stavu (starý
-`state.json` zmaže) a **obálky aj výzvy potvrdzovateľom idú tebe** — skúška
-nesmie napísať skutočným ľuďom, lebo vo fáze čakania sa výzva opakuje každých
-pár minút — celý reťazec (check-in → ticho → potvrdenie → odpočet → výstrel) sa
-tak dá prejsť za pár minút bez toho, aby si niekoho vystrašil. Po doskúšaní
-`docker compose down && rm -rf /opt/inh-dms-test`.
+`--test-timings` je skúšobná inštancia a je **úplne oddelená od ostrej** — iný
+dátový adresár (`/opt/inh-dms-test`), iné mená kontajnerov (`inh-dms-test`,
+`inh-signal-test`), iné porty (8188 / 8180) aj vlastný compose projekt
+(`-p inh-dms-test`). Skúška teda nemôže zhodiť ani nahradiť bežiaci ostrý DMS a
+proxy naň nezačne smerovať; ak ostrý DMS beží vedľa, skript to pri štarte
+vypíše.
+
+K tomu: intervaly v minútach namiesto dní, štart z čistého stavu (starý
+`state.json` zmaže), odkazy mieria na `http://127.0.0.1:8188` (cez SSH tunel) a
+**obálky aj výzvy potvrdzovateľom idú tebe** — skúška nesmie napísať skutočným
+ľuďom, lebo vo fáze čakania sa výzva opakuje každých pár minút. Celý reťazec
+(check-in → ticho → potvrdenie → odpočet → výstrel) sa tak dá prejsť za pár
+minút bez toho, aby si niekoho vystrašil. Po doskúšaní:
+
+```bash
+docker compose -p inh-dms-test down     # alebo: docker rm -f inh-dms-test
+rm -rf /opt/inh-dms-test
+```
 
 Ručne je to to isté: `mkdir -p /opt/inh-dms/data`, `config.json` z
 `config.example.json` (`hmac_secret` = `openssl rand -hex 32`), obálky do

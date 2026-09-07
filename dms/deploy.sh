@@ -55,9 +55,22 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-if [ "$TEST_TIMINGS" = 1 ] && [ "$DATA_ROOT" = "/opt/inh-dms" ]; then
-  DATA_ROOT="/opt/inh-dms-test"   # nech skúšobný beh nesiaha na ostrý stav
+# Skúšobná inštancia musí byť oddelená vo VŠETKOM, čo môže kolidovať: dátový
+# adresár, mená kontajnerov, porty aj compose projekt. Inak by `up -d` alebo
+# `rm -f` v skúške zhodili ostrý DMS a proxy by začala smerovať na skúšobný.
+NAME_DMS="inh-dms"
+NAME_SIGNAL="inh-signal"
+PROJECT="inh-dms"
+if [ "$TEST_TIMINGS" = 1 ]; then
+  [ "$DATA_ROOT" = "/opt/inh-dms" ] && DATA_ROOT="/opt/inh-dms-test"
+  NAME_DMS="inh-dms-test"
+  NAME_SIGNAL="inh-signal-test"
+  PROJECT="inh-dms-test"
+  PORT_APP=8188
+  PORT_SIGNAL=8180
 fi
+export INH_NAME_DMS="$NAME_DMS" INH_NAME_SIGNAL="$NAME_SIGNAL"
+export INH_PORT_SIGNAL="$PORT_SIGNAL"
 DATA="$DATA_ROOT/data"
 CONFIG="$DATA/config.json"
 # Image beží ako 'nonroot' (uid 65532), ale /data patrí tebe a config.json je
@@ -100,16 +113,21 @@ else warn "na 127.0.0.1:25 nič nepočúva — DMS bude hlásiť poruchu, kým t
 
 for p in "$PORT_APP" $([ "$WITH_SIGNAL" = 1 ] && echo "$PORT_SIGNAL"); do
   if (exec 3<>/dev/tcp/127.0.0.1/"$p") 2>/dev/null; then
-    if docker ps --format '{{.Names}}' | grep -qE '^inh-(dms|signal)$'; then
-      warn "port $p drží bežiaci inh kontajner (reštartnem ho)"
+    if docker ps --format '{{.Names}}' | grep -qxE "$NAME_DMS|$NAME_SIGNAL"; then
+      warn "port $p drží kontajner tejto inštancie ($NAME_DMS/$NAME_SIGNAL) — reštartnem ho"
     else
-      die "port $p už niekto obsadil (a nie je to inh kontajner)"
+      die "port $p už niekto obsadil (a nie je to kontajner tejto inštancie)"
     fi
   else ok "port $p je voľný"; fi
 done
 
 [ -f "$HERE/Dockerfile" ] || die "nenašiel som Dockerfile vedľa skriptu"
 ok "zdrojáky na mieste ($HERE)"
+
+ok "inštancia: kontajner $NAME_DMS, compose projekt $PROJECT, port $PORT_APP, dáta $DATA_ROOT"
+if [ "$TEST_TIMINGS" = 1 ] && docker ps --format '{{.Names}}' | grep -qx "inh-dms"; then
+  warn "vedľa beží OSTRÝ inh-dms — skúška sa ho nedotkne (iné meno, port aj projekt)"
+fi
 
 if [ "$CHECK_ONLY" = 1 ]; then say "Preflight OK — nič som nemenil."; exit 0; fi
 
@@ -161,7 +179,9 @@ if [ -f "$CONFIG" ] && [ "$FORCE_CONFIG" = 0 ]; then
 else
   [ -f "$CONFIG" ] && cp -a "$CONFIG" "$CONFIG.bak.$(date +%s)" && warn "starý config zálohovaný"
   echo "   (Enter = ponechať default. Hodnoty sa dajú kedykoľvek doeditovať v $CONFIG.)"
-  BASE_URL=$(ask "Verejná URL DMS (https://…)" "https://dms.example.com")
+  DEF_BASE="https://dms.example.com"
+  [ "$TEST_TIMINGS" = 1 ] && DEF_BASE="http://127.0.0.1:$PORT_APP"
+  BASE_URL=$(ask "Verejná URL DMS (https://…)" "$DEF_BASE")
   FROM=$(ask     "From adresa e-mailov" "dms@${BASE_URL#https://}")
   USER_MAIL=$(ask "Tvoj e-mail (check-in, alerty)")
   for v in "$BASE_URL" "$FROM" "$USER_MAIL"; do json_safe "$v"; done
@@ -295,23 +315,23 @@ fi
 have_compose() { [ ${#COMPOSE[@]} -gt 0 ]; }
 
 img_build() {
-  if have_compose; then ( cd "$HERE" && "${COMPOSE[@]}" build dms )
+  if have_compose; then ( cd "$HERE" && "${COMPOSE[@]}" -p "$PROJECT" build dms )
   else docker build -t inh-dms "$HERE"; fi
 }
 
 svc_up() {
   if have_compose; then
-    if [ "$WITH_SIGNAL" = 1 ]; then ( cd "$HERE" && "${COMPOSE[@]}" --profile signal up -d )
-    else                            ( cd "$HERE" && "${COMPOSE[@]}" up -d dms ); fi
+    if [ "$WITH_SIGNAL" = 1 ]; then ( cd "$HERE" && "${COMPOSE[@]}" -p "$PROJECT" --profile signal up -d )
+    else                            ( cd "$HERE" && "${COMPOSE[@]}" -p "$PROJECT" up -d dms ); fi
     return
   fi
-  docker rm -f inh-dms >/dev/null 2>&1 || true
-  docker run -d --name inh-dms --restart unless-stopped "${DOCKER_USER[@]}" \
+  docker rm -f "$NAME_DMS" >/dev/null 2>&1 || true
+  docker run -d --name "$NAME_DMS" --restart unless-stopped "${DOCKER_USER[@]}" \
     --network host -v "$DATA":/data inh-dms >/dev/null
   if [ "$WITH_SIGNAL" = 1 ]; then
     mkdir -p "$DATA_ROOT/signal"
-    docker rm -f inh-signal >/dev/null 2>&1 || true
-    docker run -d --name inh-signal --restart unless-stopped \
+    docker rm -f "$NAME_SIGNAL" >/dev/null 2>&1 || true
+    docker run -d --name "$NAME_SIGNAL" --restart unless-stopped \
       -e MODE=native -e "AUTO_RECEIVE_SCHEDULE=0 4 * * *" \
       -p "127.0.0.1:$PORT_SIGNAL:8080" \
       -v "$DATA_ROOT/signal":/home/.local/share/signal-cli \
@@ -320,16 +340,16 @@ svc_up() {
 }
 
 svc_logs() {
-  if have_compose; then ( cd "$HERE" && "${COMPOSE[@]}" logs --no-log-prefix dms 2>/dev/null || true )
-  else docker logs inh-dms 2>&1 || true; fi
+  if have_compose; then ( cd "$HERE" && "${COMPOSE[@]}" -p "$PROJECT" logs --no-log-prefix dms 2>/dev/null || true )
+  else docker logs "$NAME_DMS" 2>&1 || true; fi
 }
 
 if have_compose; then
-  LOGS_CMD="${COMPOSE[*]} logs dms"; DOWN_CMD="${COMPOSE[*]} down"
+  LOGS_CMD="${COMPOSE[*]} -p $PROJECT logs dms"; DOWN_CMD="${COMPOSE[*]} -p $PROJECT down"
 else
-  LOGS_CMD="docker logs inh-dms"
-  DOWN_CMD="docker rm -f inh-dms"
-  [ "$WITH_SIGNAL" = 1 ] && DOWN_CMD="docker rm -f inh-dms inh-signal"
+  LOGS_CMD="docker logs $NAME_DMS"
+  DOWN_CMD="docker rm -f $NAME_DMS"
+  [ "$WITH_SIGNAL" = 1 ] && DOWN_CMD="docker rm -f $NAME_DMS $NAME_SIGNAL"
 fi
 
 # ---------------------------------------------------------------------- štart --
@@ -405,7 +425,7 @@ cat <<TXT
 TXT
 [ "$WITH_SIGNAL" = 1 ] && cat <<TXT
 4) Linkni Signal (raz):
-     xdg-open http://127.0.0.1:$PORT_SIGNAL/v1/qrcodelink?device_name=inh-dms
+     xdg-open http://127.0.0.1:$PORT_SIGNAL/v1/qrcodelink?device_name=$NAME_DMS
      # naskenuj v Signale: Nastavenia → Prepojené zariadenia → +
      curl -s http://127.0.0.1:$PORT_SIGNAL/v1/accounts   # musí obsahovať tvoje from_number
 TXT
