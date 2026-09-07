@@ -2,6 +2,7 @@ package dms
 
 import (
 	"errors"
+	"fmt"
 	"log"
 )
 
@@ -30,32 +31,28 @@ func (c Confirmer) recipient() Recipient {
 // the failures. Failures are logged, never fatal: the caller decides what a
 // zero delivery count means.
 func (s *Service) notify(rcpts []Recipient, subject, body string) (int, error) {
-	var emails, numbers []string
-	for _, r := range rcpts {
-		if r.Email != "" {
-			emails = append(emails, r.Email)
-		}
-		if r.Signal != "" && s.sig != nil {
-			numbers = append(numbers, r.Signal)
-		}
-	}
-
 	delivered := 0
 	var errs []error
-	if len(emails) > 0 {
-		if err := s.mail.Send(emails, subject, body); err != nil {
-			log.Printf("dms: email %q to %v failed: %v", subject, emails, err)
-			errs = append(errs, err)
-		} else {
-			delivered += len(emails)
+
+	// One transaction per address. A relay that rejects a single RCPT TO aborts
+	// the whole transaction, so a batched send would silently drop the message
+	// for everyone else on the list — including recipients the relay accepted.
+	for _, r := range rcpts {
+		if r.Email != "" {
+			if err := s.mail.Send([]string{r.Email}, subject, body); err != nil {
+				log.Printf("dms: email %q to %s failed: %v", subject, r.Email, err)
+				errs = append(errs, fmt.Errorf("e-mail %s: %w", r.Email, err))
+			} else {
+				delivered++
+			}
 		}
-	}
-	if len(numbers) > 0 {
-		if err := s.sig.Send(numbers, subject+"\n\n"+body); err != nil {
-			log.Printf("dms: signal %q to %v failed: %v", subject, numbers, err)
-			errs = append(errs, err)
-		} else {
-			delivered += len(numbers)
+		if r.Signal != "" && s.sig != nil {
+			if err := s.sig.Send([]string{r.Signal}, subject+"\n\n"+body); err != nil {
+				log.Printf("dms: signal %q to %s failed: %v", subject, r.Signal, err)
+				errs = append(errs, fmt.Errorf("signal %s: %w", r.Signal, err))
+			} else {
+				delivered++
+			}
 		}
 	}
 	return delivered, errors.Join(errs...)
