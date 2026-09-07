@@ -11,12 +11,15 @@ switch.
 **Za života** ovládaš Bitcoin len ty. **Po smrti** ho rodina zloží z dvoch
 nezávislých vecí — ani jedna z nich sama nestačí.
 
+Koľko častí vznikne a koľko ich treba na zloženie (**K z N**) si volíš pri
+generovaní; obrázok ukazuje bežnú voľbu 2 z 3.
+
 ```
    ČASŤ #1          ČASŤ #2          ČASŤ #3            ZAPEČATENÁ OBÁLKA
  kov, osoba A     kov, osoba B     kov, osoba C       bankový trezor + DMS
       │                │                │                      │
       └────────┬───────┴────────────────┘                      │
-               │   stačia ľubovoľné 2 z 3                      │
+               │   stačia ľubovoľné K z N (tu 2 z 3)           │
                ▼                                               │
           KEY-FILE                                             │
                │                                               │
@@ -30,13 +33,14 @@ nezávislých vecí — ani jedna z nich sama nestačí.
 ```
 
 - **Kovové časti** (SLIP-39 slová vyryté do kovu) držia rôzni ľudia na rôznych
-  miestach. Ktorékoľvek **2 z 3** zložia *key-file* — súbor, ktorým sa odomkne
-  KeePass databáza so **seedom** a všetkými ostatnými prístupmi.
+  miestach. Ktorýchkoľvek **K z N** (v príklade 2 z 3) zloží *key-file* — súbor,
+  ktorým sa odomkne KeePass databáza so **seedom** a všetkými ostatnými
+  prístupmi. Prah aj počet častí sú nastaviteľné: 3 z 5, 2 z 4, čo ti vyhovuje.
 - **Zapečatená obálka** obsahuje **passphrase k peňaženke**. Leží v bankovom
   trezore a navyše ju po tvojej smrti pošle *dead-man's switch* e-mailom.
 - **Bitcoin = seed + passphrase.** Kto má len časti, vidí databázu, ale mince
-  neminie. Kto má len obálku, má heslo, ktoré bez seedu nie je na nič. Jedna
-  časť sama o sebe je bezcenná.
+  neminie. Kto má len obálku, má heslo, ktoré bez seedu nie je na nič. Menej než
+  K častí je bezcenných.
 
 **Dead-man's switch** je len pohodlie: pravidelne sa ťa pýta „žiješ?", a keď sa
 dlho neozveš a dôveryhodná osoba to potvrdí, po ochrannej lehote pošle obálku
