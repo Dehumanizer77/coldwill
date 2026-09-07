@@ -20,7 +20,8 @@ type State struct {
 	Phase            string    `json:"phase"`
 	LastCheckIn      time.Time `json:"last_check_in"`
 	ConfirmedAt      time.Time `json:"confirmed_at,omitempty"`
-	ConfirmedBy      string    `json:"confirmed_by,omitempty"`
+	ConfirmedBy      string    `json:"confirmed_by,omitempty"`  // last confirmer (kept for older state files)
+	Confirmations    []string  `json:"confirmations,omitempty"` // distinct confirmers this cycle
 	FiredAt          time.Time `json:"fired_at,omitempty"`
 	LastReminderAt   time.Time `json:"last_reminder_at,omitempty"`
 	LastConfirmReqAt time.Time `json:"last_confirm_req_at,omitempty"`
@@ -73,6 +74,15 @@ func (s State) save(path string) error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+func (s State) hasConfirmed(id string) bool {
+	for _, c := range s.Confirmations {
+		if c == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (s State) wasDelivered(id string) bool {

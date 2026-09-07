@@ -39,8 +39,8 @@ nezávislých vecí — ani jedna z nich sama nestačí.
   časť sama o sebe je bezcenná.
 
 **Dead-man's switch** je len pohodlie: pravidelne sa ťa pýta „žiješ?", a keď sa
-dlho neozveš a dvaja dôveryhodní ľudia to potvrdia, po ochrannej lehote pošle
-obálku. Istá cesta vedie cez banku — DMS sa dá kedykoľvek vypnúť a dedičstvu to
+dlho neozveš a dôveryhodná osoba to potvrdí, po ochrannej lehote pošle obálku
+(koľko potvrdení treba, si nastavuješ — štandardne stačí jedno). Istá cesta vedie cez banku — DMS sa dá kedykoľvek vypnúť a dedičstvu to
 neublíži.
 
 Podrobnosti nižšie; kto chce len vedieť „ako sa k tomu rodina dostane", môže
@@ -307,8 +307,13 @@ ide na všetky kanály, ktoré má daný adresát nastavené.
 2. Vynechanie → **eskalujúce upomienky vlastníkovi** na všetky kanály.
 3. Po dlhom tichu DMS **nevystrelí sám** — pošle **technicky zdatnej osobe a
    ďalšej dôveryhodnej osobe** výzvu na potvrdenie úmrtia/trvalej neschopnosti
-   (jednorazový odkaz + potvrdzovacie tlačidlo).
-4. Po potvrdení (stačí **ktorákoľvek** z nich) → štart **ochrannej lehoty**;
+   (odkaz platný len pre tento cyklus + potvrdzovacie tlačidlo).
+4. Po potvrdení → štart **ochrannej lehoty**. Štandardne stačí **jedno**
+   potvrdenie (`confirm_quorum: 1`): planý poplach je prežiteľný, lebo obálka je
+   bez kovových častí bezcenná, kým „nikto nepotvrdil" by dedičstvo zastavilo.
+   Ak chceš radšej vyžadovať dvoch nezávislých ľudí, nastav `confirm_quorum: 2`
+   — DMS potom počíta **rôznych** potvrdzovateľov a jeden človek dvakrát sa
+   neráta;
    počas nej chodí vlastníkovi denné upozornenie „obálka sa pošle o X dní".
 5. **Check-in vlastníka kedykoľvek všetko ruší** — veto vždy vyhráva, aj počas
    odpočtu.
@@ -540,6 +545,17 @@ skontroluje a skončí — hodí sa po ručnej úprave, kým službu reštartne�
 Povinné: `public_base_url`, `from_email`, `user_email`, `state_path`,
 `hmac_secret` (≥16 znakov), aspoň 1 `confirmer` a aspoň jedna obálka
 (`envelopes[]`, alebo starý `envelope_path` + `friend_email`).
+
+Voliteľné, ale dobré vedieť:
+
+| kľúč | čo robí |
+|---|---|
+| `confirm_quorum` | koľko **rôznych** potvrdzovateľov treba na spustenie odpočtu (default 1) |
+| `checkin_key_version` | zvýš a reštartuj, ak ti unikol check-in odkaz — staré odkazy prestanú platiť |
+| `smtp_timeout` | strop na celú SMTP konverzáciu (default 30s), aby zaseknutý relay nezablokoval DMS |
+
+Potvrdzovacie odkazy platia **len pre aktuálny cyklus čakania**: check-in ich
+zneplatní a v ďalšom cykle sa nedajú použiť znova.
 
 #### Signal (druhý kanál)
 

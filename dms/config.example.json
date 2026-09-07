@@ -38,6 +38,11 @@
   ],
   "state_path": "/data/state.json",
   "hmac_secret": "CHANGE-ME-to-a-long-random-string-min-16-chars",
+
+  "_options": "confirm_quorum = koľko rôznych potvrdzovateľov treba (default 1). checkin_key_version zvýš, ak unikol check-in odkaz. smtp_timeout je strop na celú SMTP konverzáciu.",
+  "confirm_quorum": 1,
+  "checkin_key_version": 0,
+  "smtp_timeout": "30s",
   "check_in_interval": "30d",
   "reminder_interval": "7d",
   "silence_threshold": "60d",

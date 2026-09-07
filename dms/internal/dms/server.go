@@ -57,7 +57,14 @@ func (s *Service) hConfirm(w http.ResponseWriter, r *http.Request) {
 			writePage(w, "Nedá sa potvrdiť", `<p class="err">`+htmlEscape(err.Error())+`</p>`)
 			return
 		}
-		writePage(w, "Potvrdené", `<p class="ok">✓ Potvrdené. Obálka sa odošle po uplynutí ochrannej lehoty, ak vlastník medzitým nepotvrdí, že žije.</p>`)
+		got, need := s.Confirmations()
+		if got < need {
+			writePage(w, "Potvrdené", fmt.Sprintf(
+				`<p class="ok">✓ Potvrdené. Zatiaľ %d z %d potrebných potvrdení — odpočet sa spustí, keď potvrdia aj ostatní.</p>`,
+				got, need))
+			return
+		}
+		writePage(w, "Potvrdené", `<p class="ok">✓ Potvrdené. Obálky sa odošlú po uplynutí ochrannej lehoty, ak vlastník medzitým nepotvrdí, že žije.</p>`)
 		return
 	}
 	id := r.URL.Query().Get("id")

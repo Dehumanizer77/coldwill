@@ -108,6 +108,7 @@ func (s *Service) Tick() {
 			}
 			s.st.Phase = PhaseAwaiting
 			s.st.CycleID = cycle
+			s.st.Confirmations = nil
 			s.st.LastConfirmReqAt = now
 			s.st.LastReminderAt = now
 			for _, c := range s.cfg.Confirmers {
@@ -176,6 +177,7 @@ func (s *Service) CheckIn() {
 		s.st.Phase = PhaseNormal
 		s.st.ConfirmedAt = time.Time{}
 		s.st.ConfirmedBy = ""
+		s.st.Confirmations = nil
 		s.st.LastWarningAt = time.Time{}
 		// A veto invalidates every confirmation link that was sent out: the next
 		// waiting cycle gets a new id, so an old link cannot be replayed.
@@ -209,17 +211,34 @@ func (s *Service) Confirm(id string) error {
 		return fmt.Errorf("unknown confirmer %q", id)
 	}
 	if s.st.Phase == PhaseCountdown {
-		return nil // already confirmed
+		return nil // already confirmed by enough people
 	}
 	if s.st.Phase != PhaseAwaiting {
 		return fmt.Errorf("not awaiting confirmation (phase %s)", s.st.Phase)
 	}
+	if !s.st.hasConfirmed(id) {
+		s.st.Confirmations = append(s.st.Confirmations, id)
+	}
+	got, need := len(s.st.Confirmations), s.cfg.ConfirmQuorum
+
+	if got < need {
+		// Not enough yet: record it and tell the owner someone attested.
+		log.Printf("dms: confirmation %d/%d (by %s)", got, need, id)
+		body := fmt.Sprintf("%s potvrdil. Na spustenie odpočtu treba %d potvrdení, zatiaľ ich je %d.\n\n"+
+			"Ak žiješ, ZRUŠ to teraz:\n\n%s\n— DMS", name, need, got, s.checkinURL())
+		s.persist()
+		s.mu.Unlock()
+		locked = false
+		s.notifyOwner("[DMS] Potvrdenie — čaká sa na ďalšie", body)
+		return nil
+	}
+
 	now := s.now()
 	s.st.Phase = PhaseCountdown
 	s.st.ConfirmedAt = now
 	s.st.ConfirmedBy = id
 	s.st.LastWarningAt = time.Time{}
-	log.Printf("dms: confirmed by %s; countdown started", id)
+	log.Printf("dms: confirmed by %s (%d/%d); countdown started", id, got, need)
 	body := s.bodyConfirmed(name)
 	s.persist()
 	s.mu.Unlock()
@@ -229,6 +248,14 @@ func (s *Service) Confirm(id string) error {
 	// otherwise block the owner's check-in, which is the veto.
 	s.notifyOwner("[DMS] Potvrdené — odpočet beží", body)
 	return nil
+}
+
+// Confirmations reports how many distinct confirmers have attested in this
+// cycle and how many are needed.
+func (s *Service) Confirmations() (got, need int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.st.Confirmations), s.cfg.ConfirmQuorum
 }
 
 // Phase returns the current phase (for status / tests).

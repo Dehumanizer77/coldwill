@@ -115,6 +115,13 @@ type Config struct {
 
 	Confirmers []Confirmer `json:"confirmers"`
 
+	// ConfirmQuorum is how many different confirmers must attest before the
+	// countdown starts. Default 1: one person suffices, which is the deliberate
+	// trade — a false confirmation is survivable (the envelope is useless
+	// without the metal parts) while nobody confirming is not. Raise it only if
+	// you would rather risk the inheritance stalling than a premature release.
+	ConfirmQuorum int `json:"confirm_quorum,omitempty"`
+
 	// Envelopes is the general form. envelope_path + friend_email below are the
 	// older single-envelope config and still work; applyDefaults folds them in.
 	Envelopes []Envelope `json:"envelopes,omitempty"`
@@ -177,6 +184,9 @@ func (c *Config) applyDefaults() {
 	if c.SMTPTimeout.D() == 0 {
 		c.SMTPTimeout = Duration(DefaultMailTimeout)
 	}
+	if c.ConfirmQuorum == 0 {
+		c.ConfirmQuorum = 1
+	}
 	// Single-envelope config keeps working: fold it into the general form so the
 	// rest of the service only ever deals with a list.
 	if len(c.Envelopes) == 0 && c.EnvelopePath != "" {
@@ -209,6 +219,11 @@ func (c Config) validate() error {
 		return fmt.Errorf("checkin_key_version must not be negative")
 	case len(c.Confirmers) == 0:
 		return fmt.Errorf("at least one confirmer required")
+	case c.ConfirmQuorum < 1:
+		return fmt.Errorf("confirm_quorum must be at least 1")
+	case c.ConfirmQuorum > len(c.Confirmers):
+		return fmt.Errorf("confirm_quorum %d exceeds the %d configured confirmers — nobody could ever release",
+			c.ConfirmQuorum, len(c.Confirmers))
 	}
 	// Every interval must be positive. A negative release_delay would let a
 	// confirmation fire on the very next tick with no grace period at all, and a
