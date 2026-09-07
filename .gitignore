@@ -31,6 +31,7 @@ keys/*.asc
 *.pdf
 TODO.local.md
 *.local.md
+SECURITY_REVIEW*.md
 
 # --- nástroje asistenta, nie súčasť projektu ---
 CLAUDE.md
