@@ -1,26 +1,26 @@
 <!doctype html>
-<html lang="sk">
+<html lang="{{.L}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nový backup: inh</title>
+  <title>{{t .L "setup.title"}}</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
-  <h1>Nový backup</h1>
-  <p class="muted">Vygeneruje sa náhodný 160-bit key-file a rozdelí sa na časti.
-  Štandard pre tento systém je <strong>2-z-3</strong>.</p>
+  <h1>{{t .L "setup.title"}}</h1>
+  <p class="muted">{{t .L "setup.intro"}}</p>
   <form method="post" action="/setup">
-    <label>Prah: koľko častí treba na obnovu
+    <input type="hidden" name="lang" value="{{.L}}">
+    <label>{{t .L "setup.threshold"}}
       <input type="number" name="threshold" value="2" min="1" max="16">
     </label>
-    <label>Počet častí
+    <label>{{t .L "setup.count"}}
       <input type="number" name="count" value="3" min="1" max="16">
     </label>
-    <button type="submit">Vygenerovať</button>
+    <button type="submit">{{t .L "setup.submit"}}</button>
   </form>
-  <p><a href="/">← späť</a></p>
+  <p><a href="/?lang={{.L}}">← {{t .L "nav.back"}}</a></p>
 </main>
 </body>
 </html>

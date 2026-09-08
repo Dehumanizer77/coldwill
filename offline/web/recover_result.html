@@ -1,37 +1,28 @@
 <!doctype html>
-<html lang="sk">
+<html lang="{{.L}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kľúč obnovený: inh</title>
+  <title>{{t .L "recoverres.title"}}</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
-  <h1>Kľúč obnovený</h1>
-  <p class="ok">✓ Z {{.NumShares}} častí zložený key-file.</p>
-  <p><a class="btn" download="inheritance.key" href="{{.KeyURL}}">⬇ Stiahnuť key-file</a></p>
-  <p class="hex">hex: <code>{{.KeyHex}}</code></p>
+  <h1>{{t .L "recoverres.title"}}</h1>
+  <p class="ok">{{t .L "recoverres.ok" .NumShares}}</p>
+  <p><a class="btn" download="inheritance.key" href="{{.KeyURL}}">{{t .L "setupres.download"}}</a></p>
+  <p class="hex">{{t .L "setupres.hex"}}: <code>{{.KeyHex}}</code></p>
 
-  <p class="muted">Pozor: toto je <strong>1. krok z 3</strong>. Samotný key-file ešte nie je prístup k Bitcoinu: treba ešte databázu <code>.kdbx</code> a passphrase z obálky.</p>
-  <pre class="chain">①  časti
-       │   (nástroj ich poskladá dokopy)
-       ▼
-   key-file (16 bajtov / hex)        ← TOTO práve vzniklo
-       │   + databáza .kdbx (KeePass)
-       ▼
-②  SEED + ďalšie informácie a prístupy
-       │   + passphrase (z obálky)
-       ▼
-③  obnova peňaženky  →  Bitcoin ₿</pre>
+  <p class="muted">{{t .L "recoverres.step"}}</p>
+  <pre class="chain">{{t .L "recoverres.chain"}}</pre>
 
-  <h2>Ďalej</h2>
+  <h2>{{t .L "recoverres.next.h"}}</h2>
   <ol>
-    <li>Otvor svoju <code>.kdbx</code> v KeePassXC; ako ochranu zvoľ <em>Key file</em> = tento súbor (<strong>do poľa Heslo nič nezadávaj</strong>).</li>
-    <li>Dostaneš sa k <strong>seedu</strong> a ďalším informáciám a prístupom; <strong>passphrase k peňaženke</strong> vezmi z obálky (banka / e-mail).</li>
-    <li>Na hardvérovej peňaženke obnov zo seedu + passphrase.</li>
+    <li>{{t .L "recoverres.next.1"}}</li>
+    <li>{{t .L "recoverres.next.2"}}</li>
+    <li>{{t .L "recoverres.next.3"}}</li>
   </ol>
-  <p><a href="/recover">← znova</a> · <a href="/">domov</a></p>
+  <p><a href="/recover?lang={{.L}}">← {{t .L "nav.again"}}</a> · <a href="/?lang={{.L}}">{{t .L "nav.home"}}</a></p>
 </main>
 </body>
 </html>

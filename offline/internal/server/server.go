@@ -10,12 +10,14 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"inh/offline/internal/i18n"
 	"inh/offline/internal/slip39"
 )
 
@@ -34,7 +36,29 @@ func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		// inc turns a 0-based range index into a human 1-based label.
 		"inc": func(i int) int { return i + 1 },
+		// t looks a message up in the catalogue for the page's language.
+		"t": i18n.T,
+		// ts is the same as plain text, for script and attribute contexts where
+		// html/template does its own contextual escaping.
+		"ts":       i18n.S,
+		"langs":    i18n.Languages,
+		"langName": i18n.Name,
 	}
+}
+
+// page carries what every template needs regardless of what it shows. Embedded
+// in each page's data so that {{t .L "key"}} works everywhere.
+type page struct {
+	L i18n.Lang
+}
+
+// lang reads the language from the request. The offline tool has no cookies and
+// no state, so it travels in the URL and in form fields.
+func (s *Server) lang(r *http.Request) i18n.Lang {
+	if v := r.FormValue("lang"); v != "" {
+		return i18n.Parse(v)
+	}
+	return i18n.Parse(r.URL.Query().Get("lang"))
 }
 
 func New(tmpl *template.Template, css []byte) *Server {
@@ -91,7 +115,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	s.render(w, "index.html", nil)
+	s.render(w, "index.html", page{L: s.lang(r)})
 }
 
 // wordView splits a word into the four letters that are engraved and the rest,
@@ -104,6 +128,7 @@ type shareView struct {
 }
 
 type setupData struct {
+	page
 	Threshold     int
 	Count         int
 	Shares        []shareView
@@ -114,8 +139,9 @@ type setupData struct {
 }
 
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
+	l := s.lang(r)
 	if r.Method != http.MethodPost {
-		s.render(w, "setup.html", nil)
+		s.render(w, "setup.html", page{L: l})
 		return
 	}
 	threshold := atoiDefault(r.FormValue("threshold"), 2)
@@ -123,12 +149,12 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 
 	key := make([]byte, keyBytes)
 	if _, err := rand.Read(key); err != nil {
-		s.renderErr(w, "Zlyhal generátor náhody: "+err.Error())
+		s.renderErr(w, l, "err.rand", err)
 		return
 	}
 	mnems, err := slip39.Generate(key, threshold, count, nil)
 	if err != nil {
-		s.renderErr(w, "Neplatné parametre: "+err.Error())
+		s.renderErr(w, l, "err.params", err)
 		return
 	}
 
@@ -139,7 +165,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		verified = e == nil && bytes.Equal(rk, key)
 	}
 
-	holders := holderLabels(count)
+	holders := holderLabels(l, count)
 	shares := make([]shareView, len(mnems))
 	wps := 0
 	for i, m := range mnems {
@@ -154,6 +180,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, "setup_result.html", setupData{
+		page:          page{L: l},
 		Threshold:     threshold,
 		Count:         count,
 		Shares:        shares,
@@ -168,13 +195,14 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 // page works with JavaScript disabled; the script only adds completion, focus
 // jumps and extra parts on top of them.
 type recoverForm struct {
+	page
 	Parts        []int
 	Words        []int
 	WordsPerPart int
 }
 
-func newRecoverForm(parts, words int) recoverForm {
-	f := recoverForm{Parts: make([]int, parts), Words: make([]int, words), WordsPerPart: words}
+func newRecoverForm(l i18n.Lang, parts, words int) recoverForm {
+	f := recoverForm{page: page{L: l}, Parts: make([]int, parts), Words: make([]int, words), WordsPerPart: words}
 	for i := range f.Parts {
 		f.Parts[i] = i
 	}
@@ -185,21 +213,23 @@ func newRecoverForm(parts, words int) recoverForm {
 }
 
 type recoverData struct {
+	page
 	NumShares int
 	KeyHex    string
 	KeyURL    template.URL
 }
 
 func (s *Server) handleRecover(w http.ResponseWriter, r *http.Request) {
+	l := s.lang(r)
 	if r.Method != http.MethodPost {
 		// Two parts of 23 words is what this tool produces by default; the page
 		// can add parts and switch the length.
-		s.render(w, "recover.html", newRecoverForm(2, 23))
+		s.render(w, "recover.html", newRecoverForm(l, 2, 23))
 		return
 	}
 	lines := collectParts(r)
 	if len(lines) == 0 {
-		s.renderErr(w, "Nezadal si žiadnu časť.")
+		s.renderErr(w, l, "err.noshares")
 		return
 	}
 	// Plates carry four-letter abbreviations, so that is what people type in.
@@ -207,16 +237,16 @@ func (s *Server) handleRecover(w http.ResponseWriter, r *http.Request) {
 	// engraved words are shortened at all.
 	lines, err := slip39.NormalizeMnemonics(lines)
 	if err != nil {
-		s.renderErr(w, "Nerozumiem zadaným slovám — "+err.Error()+
-			". Slová píš tak, ako sú na kove (stačia prvé 4 písmená), každú časť na svoj riadok.")
+		s.renderErr(w, l, "err.words", wordProblem(l, err))
 		return
 	}
 	key, err := slip39.Combine(lines, nil)
 	if err != nil {
-		s.renderErr(w, "Obnova zlyhala: "+err.Error()+" — skontroluj, či sú slová a počet častí správne.")
+		s.renderErr(w, l, "err.combine", err)
 		return
 	}
 	s.render(w, "recover_result.html", recoverData{
+		page:      page{L: l},
 		NumShares: len(lines),
 		KeyHex:    hex.EncodeToString(key),
 		KeyURL:    keyDataURL(key),
@@ -264,6 +294,30 @@ func (s *Server) handleWordlistJS(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "];window.SLIP39_PREFIX=%d;", slip39.PrefixLen)
 }
 
+// wordProblem phrases a slip39 word error for the reader. The crypto package
+// reports what went wrong; which language to say it in is this layer's business.
+func wordProblem(l i18n.Lang, err error) string {
+	var we *slip39.WordError
+	if !errors.As(err, &we) {
+		if errors.Is(err, slip39.ErrNoWords) {
+			return i18n.S(l, "word.empty")
+		}
+		return err.Error()
+	}
+	where := i18n.S(l, "word.at", we.Index)
+	if we.Part > 0 {
+		where = i18n.S(l, "word.at.part", we.Part, we.Index)
+	}
+	switch {
+	case we.TooShort:
+		return where + " " + i18n.S(l, "word.short", we.Word, slip39.PrefixLen)
+	case we.Suggestion != "":
+		return where + " " + i18n.S(l, "word.typo", we.Word, slip39.PrefixLen, we.Suggestion)
+	default:
+		return where + " " + i18n.S(l, "word.unknown", we.Word)
+	}
+}
+
 // Person is one trusted party in the runbook. Tech marks whether they are
 // technically skilled (whom the family calls / who receives the envelope) vs a
 // non-technical holder.
@@ -281,6 +335,7 @@ type partLoc struct {
 // runbookForm pre-fills the runbook form (empty defaults on GET, or the
 // previously-entered values when the user clicks "Upraviť" on a result).
 type runbookForm struct {
+	page
 	Author, Date, Wife       string
 	Persons                  []Person // every row, in order
 	Threshold, Count         int
@@ -290,6 +345,7 @@ type runbookForm struct {
 }
 
 type runbookData struct {
+	page
 	Author, Date, Wife       string
 	AllPersons               []Person // every row, for the hidden "Upraviť" form
 	TechPersons              []Person
@@ -300,19 +356,24 @@ type runbookData struct {
 	Bank, KdbxCopies         string
 	ToolWhere                string
 	WalletNotes, FamilyNotes string
+
+	// Parenthetical asides that only appear when there is something to say.
+	// Built here rather than in the template so the message stays one sentence
+	// in the catalogue instead of being assembled from fragments.
+	TechSuffix, ToolSuffix string
 }
 
 // joinNames renders a list of people the way a sentence needs it: "A",
 // "A alebo B", "A, B alebo C". The heir should see everyone she can call, not
 // just whoever happened to be entered first.
-func joinNames(names []string) string {
+func joinNames(l i18n.Lang, names []string) string {
 	switch len(names) {
 	case 0:
 		return ""
 	case 1:
 		return names[0]
 	}
-	return strings.Join(names[:len(names)-1], ", ") + " alebo " + names[len(names)-1]
+	return strings.Join(names[:len(names)-1], ", ") + i18n.S(l, "names.or") + names[len(names)-1]
 }
 
 // parsePersonRows reads the variable-length person rows. Every row submits a
@@ -351,12 +412,13 @@ func parsePersonRows(r *http.Request) []Person {
 // GET → empty form. POST with edit=1 → form pre-filled with the submitted
 // values (the result page's "Upraviť" button). POST otherwise → the result.
 func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
+	l := s.lang(r)
 	if r.Method != http.MethodPost {
-		s.render(w, "runbook_form.html", runbookForm{Threshold: 2, Count: 3})
+		s.render(w, "runbook_form.html", runbookForm{page: page{L: l}, Threshold: 2, Count: 3})
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderErr(w, "Neplatný formulár: "+err.Error())
+		s.renderErr(w, l, "err.form", err)
 		return
 	}
 	f := func(k string) string { return strings.TrimSpace(r.FormValue(k)) }
@@ -366,6 +428,7 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 
 	if r.FormValue("edit") == "1" {
 		s.render(w, "runbook_form.html", runbookForm{
+			page:   page{L: l},
 			Author: f("author"), Date: f("date"), Wife: f("wife"),
 			Persons: rows, Threshold: threshold, Count: count,
 			Bank: f("bank"), KdbxCopies: f("kdbx_copies"),
@@ -394,8 +457,9 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, "runbook.html", runbookData{
+		page:   page{L: l},
 		Author: f("author"), Date: f("date"), Wife: f("wife"),
-		AllPersons: rows, TechPersons: tech, OtherPersons: other, TechNames: joinNames(names),
+		AllPersons: rows, TechPersons: tech, OtherPersons: other, TechNames: joinNames(l, names),
 		Parts:     parts,
 		Threshold: threshold, Count: count,
 		Bank: f("bank"), KdbxCopies: f("kdbx_copies"),
@@ -410,13 +474,13 @@ func keyDataURL(key []byte) template.URL {
 	return template.URL("data:application/octet-stream;base64," + base64.StdEncoding.EncodeToString(key))
 }
 
-func holderLabels(count int) []string {
+func holderLabels(l i18n.Lang, count int) []string {
 	if count == 3 {
-		return []string{"Prvá časť", "Druhá časť", "Tretia časť"}
+		return []string{i18n.S(l, "holder.1"), i18n.S(l, "holder.2"), i18n.S(l, "holder.3")}
 	}
 	out := make([]string, count)
 	for i := range out {
-		out[i] = "Časť #" + strconv.Itoa(i+1)
+		out[i] = i18n.S(l, "holder.n", i+1)
 	}
 	return out
 }
@@ -435,9 +499,13 @@ func (s *Server) render(w http.ResponseWriter, name string, data any) {
 	}
 }
 
-func (s *Server) renderErr(w http.ResponseWriter, msg string) {
+func (s *Server) renderErr(w http.ResponseWriter, l i18n.Lang, key string, args ...any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.tmpl.ExecuteTemplate(w, "error.html", struct{ Message string }{msg}); err != nil {
+	data := struct {
+		page
+		Message template.HTML
+	}{page{L: l}, i18n.T(l, key, args...)}
+	if err := s.tmpl.ExecuteTemplate(w, "error.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

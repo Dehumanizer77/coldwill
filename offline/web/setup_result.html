@@ -1,23 +1,23 @@
 <!doctype html>
-<html lang="sk">
+<html lang="{{.L}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Backup vygenerovaný: inh</title>
+  <title>{{t .L "setupres.title" .Threshold .Count}}</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
-  <h1>Backup vygenerovaný ({{.Threshold}}-z-{{.Count}})</h1>
+  <h1>{{t .L "setupres.title" .Threshold .Count}}</h1>
   {{if .Verified}}
-    <p class="ok">✓ Self-test: {{.Threshold}} časti správne zložili kľúč späť.</p>
+    <p class="ok">{{t .L "setupres.selftest.ok" .Threshold}}</p>
   {{else}}
-    <p class="err">✗ Self-test ZLYHAL. Nepoužívaj tento výstup, zopakuj generovanie.</p>
+    <p class="err">{{t .L "setupres.selftest.bad"}}</p>
   {{end}}
 
-  <h2>Časti: každú na vlastné médium</h2>
-  <p class="muted">Každá časť je {{.WordsPerShare}} očíslovaných slov; prenes ich na médium presne v tomto poradí. Na obnovu stačia ľubovoľné {{.Threshold}}.</p>
-  <p class="muted">Na kov stačí <strong>prvé 4 písmená</strong> (zvýraznené): v SLIP-39 zozname je nimi slovo určené jednoznačne, preto majú kovové médiá väčšinou len 4 pozície na slovo. Obnovovací nástroj si zvyšok doplní sám.</p>
+  <h2>{{t .L "setupres.shares.h"}}</h2>
+  <p class="muted">{{t .L "setupres.shares.p" .WordsPerShare .Threshold}}</p>
+  <p class="muted">{{t .L "setupres.prefix.p"}}</p>
   {{range .Shares}}
     <section class="share">
       <h3>{{.Holder}}</h3>
@@ -27,20 +27,20 @@
     </section>
   {{end}}
 
-  <h2>Key-file</h2>
-  <p class="muted">Týmto súborom zamkneš KeePass DB. Po vytvorení DB ho zmaž, vždy ho znova zložíš z {{.Threshold}} častí.</p>
-  <p><a class="btn" download="inheritance.key" href="{{.KeyURL}}">⬇ Stiahnuť key-file</a></p>
-  <p class="hex">hex: <code>{{.KeyHex}}</code></p>
-  <p class="muted">⚠️ Toto je obsah key-filu (tých istých 20 bajtov), len na <strong>okamžité vytvorenie DB</strong> a prípadné overenie. <strong>NEZAPISUJ ho do runbooku ani nikam inam</strong>: kľúč má žiť len ako {{.Count}} časti; jeho uložením kdekoľvek by si obišiel ochranu {{.Threshold}}-z-{{.Count}}.</p>
+  <h2>{{t .L "setupres.keyfile.h"}}</h2>
+  <p class="muted">{{t .L "setupres.keyfile.p" .Threshold}}</p>
+  <p><a class="btn" download="inheritance.key" href="{{.KeyURL}}">{{t .L "setupres.download"}}</a></p>
+  <p class="hex">{{t .L "setupres.hex"}}: <code>{{.KeyHex}}</code></p>
+  <p class="muted">{{t .L "setupres.hex.warn" .Count .Threshold .Count}}</p>
 
-  <h2>Ďalej</h2>
+  <h2>{{t .L "setupres.next.h"}}</h2>
   <ol>
-    <li>Prenes všetky časti na kovové médium a rozdaj ich podľa plánu.</li>
-    <li>V KeePassXC vytvor novú databázu, ako ochranu zvoľ <em>Key file</em> = stiahnutý súbor (<strong>do poľa Heslo nič nezadávaj</strong>).</li>
-    <li>Do DB ulož seed a ostatné prístupy. <strong>passphrase k peňaženke do DB NEDÁVAJ</strong>, tá ide do posmrtnej obálky.</li>
-    <li>Rozkopíruj zašifrovanú <code>.kdbx</code> (cloud, banka, u všetkých). Key-file z disku zmaž.</li>
+    <li>{{t .L "setupres.next.1"}}</li>
+    <li>{{t .L "setupres.next.2"}}</li>
+    <li>{{t .L "setupres.next.3"}}</li>
+    <li>{{t .L "setupres.next.4"}}</li>
   </ol>
-  <p><a href="/">← domov</a></p>
+  <p><a href="/?lang={{.L}}">← {{t .L "nav.home"}}</a></p>
 </main>
 </body>
 </html>

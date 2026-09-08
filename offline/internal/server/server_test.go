@@ -54,7 +54,7 @@ func TestIndex(t *testing.T) {
 	if rr.Code != 200 {
 		t.Fatalf("status %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "Nový backup") {
+	if !strings.Contains(rr.Body.String(), "New backup") {
 		t.Fatalf("index missing expected content")
 	}
 }
@@ -66,7 +66,7 @@ func TestSetupPost(t *testing.T) {
 		t.Fatalf("status %d", rr.Code)
 	}
 	body := rr.Body.String()
-	for _, want := range []string{"Self-test", "Prvá časť", "Druhá časť", "Tretia časť", "Stiahnuť key-file"} {
+	for _, want := range []string{"Self-test", "First share", "Second share", "Third share", "Download key file"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("setup result missing %q", want)
 		}
@@ -92,14 +92,14 @@ func TestRecoverRoundTrip(t *testing.T) {
 		t.Fatalf("status %d", rr.Code)
 	}
 	body := rr.Body.String()
-	if !strings.Contains(body, "Kľúč obnovený") {
+	if !strings.Contains(body, "Key recovered") {
 		t.Fatalf("recover did not succeed: %s", firstLine(body))
 	}
 	wantHex := "526f756e64547269704b65795f313621" // hex of the 16-byte key
 	if !strings.Contains(body, wantHex) {
 		t.Fatalf("recovered hex not found in response")
 	}
-	if !strings.Contains(body, "1. krok z 3") {
+	if !strings.Contains(body, "step 1 of 3") {
 		t.Errorf("recover result missing the chain explanation")
 	}
 }
@@ -110,7 +110,7 @@ func TestRecoverError(t *testing.T) {
 	if rr.Code != 200 {
 		t.Fatalf("status %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "Chyba") {
+	if !strings.Contains(rr.Body.String(), "Error") {
 		t.Fatalf("expected error page")
 	}
 }
@@ -118,34 +118,76 @@ func TestRecoverError(t *testing.T) {
 func TestRunbookForm(t *testing.T) {
 	s := newTestServer(t)
 	rr := do(s, http.MethodGet, "/runbook", nil)
-	if rr.Code != 200 || !strings.Contains(rr.Body.String(), "návod pre rodinu") {
+	if rr.Code != 200 || !strings.Contains(rr.Body.String(), "instructions for the family") {
 		t.Fatalf("runbook form missing (status %d)", rr.Code)
 	}
 }
 
 func TestRunbookRender(t *testing.T) {
+	// The same data rendered in each language: user input survives unchanged,
+	// while every sentence around it comes from that language's catalogue.
+	cases := map[string][]string{
+		"": { // no lang -> English, the default
+			"contains no secrets", "Technically capable people",
+			"The other share holders", "held by: Alica", "23 words",
+		},
+		"sk": {
+			"neobsahuje žiadne tajomstvá", "Technicky zdatné osoby",
+			"Ostatní držitelia častí", "drží: Alica", "23 slov",
+		},
+	}
+	for lang, wants := range cases {
+		t.Run("lang="+lang, func(t *testing.T) {
+			s := newTestServer(t)
+			form := url.Values{
+				"person_name":    {"Alica", "Bob"},
+				"person_contact": {"a@example.com", "b@example.com"},
+				"person_tech":    {"tech", "nontech"},
+				"wife":           {"Jana"},
+				"bank":           {"Banka XY, schranka 42"},
+				"threshold":      {"2"}, "count": {"3"},
+			}
+			if lang != "" {
+				form.Set("lang", lang)
+			}
+			rr := do(s, http.MethodPost, "/runbook", form)
+			if rr.Code != 200 {
+				t.Fatalf("status %d", rr.Code)
+			}
+			body := rr.Body.String()
+			// Data the owner typed in, identical in every language.
+			for _, want := range []string{
+				"Alica", "Bob", "Jana", "Banka XY, schranka 42",
+				"window.print()", `name="edit" value="1"`,
+			} {
+				if !strings.Contains(body, want) {
+					t.Errorf("runbook missing %q", want)
+				}
+			}
+			for _, want := range wants {
+				if !strings.Contains(body, want) {
+					t.Errorf("runbook missing %q", want)
+				}
+			}
+		})
+	}
+}
+
+// The chosen language has to survive the round trip through the edit button,
+// or editing a Slovak runbook would hand back an English one.
+func TestRunbookEditKeepsLanguage(t *testing.T) {
 	s := newTestServer(t)
 	rr := do(s, http.MethodPost, "/runbook", url.Values{
-		"person_name":    {"Alica", "Bob"},
-		"person_contact": {"a@example.com", "b@example.com"},
-		"person_tech":    {"tech", "nontech"},
-		"wife":           {"Jana"},
-		"bank":           {"Banka XY, schranka 42"},
-		"threshold":      {"2"}, "count": {"3"},
+		"edit": {"1"}, "lang": {"sk"},
+		"person_name": {"Alica"}, "person_contact": {"a@example.com"}, "person_tech": {"tech"},
+		"threshold": {"2"}, "count": {"1"},
 	})
-	if rr.Code != 200 {
-		t.Fatalf("status %d", rr.Code)
-	}
 	body := rr.Body.String()
-	for _, want := range []string{
-		"neobsahuje žiadne tajomstvá", "Technicky zdatné osoby", "Alica",
-		"Ostatní držitelia častí", "Bob", "drží: Alica", "Jana",
-		"Banka XY, schranka 42", "window.print()", "23 slov",
-		`name="edit" value="1"`, // hidden edit form carries data back
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("runbook missing %q", want)
-		}
+	if !strings.Contains(body, "Vygenerovať runbook") {
+		t.Errorf("edit form came back in the wrong language: %s", firstLine(body))
+	}
+	if !strings.Contains(body, `<option value="sk" selected>`) {
+		t.Errorf("the language select did not keep sk")
 	}
 }
 
@@ -165,7 +207,7 @@ func TestRunbookEdit(t *testing.T) {
 	}
 	body := rr.Body.String()
 	for _, want := range []string{
-		"Vygenerovať runbook", // it's the form, not the result
+		"Generate the runbook", // it's the form, not the result
 		`value="Alica"`, `value="Bob"`, `value="Jana"`,
 		`<option value="tech" selected>`, // Alica's tech flag preserved
 	} {
@@ -249,7 +291,7 @@ func TestRecoverAcceptsEngravedAbbreviations(t *testing.T) {
 		t.Fatalf("status %d", rr.Code)
 	}
 	body := rr.Body.String()
-	if !strings.Contains(body, "Kľúč obnovený") {
+	if !strings.Contains(body, "Key recovered") {
 		t.Fatalf("recover from abbreviations failed: %s", firstLine(body))
 	}
 	if !strings.Contains(body, hex.EncodeToString(key)) {
@@ -262,7 +304,7 @@ func TestRecoverRejectsAmbiguousWord(t *testing.T) {
 	s := newTestServer(t)
 	rr := do(s, http.MethodPost, "/recover", url.Values{"mnemonics": {"aca acid acro"}})
 	body := rr.Body.String()
-	if !strings.Contains(body, "príliš krátke") {
+	if !strings.Contains(body, "too short") {
 		t.Errorf("expected a message about the too-short word, got: %s", firstLine(body))
 	}
 }
@@ -272,7 +314,7 @@ func TestSetupMarksEngravedPrefix(t *testing.T) {
 	s := newTestServer(t)
 	rr := do(s, http.MethodPost, "/setup", url.Values{"threshold": {"2"}, "count": {"3"}})
 	body := rr.Body.String()
-	if !strings.Contains(body, "prvé 4 písmená") {
+	if !strings.Contains(body, "first 4 letters") {
 		t.Errorf("setup result does not explain the four-letter abbreviation")
 	}
 	if !strings.Contains(body, "<li><strong>") {
@@ -289,7 +331,7 @@ func TestRecoverFormRendersWordFields(t *testing.T) {
 		t.Fatalf("status %d", rr.Code)
 	}
 	body := rr.Body.String()
-	for _, want := range []string{`name="p0w0"`, `name="p0w22"`, `name="p1w22"`, `id="partcount"`, `id="wordcount"`, "prvé 4 písmená"} {
+	for _, want := range []string{`name="p0w0"`, `name="p0w22"`, `name="p1w22"`, `id="partcount"`, `id="wordcount"`, "first 4 letters"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("recover form missing %q", want)
 		}
@@ -317,7 +359,7 @@ func TestRecoverFromPerWordFields(t *testing.T) {
 	}
 	rr := do(s, http.MethodPost, "/recover", form)
 	body := rr.Body.String()
-	if !strings.Contains(body, "Kľúč obnovený") {
+	if !strings.Contains(body, "Key recovered") {
 		t.Fatalf("recovery from word fields failed: %s", firstLine(body))
 	}
 	if !strings.Contains(body, hex.EncodeToString(key)) {

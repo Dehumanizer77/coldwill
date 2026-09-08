@@ -1,6 +1,7 @@
 package slip39
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -29,6 +30,32 @@ func initPrefixIndex() {
 	}
 }
 
+// WordError says which word in a line could not be resolved and why, so the
+// caller can phrase it in the reader's language. Suggestion is set when the
+// first PrefixLen letters match a word but the rest does not, which is the
+// signature of a typo rather than an unknown word.
+type WordError struct {
+	Part       int    // 1-based, 0 when a single line was normalized
+	Index      int    // 1-based word position in the line
+	Word       string // what the person wrote
+	TooShort   bool   // shorter than PrefixLen, therefore ambiguous
+	Suggestion string // the word those first letters actually belong to
+}
+
+func (e *WordError) Error() string {
+	switch {
+	case e.TooShort:
+		return fmt.Sprintf("word %d %q is shorter than %d letters", e.Index, e.Word, PrefixLen)
+	case e.Suggestion != "":
+		return fmt.Sprintf("word %d %q is not in the SLIP-39 wordlist (did you mean %q?)", e.Index, e.Word, e.Suggestion)
+	default:
+		return fmt.Sprintf("word %d %q is not in the SLIP-39 wordlist", e.Index, e.Word)
+	}
+}
+
+// ErrNoWords means the line held nothing that could be a word.
+var ErrNoWords = errors.New("no words in the line")
+
 // NormalizeMnemonic turns what a person reads off a metal plate into a
 // spec-compliant mnemonic: it lowercases, ignores numbering and punctuation,
 // and expands four-letter (or longer) prefixes to whole words. It is strict
@@ -39,13 +66,17 @@ func NormalizeMnemonic(line string) (string, error) {
 		return r < 'a' || r > 'z'
 	})
 	if len(tokens) == 0 {
-		return "", fmt.Errorf("riadok neobsahuje žiadne slová")
+		return "", ErrNoWords
 	}
 	words := make([]string, len(tokens))
 	for i, t := range tokens {
 		w, err := expandWord(t)
 		if err != nil {
-			return "", fmt.Errorf("%d. slovo: %w", i+1, err)
+			var we *WordError
+			if errors.As(err, &we) {
+				we.Index = i + 1
+			}
+			return "", err
 		}
 		words[i] = w
 	}
@@ -57,15 +88,14 @@ func expandWord(t string) (string, error) {
 		return t, nil
 	}
 	if len(t) < PrefixLen {
-		return "", fmt.Errorf("%q je príliš krátke — na kove sú vždy aspoň %d písmená", t, PrefixLen)
+		return "", &WordError{Word: t, TooShort: true}
 	}
 	full, ok := prefixIndex[t[:PrefixLen]]
 	if !ok {
-		return "", fmt.Errorf("%q nie je slovo zo SLIP-39 zoznamu", t)
+		return "", &WordError{Word: t}
 	}
 	if !strings.HasPrefix(full, t) {
-		return "", fmt.Errorf("%q nie je slovo zo SLIP-39 zoznamu (podľa prvých %d písmen by to malo byť %q)",
-			t, PrefixLen, full)
+		return "", &WordError{Word: t, Suggestion: full}
 	}
 	return full, nil
 }
@@ -80,7 +110,11 @@ func NormalizeMnemonics(lines []string) ([]string, error) {
 		}
 		m, err := NormalizeMnemonic(ln)
 		if err != nil {
-			return nil, fmt.Errorf("%d. časť: %w", i+1, err)
+			var we *WordError
+			if errors.As(err, &we) {
+				we.Part = i + 1
+			}
+			return nil, err
 		}
 		out = append(out, m)
 	}

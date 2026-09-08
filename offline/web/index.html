@@ -1,28 +1,31 @@
 <!doctype html>
-<html lang="sk">
+<html lang="{{.L}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>inh: offline nástroj</title>
+  <title>{{t .L "app.title"}}</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
-  <h1>🔐 inh: offline Setup / Recovery</h1>
+  <h1>{{t .L "index.h1"}}</h1>
   <div class="cards">
-    <a class="card" href="/setup">
-      <h2>Nový backup</h2>
-      <p class="muted">Vygeneruj key-file a rozdeľ ho na 3 časti (2-z-3).</p>
+    <a class="card" href="/setup?lang={{.L}}">
+      <h2>{{t .L "index.setup.h"}}</h2>
+      <p class="muted">{{t .L "index.setup.p"}}</p>
     </a>
-    <a class="card" href="/recover">
-      <h2>Obnova</h2>
-      <p class="muted">Zlož 2 časti späť na key-file na otvorenie KeePass DB.</p>
+    <a class="card" href="/recover?lang={{.L}}">
+      <h2>{{t .L "index.recover.h"}}</h2>
+      <p class="muted">{{t .L "index.recover.p"}}</p>
     </a>
-    <a class="card" href="/runbook">
-      <h2>Runbook</h2>
-      <p class="muted">Vytvor personalizovaný návod „kto-čo-kde" pre rodinu (vytlač / ulož ako PDF).</p>
+    <a class="card" href="/runbook?lang={{.L}}">
+      <h2>{{t .L "index.runbook.h"}}</h2>
+      <p class="muted">{{t .L "index.runbook.p"}}</p>
     </a>
   </div>
+  <p class="muted langpick">{{t .L "lang.label"}}:
+    {{range langs}}<a href="/?lang={{.}}">{{langName .}}</a> {{end}}
+  </p>
 </main>
 </body>
 </html>

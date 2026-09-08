@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="sk">
+<html lang="{{.L}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chyba: inh</title>
+  <title>{{t .L "error.title"}}</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
-  <h1>Chyba</h1>
+  <h1>{{t .L "error.title"}}</h1>
   <p class="err">{{.Message}}</p>
-  <p><a href="/recover">← skús znova</a> · <a href="/">domov</a></p>
+  <p><a href="/recover?lang={{.L}}">← {{t .L "nav.again"}}</a> · <a href="/?lang={{.L}}">{{t .L "nav.home"}}</a></p>
 </main>
 </body>
 </html>

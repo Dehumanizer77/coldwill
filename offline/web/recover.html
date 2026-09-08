@@ -1,25 +1,24 @@
 <!doctype html>
-<html lang="sk">
+<html lang="{{.L}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Obnova: inh</title>
+  <title>{{t .L "recover.title"}}</title>
   <link rel="stylesheet" href="/style.css">
   <script src="/wordlist.js"></script>
 </head>
 <body>
 <main>
-  <h1>Obnova key-filu</h1>
-  <p class="muted">Prepíš slová z kovových častí, <strong>každú časť do svojho bloku</strong>.
-  Stačia <strong>prvé 4 písmená</strong> tak, ako sú vyryté; celé slovo sa doplní samo
-  a kurzor skočí na ďalšie pole. Treba aspoň toľko častí, koľko bol prah (štandardne 2).</p>
+  <h1>{{t .L "recover.title"}}</h1>
+  <p class="muted">{{t .L "recover.intro"}}</p>
 
   <form method="post" action="/recover" class="wide" id="recform">
+    <input type="hidden" name="lang" value="{{.L}}">
     <div class="row noprint">
-      <label class="inline">Počet častí
+      <label class="inline">{{t .L "recover.partcount"}}
         <input type="number" id="partcount" value="2" min="1" max="16">
       </label>
-      <label class="inline">Slov v časti
+      <label class="inline">{{t .L "recover.wordcount"}}
         <select id="wordcount">
           <option value="20">20</option>
           <option value="23" selected>23</option>
@@ -32,7 +31,7 @@
     <div id="parts">
       {{range $p := .Parts}}
       <section class="part" data-part="{{$p}}">
-        <h3>Časť {{inc $p}} <span class="count muted"></span></h3>
+        <h3>{{t $.L "recover.part" (inc $p)}} <span class="count muted"></span></h3>
         <div class="wordgrid">
           {{range $w := $.Words}}
           <label><span class="n">{{inc $w}}.</span><input type="text" name="p{{$p}}w{{$w}}"
@@ -44,20 +43,23 @@
       {{end}}
     </div>
 
-    <button type="submit">Zložiť key-file</button>
+    <button type="submit">{{t .L "recover.submit"}}</button>
 
     <details>
-      <summary>Alebo vlož časti naraz ako text</summary>
-      <p class="muted">Každá časť na svoj riadok. Použi, ak máš slová v súbore; inak vypĺňaj polia vyššie.</p>
-      <textarea name="mnemonics" rows="5" placeholder="časť 1: slovo slovo slovo …&#10;časť 2: slovo slovo slovo …"></textarea>
+      <summary>{{t .L "recover.paste.sum"}}</summary>
+      <p class="muted">{{t .L "recover.paste.p"}}</p>
+      <textarea name="mnemonics" rows="5" placeholder="{{ts .L "recover.paste.ph"}}"></textarea>
     </details>
   </form>
-  <p><a href="/">← späť</a></p>
+  <p><a href="/?lang={{.L}}">← {{t .L "nav.back"}}</a></p>
 </main>
 
 <script>
 (function () {
   var WORDS = window.SLIP39_WORDS || [], N = window.SLIP39_PREFIX || 4;
+  var PART_LABEL = "{{ts .L "recover.part" "@@"}}";
+  var CONFIRM_WORDS = "{{ts .L "recover.confirm.words"}}";
+  var CONFIRM_PARTS = "{{ts .L "recover.confirm.parts"}}";
   if (!WORDS.length) return;                 // bez zoznamu radšej nechaj polia tak
   var byPrefix = {};
   WORDS.forEach(function (w) { byPrefix[w.slice(0, N)] = w; });
@@ -167,7 +169,7 @@
         index + 'w' + i + '" autocomplete="off" autocapitalize="off" spellcheck="false"></label>';
     }
     grid += "</div>";
-    sec.innerHTML = "<h3>Časť " + (index + 1) + ' <span class="count muted"></span></h3>' + grid;
+    sec.innerHTML = "<h3>" + PART_LABEL.replace("@@", index + 1) + ' <span class="count muted"></span></h3>' + grid;
     return sec;
   }
 
@@ -189,7 +191,7 @@
       var loses = secs.slice(n).some(function (sec) {
         return inputs(sec).some(function (i) { return i.value !== ""; });
       });
-      if (loses && !confirm("Odobratím sa vymažú slová zadané v tých častiach. Pokračovať?")) {
+      if (loses && !confirm(CONFIRM_PARTS)) {
         partCount.value = cur;
         return;
       }
@@ -208,7 +210,7 @@
   document.getElementById("wordcount").addEventListener("change", function () {
     var words = parseInt(this.value, 10);
     var filled = allInputs().some(function (i) { return i.value; });
-    if (filled && !confirm("Zmena dĺžky vymaže zadané slová. Pokračovať?")) return;
+    if (filled && !confirm(CONFIRM_WORDS)) return;
     var n = partSections().length;
     parts.innerHTML = "";
     for (var p = 0; p < n; p++) parts.appendChild(buildPart(p, words));

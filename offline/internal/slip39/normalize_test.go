@@ -32,10 +32,10 @@ func TestNormalizeMnemonic(t *testing.T) {
 		{in: "1. acad  2. acid   3. acro", want: "academic acid acrobat"}, // numbering
 		{in: "acad, acid; acro.", want: "academic acid acrobat"},          // punctuation
 		{in: "academ acid acro", want: "academic acid acrobat"},           // partial, still unambiguous
-		{in: "aca acid acro", errContains: "príliš krátke"},               // 3 letters are ambiguous
-		{in: "zzzz acid acro", errContains: "nie je slovo"},               // unknown
-		{in: "acadxxxx acid", errContains: "malo byť"},                    // typo past the prefix
-		{in: "   ", errContains: "žiadne slová"},
+		{in: "aca acid acro", errContains: "shorter than"},                // 3 letters are ambiguous
+		{in: "zzzz acid acro", errContains: "not in the SLIP-39"},         // unknown
+		{in: "acadxxxx acid", errContains: "did you mean"},                // typo past the prefix
+		{in: "   ", errContains: "no words"},
 	}
 	for _, c := range cases {
 		got, err := NormalizeMnemonic(c.in)

@@ -1,17 +1,18 @@
 <!doctype html>
-<html lang="sk">
+<html lang="{{.L}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Runbook: inštrukcie pre rodinu</title>
+  <title>{{t .L "rb.title"}}</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="runbook">
 <main>
   <div class="toolbar noprint">
-    <button onclick="window.print()">🖨 Vytlačiť / Uložiť ako PDF</button>
+    <button onclick="window.print()">{{t .L "rb.print"}}</button>
     <form method="post" action="/runbook" style="display:inline">
       <input type="hidden" name="edit" value="1">
+      <input type="hidden" name="lang" value="{{.L}}">
       <input type="hidden" name="author" value="{{.Author}}">
       <input type="hidden" name="date" value="{{.Date}}">
       <input type="hidden" name="wife" value="{{.Wife}}">
@@ -27,52 +28,41 @@
       <input type="hidden" name="person_contact" value="{{.Contact}}">
       <input type="hidden" name="person_tech" value="{{if .Tech}}tech{{else}}nontech{{end}}">
       {{end}}
-      <button type="submit">✏️ Upraviť</button>
+      <button type="submit">{{t .L "rb.edit"}}</button>
     </form>
-    <a href="/runbook" style="margin-left:12px">← nový formulár</a>
-    <p class="muted" style="margin:6px 0 0">Pri tlači nechaj okraje na „Predvolené“.</p>
+    <a href="/runbook?lang={{.L}}" style="margin-left:12px">{{t .L "rb.newform"}}</a>
+    <p class="muted" style="margin:6px 0 0">{{t .L "rb.margins"}}</p>
   </div>
 
-  <h1>Bitcoin: inštrukcie pre prípad mojej smrti</h1>
-  <p>{{if .Author}}Autor: <strong>{{.Author}}</strong>. {{end}}{{if .Date}}Dátum: {{.Date}}.{{end}}</p>
+  <h1>{{t .L "rb.h1"}}</h1>
+  <p>{{if .Author}}{{t .L "rb.author" .Author}}{{end}}{{if .Date}}{{t .L "rb.date" .Date}}{{end}}</p>
 
-  <p class="warn">Tento dokument <strong>neobsahuje žiadne tajomstvá</strong> (žiadny seed, heslo, passphrase ani časti), je to len <strong>mapa a postup</strong>. Prezrádza však, kde čo hľadať, preto ho nezverejňuj a drž len u dôveryhodných osôb.</p>
+  <p class="warn">{{t .L "rb.nosecrets"}}</p>
 
   <section>
-    <h2>Úvod</h2>
-    {{if .Wife}}<p>Adresát: <strong>{{.Wife}}</strong></p>{{end}}
-    <p>Najprv zavolaj technicky zdatnú osobu (nižšie), ktorá ťa celým postupom prevedie.
-    Neponáhľaj sa, rob to po krokoch a nikomu cudziemu nedávaj nič.</p>
-    <p><strong>Čo je „časť“:</strong> zoznam <strong>23 slov</strong> uložený na
-    <strong>kovovom médiu</strong>, aby prežil aj oheň a vodu. Tvar sa u jednotlivých držiteľov
-    môže líšiť: býva to plochá platnička alebo doštička, kovový valček či kapsula, kazeta so
-    zasúvacími písmenkami, kartička veľkosti platobnej karty, alebo aj niekoľko zoskrutkovaných
-    plieškov. Hľadaj kovový predmet so slovami alebo písmenami. Jedna časť samotná je nanič,
-    treba ich <strong>{{.Threshold}} z {{.Count}}</strong>, aby sa z nich zložil „key-file“
-    (kľúč k databáze). Jednotlivé časti držia rôzne dôveryhodné osoby (nižšie).</p>
+    <h2>{{t .L "rb.intro.h"}}</h2>
+    {{if .Wife}}<p>{{t .L "rb.intro.to" .Wife}}</p>{{end}}
+    <p>{{t .L "rb.intro.p"}}</p>
+    <p>{{t .L "rb.intro.whatis" .Threshold .Count}}</p>
   </section>
 
   <section>
-    <h2>Ako to funguje (automatický systém)</h2>
-    <p>Kým žijem, chodia mi pravidelné kontrolné e-maily. Ak sa dlhšie neozvem
-    a niektorá z dôveryhodných osôb to potvrdí, systém po ochrannej lehote (niekoľko dní)
-    <strong>automaticky pošle obálku s passphrase e-mailom technicky zdatnej osobe{{if .TechNames}} ({{.TechNames}}){{end}}</strong>.
-    Keby to automatické posielanie zlyhalo, to isté heslo je napísané na papieri
-    v bankovom trezore (bod 2).</p>
+    <h2>{{t .L "rb.auto.h"}}</h2>
+    <p>{{t .L "rb.auto.p" .TechSuffix}}</p>
   </section>
 
   <section>
-    <h2>1) Koho zavolať</h2>
+    <h2>{{t .L "rb.call.h"}}</h2>
     {{if .TechPersons}}
-    <p><strong>Technicky zdatné osoby.</strong> Volaj ich, prevedú ťa celým postupom:</p>
+    <p>{{t .L "rb.call.tech"}}</p>
     <ul>
       {{range .TechPersons}}<li><strong>{{.Name}}</strong>{{if .Contact}}, {{.Contact}}{{end}}</li>{{end}}
     </ul>
     {{else}}
-    <p class="warn">Nie je uvedená žiadna technicky zdatná osoba. Doplň aspoň jednu, inak nebude mať kto pomôcť.</p>
+    <p class="warn">{{t .L "rb.call.notech"}}</p>
     {{end}}
     {{if .OtherPersons}}
-    <p><strong>Ostatní držitelia častí:</strong></p>
+    <p>{{t .L "rb.call.others"}}</p>
     <ul>
       {{range .OtherPersons}}<li>{{.Name}}{{if .Contact}}, {{.Contact}}{{end}}</li>{{end}}
     </ul>
@@ -80,137 +70,92 @@
   </section>
 
   <section>
-    <h2>2) Čo treba získať (dve veci)</h2>
-    <p>Na prístup k Bitcoinu treba <strong>oboje</strong>:</p>
+    <h2>{{t .L "rb.need.h"}}</h2>
+    <p>{{t .L "rb.need.p"}}</p>
     <ul>
-      <li><strong>{{.Threshold}} z {{.Count}} častí</strong> (každá je 23 slov), z nich sa zloží „key-file“.</li>
-      <li><strong>Obálku s passphrase</strong>: druhé tajomstvo, bez ktorého sa k Bitcoinu nedá dostať.</li>
+      <li>{{t .L "rb.need.parts" .Threshold .Count}}</li>
+      <li>{{t .L "rb.need.env"}}</li>
     </ul>
-    <p>Ani jedno samo o sebe nestačí, preto je to bezpečné.</p>
+    <p>{{t .L "rb.need.note"}}</p>
   </section>
 
   <section>
-    <h2>3) Mapa: kde čo je</h2>
+    <h2>{{t .L "rb.map.h"}}</h2>
     <table>
-      <tr><th>Položka</th><th>Kde / u koho</th></tr>
-      {{range .Parts}}<tr><td>Časť {{.Num}}</td><td>{{if .Holder}}drží: {{.Holder}}{{else}}–{{end}}</td></tr>{{end}}
-      <tr><td>Obálka (passphrase), banka</td><td>{{if .Bank}}{{.Bank}}{{else}}–{{end}}</td></tr>
-      <tr><td>Zašifrovaná databáza (.kdbx), kópie</td><td class="pre">{{if .KdbxCopies}}{{.KdbxCopies}}{{else}}–{{end}}</td></tr>
+      <tr><th>{{t .L "rb.map.item"}}</th><th>{{t .L "rb.map.where"}}</th></tr>
+      {{$l := .L}}
+      {{range .Parts}}<tr><td>{{t $l "rb.map.part" .Num}}</td><td>{{if .Holder}}{{t $l "rb.map.held" .Holder}}{{else}}–{{end}}</td></tr>{{end}}
+      <tr><td>{{t .L "rb.map.env"}}</td><td>{{if .Bank}}{{.Bank}}{{else}}–{{end}}</td></tr>
+      <tr><td>{{t .L "rb.map.kdbx"}}</td><td class="pre">{{if .KdbxCopies}}{{.KdbxCopies}}{{else}}–{{end}}</td></tr>
     </table>
   </section>
 
   <section>
-    <h2>4) Postup krok za krokom</h2>
-    <p>Ako to do seba zapadá (treba <strong>tri veci</strong>, nie jednu):</p>
-    <pre class="chain">①  {{.Threshold}} z {{.Count}} častí (slová z kovu)
-       │   nástroj z nich poskladá kľúč
-       ▼
-   kľúč: malý súbor v počítači
-       │   ním sa otvorí databáza hesiel (program KeePassXC)
-       ▼
-②  v databáze: SEED peňaženky + ostatné prístupy
-       │   k tomu ešte heslo (passphrase) z obálky
-       ▼
-③  obnova peňaženky  →  Bitcoin ₿</pre>
+    <h2>{{t .L "rb.steps.h"}}</h2>
+    <p>{{t .L "rb.steps.intro"}}</p>
+    <pre class="chain">{{t .L "rb.steps.chain" .Threshold .Count}}</pre>
     <ol>
-      <li>Zavolaj technicky zdatnú osobu (bod 1). Poradí ti so všetkým, čomu nebudeš rozumieť.</li>
-      <li>Zožeň <strong>aspoň {{.Threshold}} časti</strong> (bod 3). Slová si od držiteľov odpíš na papier
-      alebo si ich nechaj nadiktovať. <strong>Nefoť ich telefónom</strong>, nie je to bezpečné.</li>
-      <li>Zožeň <strong>obálku s heslom (passphrase)</strong>: buď zapečatenú z bankového trezoru,
-      alebo od technicky zdatnej osoby{{if .TechNames}} ({{.TechNames}}){{end}}, ktorej ju systém pošle e-mailom.</li>
-      <li>Priprav <strong>počítač odpojený od internetu</strong> (vytiahni kábel, vypni wifi).
-      Je to dôležité: slová z častí sa naň budú písať a nesmú sa odtiaľ dostať von.
-      <br>Nástroj <em>inh-offline</em> je na <strong>USB kľúči</strong>{{if .ToolWhere}} ({{.ToolWhere}}){{end}}.
-      Na kľúči je viac súborov, jeden pre každý typ počítača. <strong>Spusti ten, ktorý sedí:</strong>
+      <li>{{t .L "rb.step.call"}}</li>
+      <li>{{t .L "rb.step.parts" .Threshold}}</li>
+      <li>{{t .L "rb.step.env" .TechSuffix}}</li>
+      <li>{{t .L "rb.step.pc" .ToolSuffix}}
       <table>
-        <tr><th>Počítač</th><th>Súbor</th></tr>
-        <tr><td>Windows</td><td><code>inh-offline-windows-amd64.exe</code></td></tr>
-        <tr><td>Mac (novší, od roku 2020)</td><td><code>inh-offline-darwin-arm64</code></td></tr>
-        <tr><td>Mac (starší, Intel)</td><td><code>inh-offline-darwin-amd64</code></td></tr>
-        <tr><td>Linux</td><td><code>inh-offline-linux-amd64</code></td></tr>
+        <tr><th>{{t .L "rb.step.pc.os"}}</th><th>{{t .L "rb.step.pc.file"}}</th></tr>
+        <tr><td>{{t .L "rb.step.pc.win"}}</td><td><code>inh-offline-windows-amd64.exe</code></td></tr>
+        <tr><td>{{t .L "rb.step.pc.mac1"}}</td><td><code>inh-offline-darwin-arm64</code></td></tr>
+        <tr><td>{{t .L "rb.step.pc.mac2"}}</td><td><code>inh-offline-darwin-amd64</code></td></tr>
+        <tr><td>{{t .L "rb.step.pc.lin"}}</td><td><code>inh-offline-linux-amd64</code></td></tr>
       </table>
-      Ak si nie si istý, ktorý to je, spýtaj sa technicky zdatnej osoby. Zlý súbor nič nepokazí,
-      len sa nespustí.</li>
-      <li><strong>Počítač bude asi protestovať.</strong> Nie je to chyba ani vírus: je to program,
-      za ktorý nikto nezaplatil registráciu u Microsoftu ani Apple. Varovanie pokojne obíď:
+      {{t .L "rb.step.pc.ask"}}</li>
+      <li>{{t .L "rb.step.warn"}}
       <ul>
-        <li><strong>Windows:</strong> objaví sa modré okno v štýle „Systém Windows ochránil váš počítač“.
-        Klikni na <em>Ďalšie informácie</em> a potom na <em>Spustiť aj tak</em>.</li>
-        <li><strong>Mac:</strong> napíše, že súbor je od neovereného vývojára. Zavri to, klikni na súbor
-        <strong>pravým tlačidlom</strong> (alebo dvoma prstami) a vyber <em>Otvoriť</em>; v ďalšom okne
-        znova <em>Otvoriť</em>. Ak to nejde, otvor <em>Nastavenia → Súkromie a bezpečnosť</em>, kde bude
-        tlačidlo <em>Otvoriť napriek tomu</em>.</li>
-        <li><strong>Linux:</strong> ak sa súbor nedá spustiť, technicky zdatná osoba mu dá právo príkazom
-        <code>chmod +x inh-offline-linux-amd64</code>.</li>
+        <li>{{t .L "rb.step.warn.win"}}</li>
+        <li>{{t .L "rb.step.warn.mac"}}</li>
+        <li>{{t .L "rb.step.warn.lin"}}</li>
       </ul>
-      Ak sa neotvorí prehliadač sám, otvor ho a napíš doň adresu, ktorú nástroj vypíše
-      (býva <code>http://127.0.0.1:8777</code>).</li>
-      <li>Spusti <em>inh-offline</em> → <em>Obnova</em> → vlož {{.Threshold}} časti → dostaneš
-      <strong>súbor s kľúčom</strong> (key-file). Ulož si ho na ten počítač.</li>
-      <li>Otvor databázu <code>.kdbx</code> programom <strong>KeePassXC</strong>
-      (<a href="https://keepassxc.org/download/">keepassxc.org/download</a>).
-      <br><strong>Najlepšie je</strong> nainštalovať KeePassXC na ten istý odpojený počítač a databázu tam
-      skopírovať. Seed potom nikdy neopustí stroj bez internetu.
-      <br>Ak to nejde, prenes súbor s kľúčom na USB kľúči do počítača, kde KeePassXC máš, a ten počítač
-      na ten čas <strong>odpoj od internetu</strong>.
-      <br>V KeePassXC zvoľ ako ochranu <em>Key file</em> a vyber ten súbor s kľúčom.
-      <strong>Do poľa Heslo nezadávaj nič.</strong> Dostaneš sa k <strong>seedu</strong> a ďalším
-      informáciám a prístupom.</li>
-      <li>Na hardvérovej peňaženke obnov peňaženku <strong>zo seedu</strong> (tie slová z databázy).
-      Heslo (passphrase) sa pri obnove <strong>nezadáva</strong>, peňaženka si oň povie až potom, pri odomykaní.
-      Bez neho uvidíš prázdnu peňaženku, s ním Bitcoin. Prázdna peňaženka teda neznamená, že peniaze sú preč,
-      ale že chýba heslo z obálky.</li>
-      <li><em>(voliteľné, ale dôrazne odporúčané)</em> Presuň prostriedky do novej peňaženky, ktorú ovládaš ty.</li>
+      {{t .L "rb.step.warn.url"}}</li>
+      <li>{{t .L "rb.step.run" .Threshold}}</li>
+      <li>{{t .L "rb.step.kdbx"}}</li>
+      <li>{{t .L "rb.step.wallet"}}</li>
+      <li>{{t .L "rb.step.move"}}</li>
     </ol>
   </section>
 
   <section>
-    <h2>5) Núdzový (manuálny) postup, ak nástroj nefunguje</h2>
-    <p>Časti sú v štandarde <strong>SLIP-39</strong>, zložia sa hocijakým SLIP-39 nástrojom
-    (napr. referenčná knižnica <code>shamir-mnemonic</code>). Výsledkom je
-    <strong>master secret (hex)</strong>, ktorý <strong>je obsahom key-filu</strong>.</p>
-    <p>Na kove sú slová často len ako <strong>4-písmenové skratky</strong>, to nie je chyba,
-    v SLIP-39 zozname je slovo prvými štyrmi písmenami určené jednoznačne. Nástroj
-    <em>inh-offline</em> ich doplní sám; ak použiješ iný nástroj, ktorý skratky neprijme,
-    dohľadaj celé slová v oficiálnom SLIP-39 zozname (1024 slov, je v každom SLIP-39 nástroji).</p>
-    <p>Tu sa dá ľahko pomýliť: do súboru patria <strong>surové bajty</strong>, nie ten hex
-    zapísaný ako text, inak KeePassXC databázu neotvorí. Na Linuxe/macOS:</p>
+    <h2>{{t .L "rb.manual.h"}}</h2>
+    <p>{{t .L "rb.manual.slip39"}}</p>
+    <p>{{t .L "rb.manual.abbrev"}}</p>
+    <p>{{t .L "rb.manual.bytes"}}</p>
     <pre class="chain">printf '%s' HEX | xxd -r -p &gt; keyfile
 
-# ak xxd na tom stroji nie je (na holom Debiane často nebýva):
 perl -e 'print pack "H*", "HEX"' &gt; keyfile
 python3 -c 'import sys;sys.stdout.buffer.write(bytes.fromhex("HEX"))' &gt; keyfile</pre>
-    <p>Kontrola: súbor má mať polovicu dĺžky hexu (40 hex znakov → 20 bajtov). Potom ho
-    v KeePassXC použi ako <em>Key file</em> a heslo nechaj prázdne. Databáza <code>.kdbx</code>
-    je otvorený formát (KeePassXC, KeePass, KeePassDX, Strongbox, …).</p>
-    <p>Ak tomuto nerozumieš, daj to prečítať technicky zdatnej osobe{{if .TechNames}} ({{.TechNames}}){{end}}.</p>
+    <p>{{t .L "rb.manual.check"}}</p>
+    <p>{{t .L "rb.manual.ask" .TechSuffix}}</p>
   </section>
 
   <section>
-    <h2>6) Bezpečnosť: na čo si dať pozor</h2>
+    <h2>{{t .L "rb.safety.h"}}</h2>
     <ul>
-      <li><strong>Seed zadávaj jedine do hardvérovej peňaženky.</strong> Nikdy ho nepíš do počítača,
-      do mobilu, do e-mailu ani na žiadnu webovú stránku, ani keď o to niekto žiada.</li>
-      <li><strong>Slová z častí</strong> zadávaj jedine do nástroja <em>inh-offline</em> na počítači
-      odpojenom od internetu (pri núdzovom postupe do iného SLIP-39 nástroja, tiež bez internetu).</li>
-      <li>Nikomu cudziemu (ani „technickej podpore“) nedávaj slová, seed ani heslo z obálky.</li>
-      <li><strong>Po skončení</strong> zmaž súbor s kľúčom z počítača aj z USB kľúča. Kto ho má,
-      otvorí si databázu. Papieriky so slovami spáľ alebo vráť držiteľom.</li>
-      <li><em>(voliteľné, ale dôrazne odporúčané)</em> Po obnove presuň prostriedky do novej peňaženky.</li>
-      <li>Neponáhľaj sa; ak niečo nesedí, zastav a poraď sa s technicky zdatnou osobou{{if .TechNames}} ({{.TechNames}}){{end}}.</li>
+      <li>{{t .L "rb.safety.seed"}}</li>
+      <li>{{t .L "rb.safety.words"}}</li>
+      <li>{{t .L "rb.safety.nobody"}}</li>
+      <li>{{t .L "rb.safety.wipe"}}</li>
+      <li>{{t .L "rb.safety.move"}}</li>
+      <li>{{t .L "rb.safety.slow" .TechSuffix}}</li>
     </ul>
   </section>
 
   {{if .WalletNotes}}
   <section>
-    <h2>Peňaženka: poznámky</h2>
+    <h2>{{t .L "rb.notes.wallet"}}</h2>
     <p class="pre">{{.WalletNotes}}</p>
   </section>
   {{end}}
 
   {{if .FamilyNotes}}
   <section>
-    <h2>Odkaz</h2>
+    <h2>{{t .L "rb.notes.family"}}</h2>
     <p class="pre">{{.FamilyNotes}}</p>
   </section>
   {{end}}

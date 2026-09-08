@@ -1,46 +1,47 @@
 <!doctype html>
-<html lang="sk">
+<html lang="{{.L}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Runbook: inh</title>
+  <title>{{t .L "rbform.title"}}</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
-  <h1>Runbook: návod pre rodinu</h1>
-  <p class="muted">Vyplň údaje; vygeneruje sa <strong>tlačiteľný návod „kto-čo-kde"</strong>.
-  Dokument <strong>neobsahuje žiadne tajomstvá</strong>, len mapu a postup.
-  Aj tak ho drž u dôveryhodných osôb (prezrádza, kde čo hľadať).</p>
+  <h1>{{t .L "rbform.title"}}</h1>
+  <p class="muted">{{t .L "rbform.intro"}}</p>
 
   <form method="post" action="/runbook">
     <fieldset>
-      <legend>Základ</legend>
-      <label>Tvoje meno <input name="author" value="{{.Author}}"></label>
-      <label>Dátum <input name="date" value="{{.Date}}"></label>
-      <label>Meno hlavného dediča (komu je list určený) <input name="wife" value="{{.Wife}}"></label>
+      <legend>{{t .L "rbform.basics"}}</legend>
+      <label>{{t .L "rbform.lang"}}
+        <select name="lang">
+          {{$cur := .L}}{{range langs}}<option value="{{.}}"{{if eq . $cur}} selected{{end}}>{{langName .}}</option>{{end}}
+        </select>
+      </label>
+      <label>{{t .L "rbform.author"}} <input name="author" value="{{.Author}}"></label>
+      <label>{{t .L "rbform.date"}} <input name="date" value="{{.Date}}"></label>
+      <label>{{t .L "rbform.heir"}} <input name="wife" value="{{.Wife}}"></label>
     </fieldset>
 
     <fieldset>
-      <legend>Schéma</legend>
-      <label>Prah (koľko častí treba na obnovu) <input type="number" name="threshold" value="{{.Threshold}}" min="1" max="16"></label>
-      <label>Počet častí <input type="number" id="count" name="count" value="{{.Count}}" min="1" max="16"></label>
+      <legend>{{t .L "rbform.scheme"}}</legend>
+      <label>{{t .L "rbform.threshold"}} <input type="number" name="threshold" value="{{.Threshold}}" min="1" max="16"></label>
+      <label>{{t .L "rbform.count"}} <input type="number" id="count" name="count" value="{{.Count}}" min="1" max="16"></label>
     </fieldset>
 
     <fieldset>
-      <legend>Časti a kto ich drží</legend>
-      <p class="muted">Počet riadkov sa riadi podľa <strong>„Počet častí"</strong> vyššie.
-      Pri každej časti uveď, <strong>kto ju drží</strong> (časť je uložená u tejto osoby) a kontakt:
-      a či je <strong>technicky zdatná</strong> (volá sa jej o pomoc, dostane obálku) alebo netechnická.</p>
+      <legend>{{t .L "rbform.holders"}}</legend>
+      <p class="muted">{{t .L "rbform.holders.p"}}</p>
       <div id="parts">
         {{range .Persons}}
         <div class="row">
           <span class="rownum"></span>
-          <input name="person_name" placeholder="kto drží túto časť: meno" value="{{.Name}}">
-          <input name="person_contact" placeholder="kontakt (tel. / e-mail)" value="{{.Contact}}">
+          <input name="person_name" placeholder="{{ts $.L "rbform.ph.name"}}" value="{{.Name}}">
+          <input name="person_contact" placeholder="{{ts $.L "rbform.ph.contact"}}" value="{{.Contact}}">
           <select name="person_tech">
-            <option value="nontech"{{if not .Tech}} selected{{end}}>netechnická</option>
-            <option value="tech"{{if .Tech}} selected{{end}}>technicky zdatná</option>
+            <option value="nontech"{{if not .Tech}} selected{{end}}>{{t $.L "rbform.nontech"}}</option>
+            <option value="tech"{{if .Tech}} selected{{end}}>{{t $.L "rbform.tech"}}</option>
           </select>
         </div>
         {{end}}
@@ -48,44 +49,45 @@
     </fieldset>
 
     <fieldset>
-      <legend>Obálka a kópie</legend>
-      <label>Obálka (passphrase), banka <input name="bank" value="{{.Bank}}" placeholder="názov banky, pobočka, číslo schránky"></label>
-      <label>Kde je uložený nástroj <em>inh-offline</em>
-        <input name="tool_where" value="{{.ToolWhere}}" placeholder="napr. USB kľúč pri každom kovovom médiu, v banke a v cloude vedľa .kdbx"></label>
-      <label>Kópie zašifrovanej .kdbx, kde
-        <textarea name="kdbx_copies" rows="3" placeholder="napr. cloud, doma, bankový trezor, u osôb">{{.KdbxCopies}}</textarea>
+      <legend>{{t .L "rbform.envelope"}}</legend>
+      <label>{{t .L "rbform.bank"}} <input name="bank" value="{{.Bank}}" placeholder="{{ts .L "rbform.ph.bank"}}"></label>
+      <label>{{t .L "rbform.toolwhere"}}
+        <input name="tool_where" value="{{.ToolWhere}}" placeholder="{{ts .L "rbform.ph.toolwhere"}}"></label>
+      <label>{{t .L "rbform.kdbx"}}
+        <textarea name="kdbx_copies" rows="3" placeholder="{{ts .L "rbform.ph.kdbx"}}">{{.KdbxCopies}}</textarea>
       </label>
     </fieldset>
 
     <fieldset>
-      <legend>Doplnky</legend>
-      <label>Peňaženka, poznámky <input name="wallet_notes" value="{{.WalletNotes}}"></label>
-      <label>Odkaz pre rodinu (voľný text)
+      <legend>{{t .L "rbform.extras"}}</legend>
+      <label>{{t .L "rbform.wallet"}} <input name="wallet_notes" value="{{.WalletNotes}}"></label>
+      <label>{{t .L "rbform.message"}}
         <textarea name="family_notes" rows="3">{{.FamilyNotes}}</textarea>
       </label>
     </fieldset>
 
-    <button type="submit">Vygenerovať runbook</button>
+    <button type="submit">{{t .L "rbform.submit"}}</button>
   </form>
-  <p><a href="/">← domov</a></p>
+  <p><a href="/?lang={{.L}}">← {{t .L "nav.home"}}</a></p>
 
   <template id="part-tpl">
     <div class="row">
       <span class="rownum"></span>
-      <input name="person_name" placeholder="kto drží túto časť: meno">
-      <input name="person_contact" placeholder="kontakt (tel. / e-mail)">
+      <input name="person_name" placeholder="{{ts .L "rbform.ph.name"}}">
+      <input name="person_contact" placeholder="{{ts .L "rbform.ph.contact"}}">
       <select name="person_tech">
-        <option value="nontech">netechnická</option>
-        <option value="tech">technicky zdatná</option>
+        <option value="nontech">{{t .L "rbform.nontech"}}</option>
+        <option value="tech">{{t .L "rbform.tech"}}</option>
       </select>
     </div>
   </template>
 
   <script>
+    var ROW_LABEL = "{{ts .L "rbform.rownum" "@@"}}";
     function renumber(c) {
       for (var i = 0; i < c.children.length; i++) {
         var s = c.children[i].querySelector('.rownum');
-        if (s) s.textContent = 'Časť ' + (i + 1) + ':';
+        if (s) s.textContent = ROW_LABEL.replace("@@", i + 1);
       }
     }
     function setRows(n) {
