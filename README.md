@@ -91,7 +91,7 @@ Návrhové rozhodnutia, z ktorých všetko ostatné vyplýva:
 | Zariadenie | Nepodstatné, záleží len na **seede** (+ passphrase). Obnoviť sa dá na hocijakej kompatibilnej peňaženke. |
 | Peňaženka | Existujúca, nová sa **nevytvára**. Jeden seed, s passphrase. |
 | Dedičia | Viacero dôveryhodných osôb; aspoň jedna **technicky zdatná**, ostatné môžu byť netechnické. Stačí jeden technický pomocník. |
-| Hardvér u dedičov | Nie, maximálne **kovová záloha** so slovami. |
+| Hardvér u dedičov | Nie, maximálne **kovové médium** so slovami. |
 | Tretie strany / notár | Nie. |
 | Schéma | **K-z-N**, čiže prah K z N častí (ľubovoľný počet; príklady nižšie používajú 2-z-3). |
 | Kontrola za života | BTC plne kontroluje **vlastník** (passphrase). DB so seedom a ostatnými heslami vie K-z-N dôveryhodných osôb otvoriť aj za jeho života, ale BTC bez passphrase neminú. |
@@ -170,7 +170,7 @@ bezcenná, preto je riziko u jednotlivých držiteľov nízke.
 6. Na peňaženke obnoví zo **seedu + passphrase** (z obálky) → BTC.
 7. (Voliteľné) presunie BTC do vlastnej novej peňaženky.
 
-Na kove sú slová spravidla len ako **4-písmenové skratky**, kovová záloha viac
+Na kove sú slová spravidla len ako **4-písmenové skratky**, kovové médium viac
 pozícií nemá. Nie je to problém: SLIP-39 zoznam je navrhnutý tak, že prvé štyri
 písmená určujú slovo jednoznačne (1024 slov, 1024 rôznych prefixov), a
 obnovovací nástroj si zvyšok doplní sám. Tri písmená by už jednoznačné neboli,
@@ -247,7 +247,7 @@ cd offline && ./build-all.sh      # -> dist/ + SHA256SUMS
 ```
 
 Vyrobí Linux (amd64, arm64), Windows a macOS (Apple Silicon aj Intel), spolu
-okolo 41 MB. Celý obsah `dist/` ide na USB kľúč ku každej kovovej zálohe aj do
+okolo 41 MB. Celý obsah `dist/` ide na USB kľúč ku každému kovovému médiu aj do
 bankového trezoru; runbook potom hovorí, ktorý súbor na ktorom počítači spustiť.
 
 Go kríž-kompiluje samo, žiadny ďalší toolchain netreba. Otestovať sa tu dá len
@@ -280,7 +280,7 @@ round-trip); ak zlyhá, nástroj sa nespustí.
   doplní celé, pole zozelenie a kurzor skočí na ďalšie; vloženie celej časti zo
   schránky rozhádže slová do polí. Nezmyselné slovo pole očervenie. Pod
   formulárom ostáva aj **vloženie častí ako textu**.
-  Slová píšeš **tak, ako sú na kove**: kovová záloha má miesto len na **4 písmená**
+  Slová píšeš **tak, ako sú na kove**: kovové médium má miesto len na **4 písmená**
   a nástroj si zvyšok doplní (v SLIP-39 zozname je slovo prvými štyrmi písmenami
   určené jednoznačne (1024 slov, 1024 rôznych prefixov). Tri písmená sú
   nejednoznačné, tie nástroj odmietne a povie ktoré slovo. Veľkosť písmen,
@@ -292,8 +292,9 @@ round-trip); ak zlyhá, nástroj sa nespustí.
 
 #### Ako to zapadá
 
-- Časti sa ryjú **do kovu** (médium musí pojať 23 slov), jedna na
-  držiteľa/lokalitu. Ryjú sa len **prvé 4 písmená** každého slova. Setup ich na
+- Časti sa prenášajú na **kovové médium** (musí pojať 23 slov: platnička, valček, kapsula,
+  kazeta so zasúvacími písmenkami…), jedna na držiteľa/lokalitu. Prenášajú sa len
+  **prvé 4 písmená** každého slova. Setup ich na
   výstupe zvýrazní tučným, aby bolo jasné, čo ide na kov.
 - Key-file zamyká **KeePass DB** (KeePassXC: ochrana = *Key file*). KeePassXC
   súbor, ktorý nie je 32 B / 64 hex / KeyFile-XML, deterministicky **zahashuje

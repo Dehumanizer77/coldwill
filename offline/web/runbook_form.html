@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Runbook — inh</title>
+  <title>Runbook: inh</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
-  <h1>Runbook — návod pre rodinu</h1>
+  <h1>Runbook: návod pre rodinu</h1>
   <p class="muted">Vyplň údaje; vygeneruje sa <strong>tlačiteľný návod „kto-čo-kde"</strong>.
-  Dokument <strong>neobsahuje žiadne tajomstvá</strong> — len mapu a postup.
+  Dokument <strong>neobsahuje žiadne tajomstvá</strong>, len mapu a postup.
   Aj tak ho drž u dôveryhodných osôb (prezrádza, kde čo hľadať).</p>
 
   <form method="post" action="/runbook">
@@ -30,13 +30,13 @@
     <fieldset>
       <legend>Časti a kto ich drží</legend>
       <p class="muted">Počet riadkov sa riadi podľa <strong>„Počet častí"</strong> vyššie.
-      Pri každej časti uveď, <strong>kto ju drží</strong> (časť je uložená u tejto osoby) a kontakt —
+      Pri každej časti uveď, <strong>kto ju drží</strong> (časť je uložená u tejto osoby) a kontakt:
       a či je <strong>technicky zdatná</strong> (volá sa jej o pomoc, dostane obálku) alebo netechnická.</p>
       <div id="parts">
         {{range .Persons}}
         <div class="row">
           <span class="rownum"></span>
-          <input name="person_name" placeholder="kto drží túto časť — meno" value="{{.Name}}">
+          <input name="person_name" placeholder="kto drží túto časť: meno" value="{{.Name}}">
           <input name="person_contact" placeholder="kontakt (tel. / e-mail)" value="{{.Contact}}">
           <select name="person_tech">
             <option value="nontech"{{if not .Tech}} selected{{end}}>netechnická</option>
@@ -49,17 +49,17 @@
 
     <fieldset>
       <legend>Obálka a kópie</legend>
-      <label>Obálka (passphrase) — banka <input name="bank" value="{{.Bank}}" placeholder="názov banky, pobočka, číslo schránky"></label>
+      <label>Obálka (passphrase), banka <input name="bank" value="{{.Bank}}" placeholder="názov banky, pobočka, číslo schránky"></label>
       <label>Kde je uložený nástroj <em>inh-offline</em>
-        <input name="tool_where" value="{{.ToolWhere}}" placeholder="napr. USB kľúč pri každej kovovej zálohe, v banke a v cloude vedľa .kdbx"></label>
-      <label>Kópie zašifrovanej .kdbx — kde
+        <input name="tool_where" value="{{.ToolWhere}}" placeholder="napr. USB kľúč pri každom kovovom médiu, v banke a v cloude vedľa .kdbx"></label>
+      <label>Kópie zašifrovanej .kdbx, kde
         <textarea name="kdbx_copies" rows="3" placeholder="napr. cloud, doma, bankový trezor, u osôb">{{.KdbxCopies}}</textarea>
       </label>
     </fieldset>
 
     <fieldset>
       <legend>Doplnky</legend>
-      <label>Peňaženka — poznámky <input name="wallet_notes" value="{{.WalletNotes}}"></label>
+      <label>Peňaženka, poznámky <input name="wallet_notes" value="{{.WalletNotes}}"></label>
       <label>Odkaz pre rodinu (voľný text)
         <textarea name="family_notes" rows="3">{{.FamilyNotes}}</textarea>
       </label>
@@ -72,7 +72,7 @@
   <template id="part-tpl">
     <div class="row">
       <span class="rownum"></span>
-      <input name="person_name" placeholder="kto drží túto časť — meno">
+      <input name="person_name" placeholder="kto drží túto časť: meno">
       <input name="person_contact" placeholder="kontakt (tel. / e-mail)">
       <select name="person_tech">
         <option value="nontech">netechnická</option>
