@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Runbook — inštrukcie pre rodinu</title>
+  <title>Runbook: inštrukcie pre rodinu</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="runbook">
@@ -19,6 +19,8 @@
       <input type="hidden" name="count" value="{{.Count}}">
       <input type="hidden" name="bank" value="{{.Bank}}">
       <input type="hidden" name="kdbx_copies" value="{{.KdbxCopies}}">
+      <input type="hidden" name="tool_where" value="{{.ToolWhere}}">
+      <input type="hidden" name="tool_sha" value="{{.ToolSHA}}">
       <input type="hidden" name="wallet_notes" value="{{.WalletNotes}}">
       <input type="hidden" name="family_notes" value="{{.FamilyNotes}}">
       {{range .AllPersons}}
@@ -29,22 +31,22 @@
       <button type="submit">✏️ Upraviť</button>
     </form>
     <a href="/runbook" style="margin-left:12px">← nový formulár</a>
-    <p class="muted" style="margin:6px 0 0">Pri tlači nechaj okraje na „Predvolené".</p>
+    <p class="muted" style="margin:6px 0 0">Pri tlači nechaj okraje na „Predvolené“.</p>
   </div>
 
-  <h1>Bitcoin — inštrukcie pre prípad mojej smrti</h1>
+  <h1>Bitcoin: inštrukcie pre prípad mojej smrti</h1>
   <p>{{if .Author}}Autor: <strong>{{.Author}}</strong>. {{end}}{{if .Date}}Dátum: {{.Date}}.{{end}}</p>
 
-  <p class="warn">Tento dokument <strong>neobsahuje žiadne tajomstvá</strong> (žiadny seed, heslo, passphrase ani časti) — je to len <strong>mapa a postup</strong>. Prezrádza však, kde čo hľadať, preto ho nezverejňuj a drž len u dôveryhodných osôb.</p>
+  <p class="warn">Tento dokument <strong>neobsahuje žiadne tajomstvá</strong> (žiadny seed, heslo, passphrase ani časti), je to len <strong>mapa a postup</strong>. Prezrádza však, kde čo hľadať, preto ho nezverejňuj a drž len u dôveryhodných osôb.</p>
 
   <section>
     <h2>Úvod</h2>
     {{if .Wife}}<p>Adresát: <strong>{{.Wife}}</strong></p>{{end}}
     <p>Najprv zavolaj technicky zdatnú osobu (nižšie), ktorá ťa celým postupom prevedie.
     Neponáhľaj sa, rob to po krokoch a nikomu cudziemu nedávaj nič.</p>
-    <p><strong>Čo je „časť":</strong> zoznam <strong>23 slov</strong>, uložený na trvanlivom médiu —
-    napríklad na kovovej platničke alebo inom zálohovacom médiu. Jedna časť samotná je nanič —
-    treba ich <strong>{{.Threshold}} z {{.Count}}</strong>, aby sa z nich zložil „key-file"
+    <p><strong>Čo je „časť“:</strong> zoznam <strong>23 slov</strong>, uložený na trvanlivom médiu,
+    napríklad na kovovej platničke alebo inom zálohovacom médiu. Jedna časť samotná je nanič,
+    treba ich <strong>{{.Threshold}} z {{.Count}}</strong>, aby sa z nich zložil „key-file“
     (kľúč k databáze). Jednotlivé časti držia rôzne dôveryhodné osoby (nižšie).</p>
   </section>
 
@@ -60,17 +62,17 @@
   <section>
     <h2>1) Koho zavolať</h2>
     {{if .TechPersons}}
-    <p><strong>Technicky zdatné osoby</strong> — volaj ich, prevedú ťa celým postupom:</p>
+    <p><strong>Technicky zdatné osoby.</strong> Volaj ich, prevedú ťa celým postupom:</p>
     <ul>
-      {{range .TechPersons}}<li><strong>{{.Name}}</strong>{{if .Contact}} — {{.Contact}}{{end}}</li>{{end}}
+      {{range .TechPersons}}<li><strong>{{.Name}}</strong>{{if .Contact}}, {{.Contact}}{{end}}</li>{{end}}
     </ul>
     {{else}}
-    <p class="warn">Nie je uvedená žiadna technicky zdatná osoba — doplň aspoň jednu, inak nebude mať kto pomôcť.</p>
+    <p class="warn">Nie je uvedená žiadna technicky zdatná osoba. Doplň aspoň jednu, inak nebude mať kto pomôcť.</p>
     {{end}}
     {{if .OtherPersons}}
     <p><strong>Ostatní držitelia častí:</strong></p>
     <ul>
-      {{range .OtherPersons}}<li>{{.Name}}{{if .Contact}} — {{.Contact}}{{end}}</li>{{end}}
+      {{range .OtherPersons}}<li>{{.Name}}{{if .Contact}}, {{.Contact}}{{end}}</li>{{end}}
     </ul>
     {{end}}
   </section>
@@ -79,19 +81,19 @@
     <h2>2) Čo treba získať (dve veci)</h2>
     <p>Na prístup k Bitcoinu treba <strong>oboje</strong>:</p>
     <ul>
-      <li><strong>{{.Threshold}} z {{.Count}} častí</strong> (každá je 23 slov) — z nich sa zloží „key-file".</li>
-      <li><strong>Obálku s passphrase</strong> — druhé tajomstvo, bez ktorého sa k Bitcoinu nedá dostať.</li>
+      <li><strong>{{.Threshold}} z {{.Count}} častí</strong> (každá je 23 slov), z nich sa zloží „key-file“.</li>
+      <li><strong>Obálku s passphrase</strong>: druhé tajomstvo, bez ktorého sa k Bitcoinu nedá dostať.</li>
     </ul>
-    <p>Ani jedno samo o sebe nestačí — preto je to bezpečné.</p>
+    <p>Ani jedno samo o sebe nestačí, preto je to bezpečné.</p>
   </section>
 
   <section>
-    <h2>3) Mapa — kde čo je</h2>
+    <h2>3) Mapa: kde čo je</h2>
     <table>
       <tr><th>Položka</th><th>Kde / u koho</th></tr>
-      {{range .Parts}}<tr><td>Časť {{.Num}}</td><td>{{if .Holder}}drží: {{.Holder}}{{else}}—{{end}}</td></tr>{{end}}
-      <tr><td>Obálka (passphrase) — banka</td><td>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</td></tr>
-      <tr><td>Zašifrovaná databáza (.kdbx) — kópie</td><td class="pre">{{if .KdbxCopies}}{{.KdbxCopies}}{{else}}—{{end}}</td></tr>
+      {{range .Parts}}<tr><td>Časť {{.Num}}</td><td>{{if .Holder}}drží: {{.Holder}}{{else}}–{{end}}</td></tr>{{end}}
+      <tr><td>Obálka (passphrase), banka</td><td>{{if .Bank}}{{.Bank}}{{else}}–{{end}}</td></tr>
+      <tr><td>Zašifrovaná databáza (.kdbx), kópie</td><td class="pre">{{if .KdbxCopies}}{{.KdbxCopies}}{{else}}–{{end}}</td></tr>
     </table>
   </section>
 
@@ -111,15 +113,29 @@
     <ol>
       <li>Zavolaj technicky zdatnú osobu (bod 1). Poradí ti so všetkým, čomu nebudeš rozumieť.</li>
       <li>Zožeň <strong>aspoň {{.Threshold}} časti</strong> (bod 3). Slová si od držiteľov odpíš na papier
-      alebo si ich nechaj nadiktovať. <strong>Nefoť ich telefónom</strong> — fotky sa samé zálohujú do cloudu.</li>
+      alebo si ich nechaj nadiktovať. <strong>Nefoť ich telefónom</strong>, fotky sa samé zálohujú do cloudu.</li>
       <li>Zožeň <strong>obálku s heslom (passphrase)</strong>: buď zapečatenú z bankového trezoru,
       alebo od technicky zdatnej osoby{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}, ktorej ju systém pošle e-mailom.</li>
-      <li>Na počítači <strong>odpojenom od internetu</strong> spusti nástroj <em>inh-offline</em> → <em>Obnova</em> →
-      vlož {{.Threshold}} časti → dostaneš súbor s kľúčom.</li>
-      <li>V programe <strong>KeePassXC</strong> (stiahneš ho na
-      <a href="https://keepassxc.org/download/">keepassxc.org/download</a>) otvor databázu <code>.kdbx</code>.
-      Ako ochranu zvoľ <em>Key file</em> a vyber ten súbor s kľúčom. <strong>Do poľa Heslo nezadávaj nič.</strong>
-      Dostaneš sa k <strong>seedu</strong> a ďalším informáciám a prístupom.</li>
+      <li>Priprav <strong>počítač odpojený od internetu</strong> a zožeň nástroj <em>inh-offline</em>{{if .ToolWhere}}
+      ({{.ToolWhere}}){{end}}.{{if .ToolSHA}}
+      <br><strong>Nech ho technicky zdatná osoba najprv overí.</strong> Kontrolné číslo musí sedieť s týmto:
+      <br><code class="sha">{{.ToolSHA}}</code>
+      <br>Zistí sa príkazom <code>sha256sum inh-offline</code> (Linux), <code>shasum -a 256 inh-offline</code>
+      (macOS) alebo <code>certutil -hashfile inh-offline.exe SHA256</code> (Windows). Overiť to musí
+      <strong>tento príkaz, nie samotný nástroj</strong>: keby bol nástroj podvrhnutý, o sebe by pokojne
+      vypísal aj správne číslo.
+      {{end}}{{if not .ToolSHA}} <em>(Kontrolné číslo nástroja nie je v tomto runbooku vyplnené.)</em>{{end}}</li>
+      <li>Spusti <em>inh-offline</em> → <em>Obnova</em> → vlož {{.Threshold}} časti → dostaneš
+      <strong>súbor s kľúčom</strong> (key-file). Ulož si ho na ten počítač.</li>
+      <li>Otvor databázu <code>.kdbx</code> programom <strong>KeePassXC</strong>
+      (<a href="https://keepassxc.org/download/">keepassxc.org/download</a>).
+      <br><strong>Najlepšie je</strong> nainštalovať KeePassXC na ten istý odpojený počítač a databázu tam
+      skopírovať. Seed potom nikdy neopustí stroj bez internetu.
+      <br>Ak to nejde, prenes súbor s kľúčom na USB kľúči do počítača, kde KeePassXC máš, a ten počítač
+      na ten čas <strong>odpoj od internetu</strong>.
+      <br>V KeePassXC zvoľ ako ochranu <em>Key file</em> a vyber ten súbor s kľúčom.
+      <strong>Do poľa Heslo nezadávaj nič.</strong> Dostaneš sa k <strong>seedu</strong> a ďalším
+      informáciám a prístupom.</li>
       <li>Na hardvérovej peňaženke obnov peňaženku <strong>zo seedu</strong> (tie slová z databázy).
       Heslo (passphrase) sa pri obnove <strong>nezadáva</strong>, peňaženka si oň povie až potom, pri odomykaní.
       Bez neho uvidíš prázdnu peňaženku, s ním Bitcoin. Prázdna peňaženka teda neznamená, že peniaze sú preč,
@@ -130,15 +146,15 @@
 
   <section>
     <h2>5) Núdzový (manuálny) postup, ak nástroj nefunguje</h2>
-    <p>Časti sú v štandarde <strong>SLIP-39</strong> — zložia sa hocijakým SLIP-39 nástrojom
+    <p>Časti sú v štandarde <strong>SLIP-39</strong>, zložia sa hocijakým SLIP-39 nástrojom
     (napr. referenčná knižnica <code>shamir-mnemonic</code>). Výsledkom je
     <strong>master secret (hex)</strong>, ktorý <strong>je obsahom key-filu</strong>.</p>
-    <p>Na kove sú slová často len ako <strong>4-písmenové skratky</strong> — to nie je chyba,
+    <p>Na kove sú slová často len ako <strong>4-písmenové skratky</strong>, to nie je chyba,
     v SLIP-39 zozname je slovo prvými štyrmi písmenami určené jednoznačne. Nástroj
     <em>inh-offline</em> ich doplní sám; ak použiješ iný nástroj, ktorý skratky neprijme,
     dohľadaj celé slová v oficiálnom SLIP-39 zozname (1024 slov, je v každom SLIP-39 nástroji).</p>
     <p>Tu sa dá ľahko pomýliť: do súboru patria <strong>surové bajty</strong>, nie ten hex
-    zapísaný ako text — inak KeePassXC databázu neotvorí. Na Linuxe/macOS:</p>
+    zapísaný ako text, inak KeePassXC databázu neotvorí. Na Linuxe/macOS:</p>
     <pre class="chain">printf '%s' HEX | xxd -r -p &gt; keyfile
 
 # ak xxd na tom stroji nie je (na holom Debiane často nebýva):
@@ -151,13 +167,15 @@ python3 -c 'import sys;sys.stdout.buffer.write(bytes.fromhex("HEX"))' &gt; keyfi
   </section>
 
   <section>
-    <h2>6) Bezpečnosť — na čo si dať pozor</h2>
+    <h2>6) Bezpečnosť: na čo si dať pozor</h2>
     <ul>
       <li><strong>Seed zadávaj jedine do hardvérovej peňaženky.</strong> Nikdy ho nepíš do počítača,
       do mobilu, do e-mailu ani na žiadnu webovú stránku, ani keď o to niekto žiada.</li>
       <li><strong>Slová z častí</strong> zadávaj jedine do nástroja <em>inh-offline</em> na počítači
       odpojenom od internetu (pri núdzovom postupe do iného SLIP-39 nástroja, tiež bez internetu).</li>
-      <li>Nikomu cudziemu (ani „technickej podpore") nedávaj slová, seed ani heslo z obálky.</li>
+      <li>Nikomu cudziemu (ani „technickej podpore“) nedávaj slová, seed ani heslo z obálky.</li>
+      <li><strong>Po skončení</strong> zmaž súbor s kľúčom z počítača aj z USB kľúča. Kto ho má,
+      otvorí si databázu. Papieriky so slovami spáľ alebo vráť držiteľom.</li>
       <li><em>(voliteľné, ale dôrazne odporúčané)</em> Po obnove presuň prostriedky do novej peňaženky.</li>
       <li>Neponáhľaj sa; ak niečo nesedí, zastav a poraď sa s technicky zdatnou osobou{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}.</li>
     </ul>
@@ -165,7 +183,7 @@ python3 -c 'import sys;sys.stdout.buffer.write(bytes.fromhex("HEX"))' &gt; keyfi
 
   {{if .WalletNotes}}
   <section>
-    <h2>Peňaženka — poznámky</h2>
+    <h2>Peňaženka: poznámky</h2>
     <p class="pre">{{.WalletNotes}}</p>
   </section>
   {{end}}

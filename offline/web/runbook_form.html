@@ -50,6 +50,10 @@
     <fieldset>
       <legend>Obálka a kópie</legend>
       <label>Obálka (passphrase) — banka <input name="bank" value="{{.Bank}}" placeholder="názov banky, pobočka, číslo schránky"></label>
+      <label>Kde je uložený nástroj <em>inh-offline</em>
+        <input name="tool_where" value="{{.ToolWhere}}" placeholder="napr. USB kľúč pri každej platničke + v cloude vedľa .kdbx"></label>
+      <label>SHA-256 nástroja <em>inh-offline</em> (na overenie, že ho nikto nevymenil)
+        <input name="tool_sha" value="{{.ToolSHA}}" placeholder="64 znakov; zisti cez sha256sum inh-offline"></label>
       <label>Kópie zašifrovanej .kdbx — kde
         <textarea name="kdbx_copies" rows="3" placeholder="napr. cloud, doma, bankový trezor, u osôb">{{.KdbxCopies}}</textarea>
       </label>
