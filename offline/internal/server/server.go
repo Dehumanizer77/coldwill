@@ -294,12 +294,25 @@ type runbookData struct {
 	AllPersons               []Person // every row, for the hidden "Upraviť" form
 	TechPersons              []Person
 	OtherPersons             []Person
-	PrimaryHelper            string
+	TechNames                string // všetky technicky zdatné osoby, na vypísanie v texte
 	Parts                    []partLoc
 	Threshold, Count         int
 	Bank, KdbxCopies         string
 	ToolWhere                string
 	WalletNotes, FamilyNotes string
+}
+
+// joinNames renders a list of people the way a sentence needs it: "A",
+// "A alebo B", "A, B alebo C". The heir should see everyone she can call, not
+// just whoever happened to be entered first.
+func joinNames(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0]
+	}
+	return strings.Join(names[:len(names)-1], ", ") + " alebo " + names[len(names)-1]
 }
 
 // parsePersonRows reads the variable-length person rows. Every row submits a
@@ -375,14 +388,14 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 			other = append(other, p)
 		}
 	}
-	primary := ""
-	if len(tech) > 0 {
-		primary = tech[0].Name
+	names := make([]string, 0, len(tech))
+	for _, p := range tech {
+		names = append(names, p.Name)
 	}
 
 	s.render(w, "runbook.html", runbookData{
 		Author: f("author"), Date: f("date"), Wife: f("wife"),
-		AllPersons: rows, TechPersons: tech, OtherPersons: other, PrimaryHelper: primary,
+		AllPersons: rows, TechPersons: tech, OtherPersons: other, TechNames: joinNames(names),
 		Parts:     parts,
 		Threshold: threshold, Count: count,
 		Bank: f("bank"), KdbxCopies: f("kdbx_copies"),

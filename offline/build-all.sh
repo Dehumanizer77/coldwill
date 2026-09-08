@@ -14,7 +14,6 @@ rm -rf "$OUT" && mkdir -p "$OUT"
 # GOOS GOARCH prípona popis
 TARGETS=(
   "linux   amd64 ''    Linux (bežný počítač)"
-  "linux   arm64 ''    Linux (ARM, napr. Raspberry Pi)"
   "windows amd64 .exe  Windows"
   "darwin  arm64 ''    macOS (Apple Silicon, M1 a novšie)"
   "darwin  amd64 ''    macOS (staršie, Intel)"

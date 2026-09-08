@@ -56,7 +56,7 @@
     <h2>Ako to funguje (automatický systém)</h2>
     <p>Kým žijem, chodia mi pravidelné kontrolné e-maily. Ak sa dlhšie neozvem
     a niektorá z dôveryhodných osôb to potvrdí, systém po ochrannej lehote (niekoľko dní)
-    <strong>automaticky pošle obálku s passphrase e-mailom technicky zdatnej osobe{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}</strong>.
+    <strong>automaticky pošle obálku s passphrase e-mailom technicky zdatnej osobe{{if .TechNames}} ({{.TechNames}}){{end}}</strong>.
     Keby to automatické posielanie zlyhalo, to isté heslo je napísané na papieri
     v bankovom trezore (bod 2).</p>
   </section>
@@ -115,9 +115,9 @@
     <ol>
       <li>Zavolaj technicky zdatnú osobu (bod 1). Poradí ti so všetkým, čomu nebudeš rozumieť.</li>
       <li>Zožeň <strong>aspoň {{.Threshold}} časti</strong> (bod 3). Slová si od držiteľov odpíš na papier
-      alebo si ich nechaj nadiktovať. <strong>Nefoť ich telefónom</strong>, fotky sa samé zálohujú do cloudu.</li>
+      alebo si ich nechaj nadiktovať. <strong>Nefoť ich telefónom</strong>, nie je to bezpečné.</li>
       <li>Zožeň <strong>obálku s heslom (passphrase)</strong>: buď zapečatenú z bankového trezoru,
-      alebo od technicky zdatnej osoby{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}, ktorej ju systém pošle e-mailom.</li>
+      alebo od technicky zdatnej osoby{{if .TechNames}} ({{.TechNames}}){{end}}, ktorej ju systém pošle e-mailom.</li>
       <li>Priprav <strong>počítač odpojený od internetu</strong> (vytiahni kábel, vypni wifi).
       Je to dôležité: slová z častí sa naň budú písať a nesmú sa odtiaľ dostať von.
       <br>Nástroj <em>inh-offline</em> je na <strong>USB kľúči</strong>{{if .ToolWhere}} ({{.ToolWhere}}){{end}}.
@@ -129,7 +129,7 @@
         <tr><td>Mac (starší, Intel)</td><td><code>inh-offline-darwin-amd64</code></td></tr>
         <tr><td>Linux</td><td><code>inh-offline-linux-amd64</code></td></tr>
       </table>
-      Ak si nie si istá, ktorý to je, spýtaj sa technicky zdatnej osoby. Zlý súbor nič nepokazí,
+      Ak si nie si istý, ktorý to je, spýtaj sa technicky zdatnej osoby. Zlý súbor nič nepokazí,
       len sa nespustí.</li>
       <li><strong>Počítač bude asi protestovať.</strong> Nie je to chyba ani vírus: je to program,
       za ktorý nikto nezaplatil registráciu u Microsoftu ani Apple. Varovanie pokojne obíď:
@@ -183,7 +183,7 @@ python3 -c 'import sys;sys.stdout.buffer.write(bytes.fromhex("HEX"))' &gt; keyfi
     <p>Kontrola: súbor má mať polovicu dĺžky hexu (40 hex znakov → 20 bajtov). Potom ho
     v KeePassXC použi ako <em>Key file</em> a heslo nechaj prázdne. Databáza <code>.kdbx</code>
     je otvorený formát (KeePassXC, KeePass, KeePassDX, Strongbox, …).</p>
-    <p>Ak tomuto nerozumieš, daj to prečítať technicky zdatnej osobe{{if .PrimaryHelper}} (napr. {{.PrimaryHelper}}){{end}}.</p>
+    <p>Ak tomuto nerozumieš, daj to prečítať technicky zdatnej osobe{{if .TechNames}} ({{.TechNames}}){{end}}.</p>
   </section>
 
   <section>
@@ -197,7 +197,7 @@ python3 -c 'import sys;sys.stdout.buffer.write(bytes.fromhex("HEX"))' &gt; keyfi
       <li><strong>Po skončení</strong> zmaž súbor s kľúčom z počítača aj z USB kľúča. Kto ho má,
       otvorí si databázu. Papieriky so slovami spáľ alebo vráť držiteľom.</li>
       <li><em>(voliteľné, ale dôrazne odporúčané)</em> Po obnove presuň prostriedky do novej peňaženky.</li>
-      <li>Neponáhľaj sa; ak niečo nesedí, zastav a poraď sa s technicky zdatnou osobou{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}.</li>
+      <li>Neponáhľaj sa; ak niečo nesedí, zastav a poraď sa s technicky zdatnou osobou{{if .TechNames}} ({{.TechNames}}){{end}}.</li>
     </ul>
   </section>
 

@@ -246,8 +246,7 @@ platformy naraz:
 cd offline && ./build-all.sh      # -> dist/ + SHA256SUMS
 ```
 
-Vyrobí Linux (amd64, arm64), Windows a macOS (Apple Silicon aj Intel), spolu
-okolo 41 MB. Celý obsah `dist/` ide na USB kľúč ku každému kovovému médiu aj do
+Vyrobí Linux, Windows a macOS (Apple Silicon aj Intel), spolu okolo 34 MB. Celý obsah `dist/` ide na USB kľúč ku každému kovovému médiu aj do
 bankového trezoru; runbook potom hovorí, ktorý súbor na ktorom počítači spustiť.
 
 Go kríž-kompiluje samo, žiadny ďalší toolchain netreba. Otestovať sa tu dá len
