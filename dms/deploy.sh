@@ -320,6 +320,9 @@ img_build() {
 }
 
 svc_up() {
+  # Adresár pre signal-cli musí vzniknúť pod nasadzujúcim používateľom. Keby ho
+  # založil Docker, patril by rootovi a `rm -rf` po skúške by zlyhal.
+  [ "$WITH_SIGNAL" = 1 ] && mkdir -p "$DATA_ROOT/signal"
   if have_compose; then
     if [ "$WITH_SIGNAL" = 1 ]; then ( cd "$HERE" && "${COMPOSE[@]}" -p "$PROJECT" --profile signal up -d )
     else                            ( cd "$HERE" && "${COMPOSE[@]}" -p "$PROJECT" up -d dms ); fi
@@ -329,7 +332,6 @@ svc_up() {
   docker run -d --name "$NAME_DMS" --restart unless-stopped "${DOCKER_USER[@]}" \
     --network host -v "$DATA":/data inh-dms >/dev/null
   if [ "$WITH_SIGNAL" = 1 ]; then
-    mkdir -p "$DATA_ROOT/signal"
     docker rm -f "$NAME_SIGNAL" >/dev/null 2>&1 || true
     docker run -d --name "$NAME_SIGNAL" --restart unless-stopped \
       -e MODE=native -e "AUTO_RECEIVE_SCHEDULE=0 4 * * *" \
