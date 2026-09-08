@@ -285,7 +285,7 @@ type runbookForm struct {
 	Persons                  []Person // every row, in order
 	Threshold, Count         int
 	Bank, KdbxCopies         string
-	ToolWhere, ToolSHA       string // where inh-offline is kept, and its checksum
+	ToolWhere                string // where inh-offline is kept
 	WalletNotes, FamilyNotes string
 }
 
@@ -298,7 +298,7 @@ type runbookData struct {
 	Parts                    []partLoc
 	Threshold, Count         int
 	Bank, KdbxCopies         string
-	ToolWhere, ToolSHA       string
+	ToolWhere                string
 	WalletNotes, FamilyNotes string
 }
 
@@ -356,7 +356,7 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 			Author: f("author"), Date: f("date"), Wife: f("wife"),
 			Persons: rows, Threshold: threshold, Count: count,
 			Bank: f("bank"), KdbxCopies: f("kdbx_copies"),
-			ToolWhere: f("tool_where"), ToolSHA: f("tool_sha"),
+			ToolWhere:   f("tool_where"),
 			WalletNotes: f("wallet_notes"), FamilyNotes: f("family_notes"),
 		})
 		return
@@ -386,7 +386,7 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 		Parts:     parts,
 		Threshold: threshold, Count: count,
 		Bank: f("bank"), KdbxCopies: f("kdbx_copies"),
-		ToolWhere: f("tool_where"), ToolSHA: f("tool_sha"),
+		ToolWhere:   f("tool_where"),
 		WalletNotes: f("wallet_notes"), FamilyNotes: f("family_notes"),
 	})
 }

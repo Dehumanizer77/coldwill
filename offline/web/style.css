@@ -149,14 +149,3 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; }
 .wordgrid input.ok { border-color: #2f7d4f; }
 .wordgrid input.bad { border-color: #b3455e; background: #2a1b21; }
 details summary { cursor: pointer; color: var(--muted); }
-
-/* Kontrolný súčet nástroja v runbooku: musí sa dať odpísať znak po znaku. */
-code.sha {
-  display: inline-block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9em;
-  word-break: break-all;
-  padding: 2px 6px;
-  border: 1px solid #999;
-  border-radius: 4px;
-}

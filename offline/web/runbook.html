@@ -20,7 +20,6 @@
       <input type="hidden" name="bank" value="{{.Bank}}">
       <input type="hidden" name="kdbx_copies" value="{{.KdbxCopies}}">
       <input type="hidden" name="tool_where" value="{{.ToolWhere}}">
-      <input type="hidden" name="tool_sha" value="{{.ToolSHA}}">
       <input type="hidden" name="wallet_notes" value="{{.WalletNotes}}">
       <input type="hidden" name="family_notes" value="{{.FamilyNotes}}">
       {{range .AllPersons}}
@@ -117,14 +116,8 @@
       <li>Zožeň <strong>obálku s heslom (passphrase)</strong>: buď zapečatenú z bankového trezoru,
       alebo od technicky zdatnej osoby{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}, ktorej ju systém pošle e-mailom.</li>
       <li>Priprav <strong>počítač odpojený od internetu</strong> a zožeň nástroj <em>inh-offline</em>{{if .ToolWhere}}
-      ({{.ToolWhere}}){{end}}.{{if .ToolSHA}}
-      <br><strong>Nech ho technicky zdatná osoba najprv overí.</strong> Kontrolné číslo musí sedieť s týmto:
-      <br><code class="sha">{{.ToolSHA}}</code>
-      <br>Zistí sa príkazom <code>sha256sum inh-offline</code> (Linux), <code>shasum -a 256 inh-offline</code>
-      (macOS) alebo <code>certutil -hashfile inh-offline.exe SHA256</code> (Windows). Overiť to musí
-      <strong>tento príkaz, nie samotný nástroj</strong>: keby bol nástroj podvrhnutý, o sebe by pokojne
-      vypísal aj správne číslo.
-      {{end}}{{if not .ToolSHA}} <em>(Kontrolné číslo nástroja nie je v tomto runbooku vyplnené.)</em>{{end}}</li>
+      ({{.ToolWhere}}){{end}}. Že je počítač bez siete, je dôležité: slová z častí sa naň budú písať
+      a nesmú sa odtiaľ dostať von.</li>
       <li>Spusti <em>inh-offline</em> → <em>Obnova</em> → vlož {{.Threshold}} časti → dostaneš
       <strong>súbor s kľúčom</strong> (key-file). Ulož si ho na ten počítač.</li>
       <li>Otvor databázu <code>.kdbx</code> programom <strong>KeePassXC</strong>
