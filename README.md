@@ -91,7 +91,7 @@ Návrhové rozhodnutia, z ktorých všetko ostatné vyplýva:
 | Zariadenie | Nepodstatné, záleží len na **seede** (+ passphrase). Obnoviť sa dá na hocijakej kompatibilnej peňaženke. |
 | Peňaženka | Existujúca, nová sa **nevytvára**. Jeden seed, s passphrase. |
 | Dedičia | Viacero dôveryhodných osôb; aspoň jedna **technicky zdatná**, ostatné môžu byť netechnické. Stačí jeden technický pomocník. |
-| Hardvér u dedičov | Nie, maximálne **kovové platničky** so slovami. |
+| Hardvér u dedičov | Nie, maximálne **kovová záloha** so slovami. |
 | Tretie strany / notár | Nie. |
 | Schéma | **K-z-N**, čiže prah K z N častí (ľubovoľný počet; príklady nižšie používajú 2-z-3). |
 | Kontrola za života | BTC plne kontroluje **vlastník** (passphrase). DB so seedom a ostatnými heslami vie K-z-N dôveryhodných osôb otvoriť aj za jeho života, ale BTC bez passphrase neminú. |
@@ -170,7 +170,7 @@ bezcenná, preto je riziko u jednotlivých držiteľov nízke.
 6. Na peňaženke obnoví zo **seedu + passphrase** (z obálky) → BTC.
 7. (Voliteľné) presunie BTC do vlastnej novej peňaženky.
 
-Na kove sú slová spravidla len ako **4-písmenové skratky**, platnička viac
+Na kove sú slová spravidla len ako **4-písmenové skratky**, kovová záloha viac
 pozícií nemá. Nie je to problém: SLIP-39 zoznam je navrhnutý tak, že prvé štyri
 písmená určujú slovo jednoznačne (1024 slov, 1024 rôznych prefixov), a
 obnovovací nástroj si zvyšok doplní sám. Tri písmená by už jednoznačné neboli,
@@ -187,7 +187,8 @@ v oficiálnom SLIP-39 zozname.
 - Čitateľnosť a prítomnosť **všetkých častí** (potvrdiť s držiteľmi).
 - Obálka v banke neporušená; `.kdbx` kópie sa otvárajú.
 - Test check-inu DMS.
-- **Raz za rok nanečisto celá obnova** na náhradnom zariadení.
+- **Raz za rok nanečisto celá obnova** na náhradnom zariadení, aspoň raz aj na
+  Windows (tá binárka sa inde otestovať nedá).
 - Aktualizácia DB pri zmene prístupov + re-tlač runbooku.
 
 ### Čo systém nerieši
@@ -236,7 +237,23 @@ cd offline && go build -o inh-offline .
 ```
 
 Výsledok je **jeden statický binár** bez závislostí (beží na hocijakom Linuxe
-danej architektúry). Pre Windows/macOS: `GOOS=windows go build` / `GOOS=darwin`.
+danej architektúry).
+
+Dedič ale nemusí sedieť pri Linuxe, takže do ceremónie patria binárky pre všetky
+platformy naraz:
+
+```
+cd offline && ./build-all.sh      # -> dist/ + SHA256SUMS
+```
+
+Vyrobí Linux (amd64, arm64), Windows a macOS (Apple Silicon aj Intel), spolu
+okolo 41 MB. Celý obsah `dist/` ide na USB kľúč ku každej kovovej zálohe aj do
+bankového trezoru; runbook potom hovorí, ktorý súbor na ktorom počítači spustiť.
+
+Go kríž-kompiluje samo, žiadny ďalší toolchain netreba. Otestovať sa tu dá len
+binárka pre tento stroj: **Windows a macOS treba vyskúšať na cieľovom systéme**,
+patrí to do ročnej údržby. Binárky nie sú podpísané, takže Windows SmartScreen aj
+macOS Gatekeeper zahlásia varovanie. Runbook popisuje, ako ho preklikať.
 
 #### Spustenie
 
@@ -263,7 +280,7 @@ round-trip); ak zlyhá, nástroj sa nespustí.
   doplní celé, pole zozelenie a kurzor skočí na ďalšie; vloženie celej časti zo
   schránky rozhádže slová do polí. Nezmyselné slovo pole očervenie. Pod
   formulárom ostáva aj **vloženie častí ako textu**.
-  Slová píšeš **tak, ako sú na kove**: platničky majú miesto len na **4 písmená**
+  Slová píšeš **tak, ako sú na kove**: kovová záloha má miesto len na **4 písmená**
   a nástroj si zvyšok doplní (v SLIP-39 zozname je slovo prvými štyrmi písmenami
   určené jednoznačne (1024 slov, 1024 rôznych prefixov). Tri písmená sú
   nejednoznačné, tie nástroj odmietne a povie ktoré slovo. Veľkosť písmen,
@@ -275,7 +292,7 @@ round-trip); ak zlyhá, nástroj sa nespustí.
 
 #### Ako to zapadá
 
-- Časti sa ryjú na **kovové platničky** (médium musí pojať 23 slov), jedna na
+- Časti sa ryjú **do kovu** (médium musí pojať 23 slov), jedna na
   držiteľa/lokalitu. Ryjú sa len **prvé 4 písmená** každého slova. Setup ich na
   výstupe zvýrazní tučným, aby bolo jasné, čo ide na kov.
 - Key-file zamyká **KeePass DB** (KeePassXC: ochrana = *Key file*). KeePassXC

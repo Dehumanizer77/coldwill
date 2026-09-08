@@ -17,7 +17,7 @@
 
   <h2>Časti — každú vyryť zvlášť</h2>
   <p class="muted">Každá časť je {{.WordsPerShare}} očíslovaných slov; vyryj ich presne v poradí. Na obnovu stačia ľubovoľné {{.Threshold}}.</p>
-  <p class="muted">Na kov stačí <strong>prvé 4 písmená</strong> (zvýraznené) — v SLIP-39 zozname je nimi slovo určené jednoznačne, preto majú kovové platničky len 4 pozície. Obnovovací nástroj si zvyšok doplní sám.</p>
+  <p class="muted">Na kov stačí <strong>prvé 4 písmená</strong> (zvýraznené) — v SLIP-39 zozname je nimi slovo určené jednoznačne, preto majú kovové zálohy len 4 pozície na slovo. Obnovovací nástroj si zvyšok doplní sám.</p>
   {{range .Shares}}
     <section class="share">
       <h3>{{.Holder}}</h3>
@@ -35,7 +35,7 @@
 
   <h2>Ďalej</h2>
   <ol>
-    <li>Vyryj všetky časti na kovové platničky a rozdaj podľa plánu.</li>
+    <li>Vyryj všetky časti do kovu a rozdaj ich podľa plánu.</li>
     <li>V KeePassXC vytvor novú databázu, ako ochranu zvoľ <em>Key file</em> = stiahnutý súbor (<strong>do poľa Heslo nič nezadávaj</strong>).</li>
     <li>Do DB ulož seed a ostatné prístupy. <strong>passphrase k peňaženke do DB NEDÁVAJ</strong> — tá ide do posmrtnej obálky.</li>
     <li>Rozkopíruj zašifrovanú <code>.kdbx</code> (cloud, banka, u všetkých). Key-file z disku zmaž.</li>

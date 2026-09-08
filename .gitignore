@@ -19,7 +19,9 @@ envelope*.txt
 
 # --- build / runtime ---
 inh-offline
+inh-offline-*
 offline/inh-offline
+offline/dist/
 inh-dms
 dms/inh-dms
 config.json

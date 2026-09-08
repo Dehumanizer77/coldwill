@@ -43,8 +43,9 @@
     {{if .Wife}}<p>Adresát: <strong>{{.Wife}}</strong></p>{{end}}
     <p>Najprv zavolaj technicky zdatnú osobu (nižšie), ktorá ťa celým postupom prevedie.
     Neponáhľaj sa, rob to po krokoch a nikomu cudziemu nedávaj nič.</p>
-    <p><strong>Čo je „časť“:</strong> zoznam <strong>23 slov</strong>, uložený na trvanlivom médiu,
-    napríklad na kovovej platničke alebo inom zálohovacom médiu. Jedna časť samotná je nanič,
+    <p><strong>Čo je „časť“:</strong> zoznam <strong>23 slov</strong> <strong>vyrazených do kovu</strong>,
+    aby prežili aj oheň a vodu. Vyzerá to ako kovová tabuľka alebo schránka s vyrazenými písmenami;
+    presný tvar sa u jednotlivých držiteľov môže líšiť. Jedna časť samotná je nanič,
     treba ich <strong>{{.Threshold}} z {{.Count}}</strong>, aby sa z nich zložil „key-file“
     (kľúč k databáze). Jednotlivé časti držia rôzne dôveryhodné osoby (nižšie).</p>
   </section>
@@ -115,9 +116,33 @@
       alebo si ich nechaj nadiktovať. <strong>Nefoť ich telefónom</strong>, fotky sa samé zálohujú do cloudu.</li>
       <li>Zožeň <strong>obálku s heslom (passphrase)</strong>: buď zapečatenú z bankového trezoru,
       alebo od technicky zdatnej osoby{{if .PrimaryHelper}} ({{.PrimaryHelper}}){{end}}, ktorej ju systém pošle e-mailom.</li>
-      <li>Priprav <strong>počítač odpojený od internetu</strong> a zožeň nástroj <em>inh-offline</em>{{if .ToolWhere}}
-      ({{.ToolWhere}}){{end}}. Že je počítač bez siete, je dôležité: slová z častí sa naň budú písať
-      a nesmú sa odtiaľ dostať von.</li>
+      <li>Priprav <strong>počítač odpojený od internetu</strong> (vytiahni kábel, vypni wifi).
+      Je to dôležité: slová z častí sa naň budú písať a nesmú sa odtiaľ dostať von.
+      <br>Nástroj <em>inh-offline</em> je na <strong>USB kľúči</strong>{{if .ToolWhere}} ({{.ToolWhere}}){{end}}.
+      Na kľúči je viac súborov, jeden pre každý typ počítača. <strong>Spusti ten, ktorý sedí:</strong>
+      <table>
+        <tr><th>Počítač</th><th>Súbor</th></tr>
+        <tr><td>Windows</td><td><code>inh-offline-windows-amd64.exe</code></td></tr>
+        <tr><td>Mac (novší, od roku 2020)</td><td><code>inh-offline-darwin-arm64</code></td></tr>
+        <tr><td>Mac (starší, Intel)</td><td><code>inh-offline-darwin-amd64</code></td></tr>
+        <tr><td>Linux</td><td><code>inh-offline-linux-amd64</code></td></tr>
+      </table>
+      Ak si nie si istá, ktorý to je, spýtaj sa technicky zdatnej osoby. Zlý súbor nič nepokazí,
+      len sa nespustí.</li>
+      <li><strong>Počítač bude asi protestovať.</strong> Nie je to chyba ani vírus: je to program,
+      za ktorý nikto nezaplatil registráciu u Microsoftu ani Apple. Varovanie pokojne obíď:
+      <ul>
+        <li><strong>Windows:</strong> objaví sa modré okno v štýle „Systém Windows ochránil váš počítač“.
+        Klikni na <em>Ďalšie informácie</em> a potom na <em>Spustiť aj tak</em>.</li>
+        <li><strong>Mac:</strong> napíše, že súbor je od neovereného vývojára. Zavri to, klikni na súbor
+        <strong>pravým tlačidlom</strong> (alebo dvoma prstami) a vyber <em>Otvoriť</em>; v ďalšom okne
+        znova <em>Otvoriť</em>. Ak to nejde, otvor <em>Nastavenia → Súkromie a bezpečnosť</em>, kde bude
+        tlačidlo <em>Otvoriť napriek tomu</em>.</li>
+        <li><strong>Linux:</strong> ak sa súbor nedá spustiť, technicky zdatná osoba mu dá právo príkazom
+        <code>chmod +x inh-offline-linux-amd64</code>.</li>
+      </ul>
+      Ak sa neotvorí prehliadač sám, otvor ho a napíš doň adresu, ktorú nástroj vypíše
+      (býva <code>http://127.0.0.1:8777</code>).</li>
       <li>Spusti <em>inh-offline</em> → <em>Obnova</em> → vlož {{.Threshold}} časti → dostaneš
       <strong>súbor s kľúčom</strong> (key-file). Ulož si ho na ten počítač.</li>
       <li>Otvor databázu <code>.kdbx</code> programom <strong>KeePassXC</strong>
