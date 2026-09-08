@@ -42,7 +42,7 @@ var csMessages = map[string]string{
 	"setupres.hex.warn":     "⚠️ Toto je obsah key-filu (těch samých 20 bajtů), jen pro <strong>okamžité vytvoření databáze</strong> a případné ověření. <strong>NEZAPISUJ ho do runbooku ani nikam jinam</strong>: klíč má žít pouze jako %s části; jeho uložením kamkoli bys obešel ochranu %s ze %s.",
 	"setupres.next.h":       "Dále",
 	"setupres.next.1":       "Přenes všechny části na kovové médium a rozdej je podle plánu.",
-	"setupres.next.2":       "V <a href=\"https://keepassxc.org/download/\">KeePassXC</a> vytvoř novou databázi a jako ochranu zvol <em>Key file</em> = stažený soubor (<strong>do pole Heslo nic nezadávej</strong>).",
+	"setupres.next.2":       "V <strong>KeePassXC</strong> (<code>keepassxc.org/download</code>) vytvoř novou databázi a jako ochranu zvol <em>Key file</em> = stažený soubor (<strong>do pole Heslo nic nezadávej</strong>).",
 	"setupres.next.3":       "Do databáze ulož seed a ostatní přístupy. <strong>Passphrase k peněžence do databáze NEDÁVEJ</strong>, ta patří do posmrtné obálky.",
 	"setupres.next.4":       "Rozkopíruj zašifrovanou <code>.kdbx</code> (cloud, banka, u všech držitelů). Key-file z disku smaž.",
 
@@ -72,7 +72,7 @@ var csMessages = map[string]string{
        ▼
 ③  obnova peněženky  →  Bitcoin ₿`,
 	"recoverres.next.h": "Dále",
-	"recoverres.next.1": "Otevři svou <code>.kdbx</code> v <a href=\"https://keepassxc.org/download/\">KeePassXC</a>; jako ochranu zvol <em>Key file</em> = tento soubor (<strong>do pole Heslo nic nezadávej</strong>).",
+	"recoverres.next.1": "Otevři svou <code>.kdbx</code> v programu <strong>KeePassXC</strong> (stáhni ho na stroji s internetem z <code>keepassxc.org/download</code>); jako ochranu zvol <em>Key file</em> = tento soubor (<strong>do pole Heslo nic nezadávej</strong>).",
 	"recoverres.next.2": "Dostaneš se k <strong>seedu</strong> a dalším informacím a přístupům; <strong>passphrase k peněžence</strong> vezmi z obálky (banka nebo e-mail).",
 	"recoverres.next.3": "Na hardwarové peněžence obnov ze seedu, potom odemkni pomocí passphrase.",
 

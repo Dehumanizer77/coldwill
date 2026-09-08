@@ -222,9 +222,9 @@ ends up in a court file.
 The stack is **Go**: static binaries, the Go 1 compatibility promise, one
 language for both halves, no cgo and no GUI toolkit. The `.kdbx` file is neither
 created nor read by this code. A standard KeePass application does that, using
-the key file this tool produces: [KeePassXC](https://keepassxc.org/download/) on
-desktop, or any other implementation of the format (KeePass, KeePassDX,
-Strongbox).
+the key file this tool produces: KeePassXC, from
+<https://keepassxc.org/download/>, or any other implementation of the format
+(KeePass, KeePassDX, Strongbox).
 
 ### Offline tool (`offline/`)
 
@@ -298,11 +298,11 @@ refuses to start if that fails.
   holder or location. Only the **first four letters** of each word are
   transferred, and the setup page highlights them so it is clear what goes onto
   the metal.
-- The key file locks the **KeePass database** (in
-  [KeePassXC](https://keepassxc.org/download/), protection = *Key file*).
-  KeePassXC hashes any file that is not 32 bytes, 64 hex characters or
-  KeyFile-XML with **SHA-256**, deterministically, so a **20-byte** (160-bit)
-  file works and reassembles identically. The downloaded key file is **raw
+- The key file locks the **KeePass database** (in KeePassXC, protection = *Key
+  file*; download it from <https://keepassxc.org/download/>). KeePassXC hashes
+  any file that is not 32 bytes, 64 hex characters or KeyFile-XML with
+  **SHA-256**, deterministically, so a **20-byte** (160-bit) file works and
+  reassembles identically. The downloaded key file is **raw
   bytes**, not hex text: during a manual fallback, build it from the hex with
   `xxd -r -p` (or `perl -e 'print pack "H*","…"'`, or
   `python3 -c '…bytes.fromhex(…)'` where `xxd` is missing). Hex saved as text is
