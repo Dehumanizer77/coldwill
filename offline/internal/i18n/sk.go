@@ -38,7 +38,7 @@ var skMessages = map[string]string{
 	"setupres.hex.warn":     "⚠️ Toto je obsah key-filu (tých istých 20 bajtov), len na <strong>okamžité vytvorenie DB</strong> a prípadné overenie. <strong>NEZAPISUJ ho do runbooku ani nikam inam</strong>: kľúč má žiť len ako %s časti; jeho uložením kdekoľvek by si obišiel ochranu %s-z-%s.",
 	"setupres.next.h":       "Ďalej",
 	"setupres.next.1":       "Prenes všetky časti na kovové médium a rozdaj ich podľa plánu.",
-	"setupres.next.2":       "V KeePassXC vytvor novú databázu, ako ochranu zvoľ <em>Key file</em> = stiahnutý súbor (<strong>do poľa Heslo nič nezadávaj</strong>).",
+	"setupres.next.2":       "V <a href=\"https://keepassxc.org/download/\">KeePassXC</a> vytvor novú databázu, ako ochranu zvoľ <em>Key file</em> = stiahnutý súbor (<strong>do poľa Heslo nič nezadávaj</strong>).",
 	"setupres.next.3":       "Do DB ulož seed a ostatné prístupy. <strong>passphrase k peňaženke do DB NEDÁVAJ</strong>, tá ide do posmrtnej obálky.",
 	"setupres.next.4":       "Rozkopíruj zašifrovanú <code>.kdbx</code> (cloud, banka, u všetkých). Key-file z disku zmaž.",
 
@@ -68,7 +68,7 @@ var skMessages = map[string]string{
        ▼
 ③  obnova peňaženky  →  Bitcoin ₿`,
 	"recoverres.next.h": "Ďalej",
-	"recoverres.next.1": "Otvor svoju <code>.kdbx</code> v KeePassXC; ako ochranu zvoľ <em>Key file</em> = tento súbor (<strong>do poľa Heslo nič nezadávaj</strong>).",
+	"recoverres.next.1": "Otvor svoju <code>.kdbx</code> v <a href=\"https://keepassxc.org/download/\">KeePassXC</a>; ako ochranu zvoľ <em>Key file</em> = tento súbor (<strong>do poľa Heslo nič nezadávaj</strong>).",
 	"recoverres.next.2": "Dostaneš sa k <strong>seedu</strong> a ďalším informáciám a prístupom; <strong>passphrase k peňaženke</strong> vezmi z obálky (banka / e-mail).",
 	"recoverres.next.3": "Na hardvérovej peňaženke obnov zo seedu, potom odomkni passphrase.",
 

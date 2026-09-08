@@ -220,7 +220,9 @@ a držiteľov častí, lebo závet končí v súdnom spise.
 
 Stack je **Go**: statické binárky a „Go 1 compatibility promise“, jeden jazyk na
 obe časti, žiadne cgo ani GUI knižnice. `.kdbx` náš kód **netvorí ani nečíta**;
-to robí štandardná KeePass appka (KeePassXC a spol.) s naším key-filom.
+to robí štandardná KeePass appka s naším key-filom:
+[KeePassXC](https://keepassxc.org/download/) na počítači, alebo hocijaká iná
+implementácia formátu (KeePass, KeePassDX, Strongbox).
 
 ### Offline nástroj (`offline/`)
 
@@ -298,7 +300,8 @@ round-trip); ak zlyhá, nástroj sa nespustí.
   kazeta so zasúvacími písmenkami…), jedna na držiteľa/lokalitu. Prenášajú sa len
   **prvé 4 písmená** každého slova. Setup ich na
   výstupe zvýrazní tučným, aby bolo jasné, čo ide na kov.
-- Key-file zamyká **KeePass DB** (KeePassXC: ochrana = *Key file*). KeePassXC
+- Key-file zamyká **KeePass DB** ([KeePassXC](https://keepassxc.org/download/):
+  ochrana = *Key file*). KeePassXC
   súbor, ktorý nie je 32 B / 64 hex / KeyFile-XML, deterministicky **zahashuje
   (SHA-256)**, takže náš **20-bajtový** (160-bit) súbor funguje a pri obnove sa
   zloží identicky. Stiahnutý key-file sú **surové bajty**, nie hex text: pri
