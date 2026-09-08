@@ -125,7 +125,7 @@ func newSvc(t *testing.T) (*Service, *fakeMailer, *clk) {
 func TestStartupHealthBeat(t *testing.T) {
 	svc, fm, _ := newSvc(t)
 	svc.Tick()
-	if fm.countSubj("v poriadku") == 0 {
+	if fm.countSubj("all good") == 0 {
 		t.Errorf("expected a startup health beat")
 	}
 	if svc.Phase() != PhaseNormal {
@@ -139,7 +139,7 @@ func TestReminderAt30d(t *testing.T) {
 	fm.reset()
 	c.add(31 * 24 * time.Hour)
 	svc.Tick()
-	if fm.countSubj("check-in") == 0 {
+	if fm.countSubj("check in") == 0 {
 		t.Errorf("expected a check-in reminder after 31 days")
 	}
 	if svc.Phase() != PhaseNormal {
@@ -156,10 +156,10 @@ func TestSilenceToAwaiting(t *testing.T) {
 	if svc.Phase() != PhaseAwaiting {
 		t.Fatalf("phase = %s, want awaiting", svc.Phase())
 	}
-	if _, ok := fm.sentTo("friend@example.com", "potvrdenie"); !ok {
+	if _, ok := fm.sentTo("friend@example.com", "confirmation"); !ok {
 		t.Errorf("confirmer friend not asked")
 	}
-	if _, ok := fm.sentTo("brother@example.com", "potvrdenie"); !ok {
+	if _, ok := fm.sentTo("brother@example.com", "confirmation"); !ok {
 		t.Errorf("confirmer brother not asked")
 	}
 }
@@ -190,7 +190,7 @@ func TestConfirmCountdownFire(t *testing.T) {
 	if svc.Phase() != PhaseCountdown {
 		t.Fatalf("fired too early")
 	}
-	if fm.countSubj("čoskoro pošle") == 0 {
+	if fm.countSubj("goes out shortly") == 0 {
 		t.Errorf("expected a countdown warning")
 	}
 	fm.reset()
@@ -199,7 +199,7 @@ func TestConfirmCountdownFire(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired", svc.Phase())
 	}
-	m, ok := fm.sentTo("friend@example.com", "dedičstvo")
+	m, ok := fm.sentTo("friend@example.com", "inheritance")
 	if !ok {
 		t.Fatalf("envelope not sent to friend")
 	}
@@ -224,7 +224,7 @@ func TestCheckinCancels(t *testing.T) {
 	if svc.Phase() == PhaseFired {
 		t.Fatalf("must not fire after check-in")
 	}
-	if _, ok := fm.sentTo("friend@example.com", "dedičstvo"); ok {
+	if _, ok := fm.sentTo("friend@example.com", "inheritance"); ok {
 		t.Fatalf("envelope sent despite check-in")
 	}
 }
@@ -242,7 +242,7 @@ func TestFailSafeUnhealthyDoesNotFire(t *testing.T) {
 	if svc.Phase() == PhaseFired {
 		t.Fatalf("fired while unhealthy")
 	}
-	if fm.countSubj("PORUCHA") == 0 {
+	if fm.countSubj("FAULT") == 0 {
 		t.Errorf("expected a fault alert")
 	}
 }
@@ -285,13 +285,13 @@ func TestCheckinHTTP(t *testing.T) {
 	h := svc.Handler()
 	tok := svc.token(svc.checkinAction())
 
-	if rr := httpDo(h, "GET", "/checkin?token="+tok, nil); rr.Code != 200 || !strings.Contains(rr.Body.String(), "Som živý") {
+	if rr := httpDo(h, "GET", "/checkin?token="+tok, nil); rr.Code != 200 || !strings.Contains(rr.Body.String(), "I am alive") {
 		t.Fatalf("GET checkin: code %d", rr.Code)
 	}
 	if rr := httpDo(h, "GET", "/checkin?token=bad", nil); rr.Code != 403 {
 		t.Fatalf("bad token should be 403, got %d", rr.Code)
 	}
-	if rr := httpDo(h, "POST", "/checkin", url.Values{"token": {tok}}); rr.Code != 200 || !strings.Contains(rr.Body.String(), "Ďakujem") {
+	if rr := httpDo(h, "POST", "/checkin", url.Values{"token": {tok}}); rr.Code != 200 || !strings.Contains(rr.Body.String(), "Thank you") {
 		t.Fatalf("POST checkin: code %d", rr.Code)
 	}
 }
@@ -302,7 +302,7 @@ func TestConfirmHTTP(t *testing.T) {
 	h := svc.Handler()
 	tok := svc.token(svc.confirmAction("friend", svc.currentCycle()))
 
-	if rr := httpDo(h, "GET", "/confirm?id=friend&token="+tok, nil); rr.Code != 200 || !strings.Contains(rr.Body.String(), "Potvrdzujem") {
+	if rr := httpDo(h, "GET", "/confirm?id=friend&token="+tok, nil); rr.Code != 200 || !strings.Contains(rr.Body.String(), "I confirm") {
 		t.Fatalf("GET confirm: code %d", rr.Code)
 	}
 	if rr := httpDo(h, "GET", "/confirm?id=friend&token=bad", nil); rr.Code != 403 {

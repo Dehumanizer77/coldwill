@@ -30,11 +30,11 @@ func TestRejectedRecipientDoesNotBlockTheRest(t *testing.T) {
 		t.Fatalf("phase = %s, want fired — one bad address must not stop the firing", svc.Phase())
 	}
 	for _, to := range []string{"prijata@example.com", "tretia@example.com"} {
-		if _, ok := fm.sentTo(to, "obálka"); !ok {
+		if _, ok := fm.sentTo(to, "envelope"); !ok {
 			t.Errorf("%s did not get the envelope", to)
 		}
 	}
-	if _, ok := fm.sentTo("odmietnuta@example.com", "obálka"); ok {
+	if _, ok := fm.sentTo("odmietnuta@example.com", "envelope"); ok {
 		t.Errorf("the rejected address should not be recorded as delivered")
 	}
 }
@@ -57,7 +57,7 @@ func TestRejectedOwnerDoesNotBlockConfirmers(t *testing.T) {
 		t.Fatalf("phase = %s, want awaiting", svc.Phase())
 	}
 	for _, to := range []string{"friend@example.com", "brother@example.com"} {
-		if _, ok := fm.sentTo(to, "potvrdenie"); !ok {
+		if _, ok := fm.sentTo(to, "confirmation"); !ok {
 			t.Errorf("confirmer %s was not asked", to)
 		}
 	}

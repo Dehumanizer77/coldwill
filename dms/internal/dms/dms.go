@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"inh/dms/internal/i18n"
 )
 
 // Service is the dead-man's switch state machine. Time and email are injected
@@ -41,8 +43,9 @@ func (s *Service) now() time.Time { return s.clock() }
 // released, so a stalled SMTP server cannot block the owner's veto.
 type outgoing struct {
 	to       []Recipient
-	subject  string
-	body     string
+	subjKey  string
+	bodyKey  string
+	args     []any
 	mailOnly bool // used for the alert about Signal itself being down
 }
 
@@ -64,20 +67,18 @@ func (s *Service) Tick() {
 	s.mu.Lock()
 	s.st.Healthy = healthy
 	var outbox []outgoing
-	add := func(subject, body string, to ...Recipient) {
-		outbox = append(outbox, outgoing{to: to, subject: subject, body: body})
+	add := func(subjKey, bodyKey string, to []Recipient, args ...any) {
+		outbox = append(outbox, outgoing{to: to, subjKey: subjKey, bodyKey: bodyKey, args: args})
 	}
+	me := []Recipient{s.owner()}
 
 	if s.sig != nil {
 		s.st.SignalOK = sigErr == nil
 		if sigErr != nil && now.Sub(s.st.LastSignalAlertAt) >= s.cfg.AlertInterval.D() {
 			// The broken channel cannot carry its own alarm, so this goes by e-mail.
 			outbox = append(outbox, outgoing{
-				to:      []Recipient{s.owner()},
-				subject: "[DMS] Signal nefunguje",
-				body: "Druhý kanál (Signal) neodpovedá: " + sigErr.Error() +
-					"\n\nE-mail funguje ďalej a DMS beží normálne — oprav Signal, keď budeš môcť.\n— DMS",
-				mailOnly: true,
+				to: me, subjKey: "subj.signaldown", bodyKey: "body.signaldown",
+				args: []any{sigErr}, mailOnly: true,
 			})
 			s.st.LastSignalAlertAt = now
 		}
@@ -85,11 +86,11 @@ func (s *Service) Tick() {
 
 	if !healthy {
 		if now.Sub(s.st.LastAlertAt) >= s.cfg.AlertInterval.D() {
-			add("[DMS] PORUCHA — skontroluj", s.bodyFault(reason), s.owner())
+			add("subj.fault", "body.fault", me, reason)
 			s.st.LastAlertAt = now
 		}
 	} else if now.Sub(s.st.LastHealthBeatAt) >= s.cfg.HealthBeatInterval.D() {
-		add("[DMS] v poriadku", s.bodyHealth(), s.owner())
+		add("subj.healthy", "body.healthy", me, s.healthSignalNote(), s.checkinURL())
 		s.st.LastHealthBeatAt = now
 	}
 
@@ -101,9 +102,7 @@ func (s *Service) Tick() {
 		case silence >= s.cfg.SilenceThreshold.D():
 			cycle := newCycleID()
 			if cycle == "" {
-				add("[DMS] PORUCHA — skontroluj",
-					"Nepodarilo sa vygenerovať id cyklu (chyba generátora náhody); "+
-						"výzva potvrdzovateľom sa NEODOSLALA. Skúsi sa znova.", s.owner())
+				add("subj.fault", "body.cycleid", me)
 				break
 			}
 			s.st.Phase = PhaseAwaiting
@@ -111,33 +110,29 @@ func (s *Service) Tick() {
 			s.st.Confirmations = nil
 			s.st.LastConfirmReqAt = now
 			s.st.LastReminderAt = now
-			for _, c := range s.cfg.Confirmers {
-				add("[DMS] Prosba o potvrdenie", s.bodyConfirmReq(c), c.recipient())
-			}
-			add("[DMS] Spustená kontrola po dlhom tichu", s.bodyAwaitingUser(silence), s.owner())
+			s.addConfirmRequests(&outbox)
+			add("subj.awaiting", "body.awaiting", me, durArg(silence), s.checkinURL())
 		case silence >= s.cfg.CheckInInterval.D():
 			if now.Sub(s.st.LastReminderAt) >= s.cfg.ReminderInterval.D() {
-				add("[DMS] Ozvi sa — check-in", s.bodyCheckin(false), s.owner())
+				add("subj.checkin", "body.checkin", me, s.checkinURL())
 				s.st.LastReminderAt = now
 			}
 		}
 
 	case PhaseAwaiting:
 		if now.Sub(s.st.LastReminderAt) >= s.cfg.ReminderInterval.D() {
-			add("[DMS] STÁLE čakám — ozvi sa", s.bodyCheckin(true), s.owner())
+			add("subj.stillwait", "body.checkin.urgent", me, s.checkinURL())
 			s.st.LastReminderAt = now
 		}
 		if now.Sub(s.st.LastConfirmReqAt) >= s.cfg.ReminderInterval.D() {
-			for _, c := range s.cfg.Confirmers {
-				add("[DMS] Prosba o potvrdenie", s.bodyConfirmReq(c), c.recipient())
-			}
+			s.addConfirmRequests(&outbox)
 			s.st.LastConfirmReqAt = now
 		}
 
 	case PhaseCountdown:
 		if now.Sub(s.st.LastWarningAt) >= s.cfg.WarningInterval.D() {
 			left := s.cfg.ReleaseDelay.D() - now.Sub(s.st.ConfirmedAt)
-			add("[DMS] Obálka sa čoskoro pošle", s.bodyCountdown(left), s.owner())
+			add("subj.countdown", "body.countdown", me, durArg(max(left, 0)), s.checkinURL())
 			s.st.LastWarningAt = now
 		}
 		fireNow = healthy && now.Sub(s.st.ConfirmedAt) >= s.cfg.ReleaseDelay.D()
@@ -158,10 +153,10 @@ func (s *Service) Tick() {
 func (s *Service) deliver(outbox []outgoing) {
 	for _, m := range outbox {
 		if m.mailOnly {
-			s.mailOwner(m.subject, m.body)
+			s.mailOwner(m.subjKey, m.bodyKey, m.args...)
 			continue
 		}
-		s.notify(m.to, m.subject, m.body)
+		s.notify(m.to, m.subjKey, m.bodyKey, m.args...)
 	}
 }
 
@@ -224,12 +219,10 @@ func (s *Service) Confirm(id string) error {
 	if got < need {
 		// Not enough yet: record it and tell the owner someone attested.
 		log.Printf("dms: confirmation %d/%d (by %s)", got, need, id)
-		body := fmt.Sprintf("%s potvrdil. Na spustenie odpočtu treba %d potvrdení, zatiaľ ich je %d.\n\n"+
-			"Ak žiješ, ZRUŠ to teraz:\n\n%s\n— DMS", name, need, got, s.checkinURL())
 		s.persist()
 		s.mu.Unlock()
 		locked = false
-		s.notifyOwner("[DMS] Potvrdenie — čaká sa na ďalšie", body)
+		s.notifyOwner("subj.partial", "body.partial", name, need, got, s.checkinURL())
 		return nil
 	}
 
@@ -239,14 +232,14 @@ func (s *Service) Confirm(id string) error {
 	s.st.ConfirmedBy = id
 	s.st.LastWarningAt = time.Time{}
 	log.Printf("dms: confirmed by %s (%d/%d); countdown started", id, got, need)
-	body := s.bodyConfirmed(name)
+	delay := s.cfg.ReleaseDelay.D()
 	s.persist()
 	s.mu.Unlock()
 	locked = false
 
 	// Sending happens with the lock released: a stalled relay here would
 	// otherwise block the owner's check-in, which is the veto.
-	s.notifyOwner("[DMS] Potvrdené — odpočet beží", body)
+	s.notifyOwner("subj.confirmed", "body.confirmed", name, durArg(delay), s.checkinURL())
 	return nil
 }
 
@@ -288,12 +281,16 @@ func (s *Service) releaseEnvelopes(now time.Time) {
 		data, err := os.ReadFile(e.Path)
 		if err != nil || len(data) == 0 {
 			log.Printf("dms: envelope %s unreadable: %v", e.ID, err)
-			failed = append(failed, e.ID+" (nedá sa načítať)")
+			failed = append(failed, e.ID)
 			continue
 		}
 		// One channel through is enough for a given envelope; an envelope that
 		// reached nobody is retried on the next tick, one that got out is not.
-		delivered, err := s.notify(e.recipients(), e.subject(), s.bodyEnvelope(e, string(data)))
+		note := ""
+		if e.Note != "" {
+			note = e.Note + "\n\n"
+		}
+		delivered, err := s.notifyEnvelope(e, note, string(data))
 
 		s.mu.Lock()
 		if s.st.Phase != PhaseCountdown {
@@ -321,22 +318,23 @@ func (s *Service) releaseEnvelopes(now time.Time) {
 	}
 
 	if vetoed {
-		msg := "Počas odosielania prišiel tvoj check-in, takže sa zvyšok obálok NEODOSLAL."
+		l := i18n.Parse(s.cfg.UserLang)
+		msg := i18n.S(l, "body.cancelled")
 		if len(sent) > 0 {
-			msg += "\nEšte predtým stihli odísť: " + strings.Join(sent, ", ") +
-				". Tie sa už vziať späť nedajú — daj príjemcom vedieť, že ide o planý poplach."
+			msg += i18n.S(l, "body.cancelled.some", strings.Join(sent, ", "))
 		}
-		s.notifyOwner("[DMS] Odosielanie zrušené check-inom", msg)
+		s.notifyOwner("subj.cancelled", "body.raw", msg)
 		return
 	}
 
 	if len(failed) > 0 {
 		// Stay in countdown so the next tick retries what is left.
-		msg := "Nepodarilo sa doručiť: " + strings.Join(failed, ", ") + "\nSkúsi sa znova pri ďalšom tiku."
+		l := i18n.Parse(s.cfg.UserLang)
+		msg := i18n.S(l, "body.sendfail.list", strings.Join(failed, ", "))
 		if len(sent) > 0 {
-			msg = "Odoslané: " + strings.Join(sent, ", ") + "\n" + msg
+			msg = i18n.S(l, "body.sendfail.sent", strings.Join(sent, ", ")) + msg
 		}
-		s.notifyOwner("[DMS] CHYBA: obálku sa nepodarilo odoslať", msg)
+		s.notifyOwner("subj.sendfail", "body.raw", msg)
 		return
 	}
 
@@ -351,9 +349,18 @@ func (s *Service) releaseEnvelopes(now time.Time) {
 	s.mu.Unlock()
 
 	log.Printf("dms: FIRED — %d envelope(s) delivered", len(s.cfg.Envelopes))
-	s.notifyOwner("[DMS] Obálky odoslané",
-		"Odoslané obálky: "+strings.Join(envelopeIDs(s.cfg.Envelopes), ", ")+
-			".\nAk je to omyl, kontaktuj príjemcov.")
+	s.notifyOwner("subj.sent", "body.sent", strings.Join(envelopeIDs(s.cfg.Envelopes), ", "))
+}
+
+// notifyEnvelope sends one envelope, honouring a subject the config set for it
+// and otherwise using the catalogue's, in each recipient's language.
+func (s *Service) notifyEnvelope(e Envelope, note, ciphertext string) (int, error) {
+	if e.Subject != "" {
+		return s.notifyWithSubject(e.recipients(), e.Subject, "body.envelope",
+			nameOrOwner(s.cfg), note, ciphertext)
+	}
+	return s.notify(e.recipients(), "subj.envelope", "body.envelope",
+		nameOrOwner(s.cfg), note, ciphertext)
 }
 
 func envelopeIDs(es []Envelope) []string {
@@ -384,7 +391,7 @@ func (s *Service) probeSignal() error {
 // no lock and touches no state, so Tick can run it before locking.
 func (s *Service) selfTest() (bool, string) {
 	if len(s.cfg.HMACSecret) < 16 {
-		return false, "HMAC secret chýba alebo je krátky"
+		return false, "the HMAC secret is missing or too short"
 	}
 	if err := s.mail.Check(); err != nil {
 		return false, "mail transport: " + err.Error()
@@ -392,25 +399,19 @@ func (s *Service) selfTest() (bool, string) {
 	for _, e := range s.cfg.Envelopes {
 		data, err := os.ReadFile(e.Path)
 		if err != nil {
-			return false, "obálka " + e.ID + " sa nedá načítať: " + err.Error()
+			return false, "envelope " + e.ID + " cannot be read: " + err.Error()
 		}
 		if len(data) == 0 {
-			return false, "obálka " + e.ID + " je prázdna"
+			return false, "envelope " + e.ID + " is empty"
 		}
 		if !strings.Contains(string(data), "BEGIN PGP MESSAGE") {
-			return false, "obálka " + e.ID + " nie je ASCII-armored PGP správa"
+			return false, "envelope " + e.ID + " is not an ASCII-armored PGP message"
 		}
 	}
 	if err := stateWritable(s.cfg.StatePath); err != nil {
-		return false, "stav sa nedá zapísať: " + err.Error()
+		return false, "state is not writable: " + err.Error()
 	}
 	return true, ""
-}
-
-func (s *Service) askConfirmers() {
-	for _, c := range s.cfg.Confirmers {
-		s.notify([]Recipient{c.recipient()}, "[DMS] Prosba o potvrdenie", s.bodyConfirmReq(c))
-	}
 }
 
 func (s *Service) persist() {
@@ -438,85 +439,48 @@ func (s *Service) currentCycle() string {
 	return s.st.CycleID
 }
 
-func (s *Service) bodyCheckin(urgent bool) string {
-	lead := "Klikni a potvrď, že si v poriadku:"
-	if urgent {
-		lead = "Už dlho si sa neozval. Ak žiješ, OKAMŽITE potvrď:"
+// healthSignalNote is the one line in the health beat that depends on the
+// secondary channel, empty when Signal is not configured at all.
+func (s *Service) healthSignalNote() string {
+	if s.sig == nil {
+		return ""
 	}
-	return lead + "\n\n" + s.checkinURL() +
-		"\n\nAk sa neozveš, spustí sa proces odovzdania prístupov rodine.\n— DMS"
-}
-
-func (s *Service) bodyAwaitingUser(silence time.Duration) string {
-	return "Neozval si sa " + humanDur(silence) + ". Požiadal som dôveryhodné osoby o potvrdenie.\n\n" +
-		"Ak žiješ, OKAMŽITE zruš proces:\n\n" + s.checkinURL() + "\n— DMS"
-}
-
-func (s *Service) bodyConfirmReq(c Confirmer) string {
-	return "Ahoj " + c.Name + ",\n\n" +
-		"toto je automatická správa. " + nameOrOwner(s.cfg) + " sa dlhšie neozval.\n\n" +
-		"AK vieš potvrdiť, že zomrel alebo je trvalo neschopný, otvor odkaz a potvrď tlačidlom.\n" +
-		"Tým sa po " + humanDur(s.cfg.ReleaseDelay.D()) + " odošle zašifrovaná obálka s pokynmi.\n" +
-		"AK to potvrdiť nevieš, nerob nič.\n\n" + s.confirmURL(c) + "\n— DMS"
-}
-
-func (s *Service) bodyConfirmed(name string) string {
-	return name + " potvrdil. Obálka sa pošle o " + humanDur(s.cfg.ReleaseDelay.D()) +
-		".\n\nAk je to omyl a žiješ, ZRUŠ to teraz:\n\n" + s.checkinURL() + "\n— DMS"
-}
-
-func (s *Service) bodyCountdown(left time.Duration) string {
-	if left < 0 {
-		left = 0
+	l := i18n.Parse(s.cfg.UserLang)
+	if s.st.SignalOK {
+		return i18n.S(l, "body.healthy.signal.ok")
 	}
-	return "Obálka sa pošle približne o " + humanDur(left) + ".\n\n" +
-		"Ak žiješ, ZRUŠ to:\n\n" + s.checkinURL() + "\n— DMS"
+	return i18n.S(l, "body.healthy.signal.bad")
 }
 
-func (s *Service) bodyEnvelope(e Envelope, ciphertext string) string {
-	note := ""
-	if e.Note != "" {
-		note = e.Note + "\n\n"
+// addConfirmRequests queues one request per confirmer, each in their own
+// language and with their own single-use link.
+func (s *Service) addConfirmRequests(outbox *[]outgoing) {
+	for _, c := range s.cfg.Confirmers {
+		*outbox = append(*outbox, outgoing{
+			to:      []Recipient{c.recipient()},
+			subjKey: "subj.confirmreq",
+			bodyKey: "body.confirmreq",
+			args: []any{
+				c.Name, nameOrOwner(s.cfg),
+				durArg(s.cfg.ReleaseDelay.D()), s.confirmURL(c),
+			},
+		})
 	}
-	return "Ahoj,\n\nak ti prišla táto správa, " + nameOrOwner(s.cfg) +
-		" pravdepodobne zomrel alebo je trvalo neschopný.\n\n" + note +
-		"Nižšie je GPG-zašifrovaná obálka — rozšifruj ju svojím kľúčom.\n" +
-		"Pomôž rodine podľa runbooku. Ďakujem.\n\n" +
-		"-----\n" + ciphertext
-}
-
-func (s *Service) bodyHealth() string {
-	sig := ""
-	if s.sig != nil {
-		sig = "\nSignal kanál: v poriadku."
-		if !s.st.SignalOK {
-			sig = "\nSignal kanál: NEFUNGUJE (e-mail beží ďalej)."
-		}
-	}
-	return "DMS beží a self-testy prešli." + sig +
-		"\n\nTvoj check-in odkaz (ak chceš rovno potvrdiť, že žiješ):\n" +
-		s.checkinURL() + "\n— DMS"
-}
-
-func (s *Service) bodyFault(reason string) string {
-	return "Self-test DMS ZLYHAL: " + reason + "\n\n" +
-		"DMS NEODPÁLI, kým sa to neopraví. Skontroluj službu na serveri.\n— DMS"
 }
 
 func nameOrOwner(c Config) string {
 	if c.UserEmail != "" {
 		return c.UserEmail
 	}
-	return "vlastník"
+	return i18n.S(i18n.Parse(c.UserLang), "owner")
 }
 
-func humanDur(d time.Duration) string {
+func humanDur(l i18n.Lang, d time.Duration) string {
 	if d >= 24*time.Hour {
-		days := int((d + 12*time.Hour) / (24 * time.Hour))
-		return fmt.Sprintf("%d dní", days)
+		return i18n.S(l, "time.days", int((d+12*time.Hour)/(24*time.Hour)))
 	}
 	if d >= time.Hour {
-		return fmt.Sprintf("%d hodín", int((d+30*time.Minute)/time.Hour))
+		return i18n.S(l, "time.hours", int((d+30*time.Minute)/time.Hour))
 	}
-	return fmt.Sprintf("%d minút", int((d+30*time.Second)/time.Minute))
+	return i18n.S(l, "time.minutes", int((d+30*time.Second)/time.Minute))
 }

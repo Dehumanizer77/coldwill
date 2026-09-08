@@ -87,10 +87,10 @@ func TestSignalFanoutToOwner(t *testing.T) {
 	c.add(31 * 24 * time.Hour)
 	svc.Tick()
 
-	if fm.countSubj("check-in") == 0 {
+	if fm.countSubj("check in") == 0 {
 		t.Errorf("no check-in reminder by e-mail")
 	}
-	if _, ok := fs.sentTo(numOwner, "check-in"); !ok {
+	if _, ok := fs.sentTo(numOwner, "check in"); !ok {
 		t.Errorf("no check-in reminder on Signal")
 	}
 }
@@ -105,7 +105,7 @@ func TestSignalConfirmersAsked(t *testing.T) {
 	c.add(61 * 24 * time.Hour)
 	svc.Tick()
 
-	m, ok := fs.sentTo(numBrother, "potvrdenie")
+	m, ok := fs.sentTo(numBrother, "confirmation")
 	if !ok {
 		t.Fatalf("confirmer brother not asked on Signal")
 	}
@@ -133,13 +133,13 @@ func TestSignalDownStillFires(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired despite a broken Signal", svc.Phase())
 	}
-	if _, ok := fm.sentTo("friend@example.com", "dedičstvo"); !ok {
+	if _, ok := fm.sentTo("friend@example.com", "inheritance"); !ok {
 		t.Errorf("envelope not delivered by e-mail")
 	}
-	if fm.countSubj("Signal nefunguje") == 0 {
+	if fm.countSubj("Signal is not working") == 0 {
 		t.Errorf("expected an e-mail alert about the broken Signal channel")
 	}
-	if fm.countSubj("PORUCHA") != 0 {
+	if fm.countSubj("FAULT") != 0 {
 		t.Errorf("broken Signal must not count as a service fault")
 	}
 }
@@ -166,7 +166,7 @@ func TestSignalDeliversEnvelopeWhenMailSendFails(t *testing.T) {
 	if !ok {
 		t.Fatalf("envelope not delivered on Signal")
 	}
-	if !strings.Contains(m.msg, "dedičstvo") {
+	if !strings.Contains(m.msg, "inheritance") {
 		t.Errorf("Signal envelope missing its subject line: %q", m.msg)
 	}
 }
@@ -195,7 +195,7 @@ func TestNoChannelDeliversDoesNotFire(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired on retry", svc.Phase())
 	}
-	if _, ok := fm.sentTo("friend@example.com", "dedičstvo"); !ok {
+	if _, ok := fm.sentTo("friend@example.com", "inheritance"); !ok {
 		t.Errorf("envelope not delivered on retry")
 	}
 }

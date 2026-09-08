@@ -3,6 +3,8 @@ package dms
 import (
 	"fmt"
 	"net/http"
+
+	"inh/dms/internal/i18n"
 )
 
 // Handler returns the HTTP routes. Check-in and confirm are two-step (GET shows
@@ -21,67 +23,70 @@ func (s *Service) hRoot(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	writePage(w, "inh DMS", `<p>Služba beží.</p>`)
+	l := s.pageLang(r)
+	writePage(w, "inh DMS", "<p>"+string(i18n.T(l, "page.running"))+"</p>")
 }
 
 func (s *Service) hCheckin(w http.ResponseWriter, r *http.Request) {
+	l := s.pageLang(r)
 	if r.Method == http.MethodPost {
 		if !s.verifyToken(s.checkinAction(), r.FormValue("token")) {
-			forbidden(w)
+			forbidden(w, l)
 			return
 		}
 		s.CheckIn()
-		writePage(w, "Zaznamenané", `<p class="ok">✓ Ďakujem — zaznamenané, že žiješ. Časovač je vynulovaný.</p>`)
+		writePage(w, i18n.S(l, "page.checkin.done.title"),
+			`<p class="ok">`+string(i18n.T(l, "page.checkin.done"))+`</p>`)
 		return
 	}
 	if !s.verifyToken(s.checkinAction(), r.URL.Query().Get("token")) {
-		forbidden(w)
+		forbidden(w, l)
 		return
 	}
-	writePage(w, "Check-in", fmt.Sprintf(`
-		<p>Potvrď, že si v poriadku:</p>
+	writePage(w, i18n.S(l, "page.checkin.title"), fmt.Sprintf(`
+		<p>%s</p>
 		<form method="post" action="/checkin">
 			<input type="hidden" name="token" value="%s">
-			<button type="submit">Som živý/á — vynulovať časovač</button>
-		</form>`, s.token(s.checkinAction())))
+			<button type="submit">%s</button>
+		</form>`, i18n.T(l, "page.checkin.p"), s.token(s.checkinAction()), i18n.T(l, "page.checkin.btn")))
 }
 
 func (s *Service) hConfirm(w http.ResponseWriter, r *http.Request) {
+	l := s.pageLang(r)
 	if r.Method == http.MethodPost {
 		id := r.FormValue("id")
 		if !s.verifyToken(s.confirmAction(id, s.currentCycle()), r.FormValue("token")) {
-			forbidden(w)
+			forbidden(w, l)
 			return
 		}
 		if err := s.Confirm(id); err != nil {
-			writePage(w, "Nedá sa potvrdiť", `<p class="err">`+htmlEscape(err.Error())+`</p>`)
+			writePage(w, i18n.S(l, "page.confirm.failed.title"), `<p class="err">`+htmlEscape(err.Error())+`</p>`)
 			return
 		}
 		got, need := s.Confirmations()
 		if got < need {
-			writePage(w, "Potvrdené", fmt.Sprintf(
-				`<p class="ok">✓ Potvrdené. Zatiaľ %d z %d potrebných potvrdení — odpočet sa spustí, keď potvrdia aj ostatní.</p>`,
-				got, need))
+			writePage(w, i18n.S(l, "page.confirm.done.title"),
+				`<p class="ok">`+string(i18n.T(l, "page.confirm.partial", got, need))+`</p>`)
 			return
 		}
-		writePage(w, "Potvrdené", `<p class="ok">✓ Potvrdené. Obálky sa odošlú po uplynutí ochrannej lehoty, ak vlastník medzitým nepotvrdí, že žije.</p>`)
+		writePage(w, i18n.S(l, "page.confirm.done.title"),
+			`<p class="ok">`+string(i18n.T(l, "page.confirm.done"))+`</p>`)
 		return
 	}
 	id := r.URL.Query().Get("id")
 	cycle := s.currentCycle()
 	if !s.verifyToken(s.confirmAction(id, cycle), r.URL.Query().Get("token")) {
-		forbidden(w)
+		forbidden(w, l)
 		return
 	}
-	writePage(w, "Potvrdenie", fmt.Sprintf(`
-		<p><strong>Pozor — vážny krok.</strong> Potvrdením vyhlasuješ, že vlastník zomrel
-		alebo je trvalo neschopný. Spustí sa odovzdanie prístupov rodine
-		(zašifrovaná obálka po ochrannej lehote). Ak si nie si istý, NEPOTVRDZUJ.</p>
+	writePage(w, i18n.S(l, "page.confirm.title"), fmt.Sprintf(`
+		<p>%s</p>
 		<form method="post" action="/confirm">
 			<input type="hidden" name="id" value="%s">
 			<input type="hidden" name="token" value="%s">
-			<button type="submit">Potvrdzujem úmrtie / trvalú neschopnosť</button>
-		</form>`, htmlEscape(id), s.token(s.confirmAction(id, cycle))))
+			<button type="submit">%s</button>
+		</form>`, i18n.T(l, "page.confirm.warn"), htmlEscape(id),
+		s.token(s.confirmAction(id, cycle)), i18n.T(l, "page.confirm.btn")))
 }
 
 func writePage(w http.ResponseWriter, title, bodyHTML string) {
@@ -94,9 +99,31 @@ button{font:inherit;padding:12px 18px;border:0;border-radius:8px;background:#256
 		title, title, bodyHTML)
 }
 
-func forbidden(w http.ResponseWriter) {
+func forbidden(w http.ResponseWriter, l i18n.Lang) {
 	w.WriteHeader(http.StatusForbidden)
-	writePage(w, "Neplatný odkaz", `<p class="err">Neplatný alebo poškodený odkaz.</p>`)
+	writePage(w, i18n.S(l, "page.badlink.title"),
+		`<p class="err">`+string(i18n.T(l, "page.badlink"))+`</p>`)
+}
+
+// pageLang picks the language for a page. A confirmer's link carries their id,
+// so the page can greet them in the language configured for them; everything
+// else is the owner's language.
+func (s *Service) pageLang(r *http.Request) i18n.Lang {
+	if id := r.FormValue("id"); id != "" {
+		for _, c := range s.cfg.Confirmers {
+			if c.ID == id {
+				return i18n.Parse(c.Lang)
+			}
+		}
+	}
+	if id := r.URL.Query().Get("id"); id != "" {
+		for _, c := range s.cfg.Confirmers {
+			if c.ID == id {
+				return i18n.Parse(c.Lang)
+			}
+		}
+	}
+	return i18n.Parse(s.cfg.UserLang)
 }
 
 func htmlEscape(s string) string {

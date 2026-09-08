@@ -65,7 +65,7 @@ func TestQuorumTwoNeedsTwoDifferentPeople(t *testing.T) {
 	if got, need := svc.Confirmations(); got != 1 || need != 2 {
 		t.Fatalf("confirmations = %d/%d, want 1/2", got, need)
 	}
-	if fm.countSubj("čaká sa na ďalšie") == 0 {
+	if fm.countSubj("waiting for more") == 0 {
 		t.Errorf("owner was not told about the partial confirmation")
 	}
 

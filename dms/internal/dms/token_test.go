@@ -71,7 +71,7 @@ func TestConfirmLinkFromTheEmailWorks(t *testing.T) {
 	c.add(61 * 24 * time.Hour)
 	svc.Tick()
 
-	m, ok := fm.sentTo("friend@example.com", "potvrdenie")
+	m, ok := fm.sentTo("friend@example.com", "confirmation")
 	if !ok {
 		t.Fatal("confirmer was not asked")
 	}

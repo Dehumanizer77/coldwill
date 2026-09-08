@@ -4,6 +4,7 @@
   "smtp_addr": "127.0.0.1:25",
   "from_email": "dms@example.com",
   "user_email": "you@example.com",
+  "user_lang": "en",
 
   "_envelopes": "Každá obálka má vlastný súbor a vlastných príjemcov: tá istá obálka viacerým = záloha, rôzne obálky rôznym ľuďom = rozdelenie znalostí. Starý zápis envelope_path + friend_email stále funguje.",
   "envelopes": [
@@ -12,8 +13,8 @@
       "path": "/data/envelope-passphrase.asc",
       "subject": "Dôležité — dedičstvo: passphrase",
       "to": [
-        { "name": "Prvá", "email": "prva@example.com", "signal": "+15550000002" },
-        { "name": "Druhá", "email": "druha@example.com" }
+        { "name": "First", "email": "first@example.com", "signal": "+15550000002", "lang": "en" },
+        { "name": "Second", "email": "second@example.com", "lang": "sk" }
       ]
     },
     {
@@ -24,6 +25,7 @@
     }
   ],
 
+  "_lang": "Každý príjemca môže mať vlastný jazyk (en, sk, cs); default je en. // Each recipient can have their own language.",
   "_signal": "Voliteľný druhý kanál. Vynechaj celý blok `signal` aj všetky `*_signal` čísla = všetko ide len e-mailom.",
   "signal": {
     "api_url": "http://127.0.0.1:8080",
@@ -33,8 +35,8 @@
   "user_signal": "+15550000001",
 
   "confirmers": [
-    { "id": "friend", "name": "Friend", "email": "friend@example.com", "signal": "+15550000002" },
-    { "id": "brother", "name": "Brother", "email": "brother@example.com" }
+    { "id": "friend", "name": "Friend", "email": "friend@example.com", "signal": "+15550000002", "lang": "en" },
+    { "id": "brother", "name": "Brother", "email": "brother@example.com", "lang": "sk" }
   ],
   "state_path": "/data/state.json",
   "hmac_secret": "CHANGE-ME-to-a-long-random-string-min-16-chars",

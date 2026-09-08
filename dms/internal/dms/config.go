@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"inh/dms/internal/i18n"
 )
 
 // Duration is a time.Duration that unmarshals from JSON strings like "30d",
@@ -53,6 +55,7 @@ type Confirmer struct {
 	Name   string `json:"name"`             // display name
 	Email  string `json:"email"`            // where the confirmation request is sent
 	Signal string `json:"signal,omitempty"` // optional E.164 number, second channel
+	Lang   string `json:"lang,omitempty"`   // language for this person; default en
 }
 
 // SignalConfig points at a signal-cli-rest-api container. Signal is the
@@ -72,6 +75,7 @@ type EnvelopeRecipient struct {
 	Name   string `json:"name,omitempty"`
 	Email  string `json:"email,omitempty"`
 	Signal string `json:"signal,omitempty"`
+	Lang   string `json:"lang,omitempty"` // language for this person; default en
 }
 
 // Envelope is one sealed message with its own recipients. Several envelopes let
@@ -85,17 +89,12 @@ type Envelope struct {
 	To      []EnvelopeRecipient `json:"to"`
 }
 
-func (e Envelope) subject() string {
-	if e.Subject != "" {
-		return e.Subject
-	}
-	return "Dôležité — dedičstvo: zašifrovaná obálka"
-}
-
 func (e Envelope) recipients() []Recipient {
 	out := make([]Recipient, 0, len(e.To))
 	for _, t := range e.To {
-		out = append(out, Recipient{Name: t.Name, Email: t.Email, Signal: t.Signal})
+		out = append(out, Recipient{
+			Name: t.Name, Email: t.Email, Signal: t.Signal, Lang: i18n.Parse(t.Lang),
+		})
 	}
 	return out
 }
@@ -109,6 +108,7 @@ type Config struct {
 	UserEmail     string   `json:"user_email"`   // me (check-in / health / warnings)
 	FriendEmail   string   `json:"friend_email"` // envelope recipient on fire (the friend)
 
+	UserLang     string       `json:"user_lang,omitempty"`     // language of the owner's own messages
 	UserSignal   string       `json:"user_signal,omitempty"`   // my E.164 number, second channel
 	FriendSignal string       `json:"friend_signal,omitempty"` // friend's E.164 number, second channel
 	Signal       SignalConfig `json:"signal,omitempty"`        // Signal transport (omit = e-mail only)

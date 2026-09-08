@@ -70,7 +70,7 @@ func TestEachEnvelopeGoesToItsOwnRecipient(t *testing.T) {
 	if !strings.Contains(pass.body, "pass.asc") {
 		t.Errorf("wrong ciphertext in the passphrase envelope")
 	}
-	acc, ok := fm.sentTo("druha@example.com", "obálka")
+	acc, ok := fm.sentTo("druha@example.com", "envelope")
 	if !ok {
 		t.Fatalf("accounts envelope not sent to its recipient")
 	}
@@ -81,7 +81,7 @@ func TestEachEnvelopeGoesToItsOwnRecipient(t *testing.T) {
 		t.Errorf("envelope note missing from the body")
 	}
 	// Neither recipient may receive the other's envelope.
-	if _, wrong := fm.sentTo("prva@example.com", "obálka"); wrong {
+	if _, wrong := fm.sentTo("prva@example.com", "envelope"); wrong {
 		t.Errorf("first recipient also got the second envelope")
 	}
 }
@@ -105,7 +105,7 @@ func TestOneEnvelopeManyRecipients(t *testing.T) {
 	fireIt(t, svc, c)
 
 	for _, to := range []string{"prva@example.com", "druha@example.com", "tretia@example.com"} {
-		if _, ok := fm.sentTo(to, "obálka"); !ok {
+		if _, ok := fm.sentTo(to, "envelope"); !ok {
 			t.Errorf("%s did not get the envelope", to)
 		}
 	}
@@ -123,7 +123,7 @@ func TestMissingSecondEnvelopeBlocksFiring(t *testing.T) {
 	if _, ok := fm.sentTo("prva@example.com", "passphrase"); ok {
 		t.Errorf("sent an envelope while the service was unhealthy")
 	}
-	if fm.countSubj("PORUCHA") == 0 {
+	if fm.countSubj("FAULT") == 0 {
 		t.Errorf("expected a fault alert naming the broken envelope")
 	}
 }
@@ -152,7 +152,7 @@ func TestPartialDeliveryRetriesOnlyTheRest(t *testing.T) {
 	if _, ok := fm.sentTo("prva@example.com", "passphrase"); !ok {
 		t.Fatalf("the readable envelope was not delivered")
 	}
-	if fm.countSubj("nepodarilo") == 0 {
+	if fm.countSubj("could not be sent") == 0 {
 		t.Errorf("owner was not told about the failed envelope")
 	}
 
@@ -164,7 +164,7 @@ func TestPartialDeliveryRetriesOnlyTheRest(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired once everything is out", svc.Phase())
 	}
-	if _, ok := fm.sentTo("druha@example.com", "obálka"); !ok {
+	if _, ok := fm.sentTo("druha@example.com", "envelope"); !ok {
 		t.Errorf("the retried envelope was not delivered")
 	}
 	if _, again := fm.sentTo("prva@example.com", "passphrase"); again {
@@ -197,7 +197,7 @@ func TestCheckInClearsPartialDelivery(t *testing.T) {
 	if _, ok := fm.sentTo("prva@example.com", "passphrase"); !ok {
 		t.Errorf("after a veto the first envelope must be sent again")
 	}
-	if _, ok := fm.sentTo("druha@example.com", "obálka"); !ok {
+	if _, ok := fm.sentTo("druha@example.com", "envelope"); !ok {
 		t.Errorf("second envelope not sent")
 	}
 }
