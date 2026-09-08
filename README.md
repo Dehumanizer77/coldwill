@@ -6,6 +6,8 @@ self-custodial with no third parties, custodians or notaries. The repository
 holds the design and two tools, an offline key generator and recovery tool that
 also prints a runbook for the family, and an online dead man's switch.
 
+*Slovensky: [README_sk.md](README_sk.md).*
+
 ## How it works, in a nutshell
 
 **While you are alive**, only you control the Bitcoin. **After you die**, your
