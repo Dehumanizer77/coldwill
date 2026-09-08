@@ -647,6 +647,39 @@ with Signal down, release over Signal with mail down, no channel meaning no
 release plus a retry, the HTTP client against a fake API, and config validation.
 The suite also runs clean under `-race`.
 
+## Languages
+
+Everything a person reads is in a message catalogue, one file per language, so
+adding a language means adding one file and touching no template:
+
+| | |
+|---|---|
+| `offline/internal/i18n/` | the tool's interface and the runbook |
+| `dms/internal/i18n/` | the switch's e-mails and its two web pages |
+
+English is the source of truth and the fallback. A key missing from a
+translation renders in English rather than blank, and a key missing everywhere
+renders as `[[key.name]]`, so a gap is visible instead of silent. Three tests
+enforce that: a translation must cover the English key set, must not invent keys
+of its own, and must carry the same format placeholders, which is what stops a
+`%!s(MISSING)` reaching a reader.
+
+English and Slovak are complete. **Czech is an empty catalogue**, so selecting it
+yields English; it needs a native speaker before anyone prints a runbook from it.
+
+Where the language comes from differs by tool, because the readers do:
+
+- The offline tool takes it from the URL (`?lang=sk`), and the runbook form has
+  its own selector, since you may want to print a Slovak copy for one holder and
+  an English one for another.
+- The switch takes it **per recipient**: `user_lang` for the owner, and `lang` on
+  each confirmer and each envelope recipient. One notification is rendered
+  separately for each person, so an English confirmer and a Slovak one each get
+  their own.
+
+To add a language: copy `en.go` in both packages, translate the values, register
+the tag in `i18n.go`, and run the tests.
+
 ## Running this yourself
 
 If you fork this for your own inheritance, the one rule that matters:
