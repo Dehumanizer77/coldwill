@@ -620,6 +620,20 @@ Pre Signal navyše: rozposlanie na oba kanály, výstrel pri spadnutom Signale,
 výstrel cez Signal pri spadnutom maile, žiadny kanál → žiadny výstrel + retry,
 HTTP klient proti fake API a validácia konfigurácie.
 
+## Jazyky
+
+Všetko, čo číta človek, je v katalógu textov, jeden súbor na jazyk:
+`offline/internal/i18n/` pre nástroj a runbook, `dms/internal/i18n/` pre e-maily
+a stránky DMS. Angličtina, slovenčina a čeština sú kompletné; angličtina je
+zdroj pravdy aj záloha pri chýbajúcom kľúči.
+
+Offline nástroj berie jazyk z URL (`?lang=sk`) a formulár runbooku má vlastný
+prepínač, takže sa dá vytlačiť iná jazyková verzia pre každého držiteľa. DMS
+berie jazyk **na príjemcovi**: `user_lang` pre teba, `lang` pri každom
+potvrdzovateľovi a príjemcovi obálky.
+
+**Českú verziu si pred ostrou tlačou daj prečítať rodenému Čechovi.**
+
 ## Prevádzkové pravidlá repa
 
 - **Reálna mapa do repa nepatrí.** Kto drží ktorú časť, kde je obálka a na akom

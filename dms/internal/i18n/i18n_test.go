@@ -9,43 +9,40 @@ import (
 // English is the source of truth, and a translation that silently loses a key
 // renders that part of the page in another language. The test names what is
 // missing so the gap is visible rather than discovered by a reader.
-func TestSlovakCoversEveryKey(t *testing.T) {
-	var missing, extra []string
-	for _, k := range Keys(EN) {
-		if _, ok := catalogs[SK][k]; !ok {
-			missing = append(missing, k)
+func TestEveryTranslationCoversEveryKey(t *testing.T) {
+	for _, l := range Languages() {
+		if l == Default {
+			continue
 		}
-	}
-	for _, k := range Keys(SK) {
-		if _, ok := catalogs[EN][k]; !ok {
-			extra = append(extra, k)
-		}
-	}
-	if len(missing) > 0 {
-		t.Errorf("Slovak is missing %d key(s): %s", len(missing), strings.Join(missing, ", "))
-	}
-	if len(extra) > 0 {
-		t.Errorf("Slovak has %d key(s) English does not: %s", len(extra), strings.Join(extra, ", "))
-	}
-}
-
-// Czech is allowed to be incomplete for now, but it must not invent keys that
-// no longer exist, which is how a translation quietly stops being applied.
-func TestCzechHasNoUnknownKeys(t *testing.T) {
-	for _, k := range Keys(CS) {
-		if _, ok := catalogs[EN][k]; !ok {
-			t.Errorf("Czech has key %q that English does not", k)
-		}
+		t.Run(string(l), func(t *testing.T) {
+			var missing, extra []string
+			for _, k := range Keys(Default) {
+				if _, ok := catalogs[l][k]; !ok {
+					missing = append(missing, k)
+				}
+			}
+			for _, k := range Keys(l) {
+				if _, ok := catalogs[Default][k]; !ok {
+					extra = append(extra, k)
+				}
+			}
+			if len(missing) > 0 {
+				t.Errorf("missing %d key(s): %s", len(missing), strings.Join(missing, ", "))
+			}
+			if len(extra) > 0 {
+				t.Errorf("has %d key(s) English does not: %s", len(extra), strings.Join(extra, ", "))
+			}
+		})
 	}
 }
 
 // A translation with a different number of placeholders than the original
-// either drops a value or panics at render time with %!s(MISSING).
+// either drops a value or renders %!s(MISSING) at someone.
 func TestPlaceholdersMatchEnglish(t *testing.T) {
 	verb := regexp.MustCompile(`%[a-zA-Z]`)
-	for _, l := range []Lang{SK, CS} {
+	for _, l := range Languages() {
 		for _, k := range Keys(l) {
-			want := verb.FindAllString(catalogs[EN][k], -1)
+			want := verb.FindAllString(catalogs[Default][k], -1)
 			got := verb.FindAllString(catalogs[l][k], -1)
 			if len(want) != len(got) {
 				t.Errorf("%s/%s: %d placeholders, English has %d", l, k, len(got), len(want))
@@ -54,13 +51,19 @@ func TestPlaceholdersMatchEnglish(t *testing.T) {
 	}
 }
 
+// Every catalogue is complete today, but the fallback is what keeps a
+// half-finished translation usable, so it is tested rather than assumed.
 func TestFallsBackToEnglish(t *testing.T) {
-	// "subj.healthy" is deliberately not in the Czech catalogue yet.
-	if got := string(T(CS, "subj.healthy")); got != enMessages["subj.healthy"] {
-		t.Errorf("Czech did not fall back to English: %q", got)
+	const k = "subj.healthy"
+	saved := catalogs[CS][k]
+	delete(catalogs[CS], k)
+	defer func() { catalogs[CS][k] = saved }()
+
+	if got := string(T(CS, k)); got != enMessages[k] {
+		t.Errorf("a missing key did not fall back to English: %q", got)
 	}
 	if got := string(T(EN, "no.such.key")); got != "[[no.such.key]]" {
-		t.Errorf("a missing key should be visible, got %q", got)
+		t.Errorf("a key missing everywhere should be visible, got %q", got)
 	}
 }
 

@@ -14,7 +14,7 @@ func init() {
 		"rb.intro.h":      "Introduction",
 		"rb.intro.to":     "For: <strong>%s</strong>",
 		"rb.intro.p":      "Call the technically capable person listed below first; they will walk you through the whole thing. Take your time, do it step by step, and give nothing to anyone you do not know.",
-		"rb.intro.whatis": "<strong>What a „share“ is:</strong> a list of <strong>23 words</strong> kept on a <strong>metal medium</strong>, so that it survives fire and water. The shape differs from holder to holder: it may be a flat plate, a metal cylinder or capsule, a cassette with sliding letter tiles, a card the size of a bank card, or several strips screwed together. Look for a metal object with words or letters on it. One share on its own is useless; you need <strong>%s of %s</strong> of them to reassemble the „key file“ (the key to the database). The shares are held by different trusted people, listed below.",
+		"rb.intro.whatis": "<strong>What a \"share\" is:</strong> a list of <strong>23 words</strong> kept on a <strong>metal medium</strong>, so that it survives fire and water. The shape differs from holder to holder: it may be a flat plate, a metal cylinder or capsule, a cassette with sliding letter tiles, a card the size of a bank card, or several strips screwed together. Look for a metal object with words or letters on it. One share on its own is useless; you need <strong>%s of %s</strong> of them to reassemble the \"key file\" (the key to the database). The shares are held by different trusted people, listed below.",
 
 		"rb.auto.h": "How the automatic system works",
 		"rb.auto.p": "While I am alive I get regular check-in e-mails. If I go quiet for a long time and one of the trusted people confirms it, then after a grace period of a few days the system <strong>automatically mails the envelope with the passphrase to a technically capable person%s</strong>. If that automatic delivery ever fails, the same password is written on paper in the bank vault (section 2).",
@@ -26,7 +26,7 @@ func init() {
 
 		"rb.need.h":     "2) What you need to obtain (two things)",
 		"rb.need.p":     "Reaching the Bitcoin needs <strong>both</strong>:",
-		"rb.need.parts": "<strong>%s of %s shares</strong> (each is 23 words), which reassemble the „key file“.",
+		"rb.need.parts": "<strong>%s of %s shares</strong> (each is 23 words), which reassemble the \"key file\".",
 		"rb.need.env":   "<strong>The envelope with the passphrase</strong>: the second secret, without which the Bitcoin cannot be reached.",
 		"rb.need.note":  "Neither is enough on its own, which is what makes this safe.",
 
@@ -64,7 +64,7 @@ func init() {
 		"rb.step.pc.ask":  "If you are not sure which it is, ask the technically capable person. The wrong file breaks nothing, it simply will not start.",
 
 		"rb.step.warn":     "<strong>The computer will probably object.</strong> This is neither an error nor a virus: it is a program nobody paid Microsoft or Apple to register. Go past the warning:",
-		"rb.step.warn.win": "<strong>Windows:</strong> a blue window appears, along the lines of „Windows protected your PC“. Click <em>More info</em> and then <em>Run anyway</em>.",
+		"rb.step.warn.win": "<strong>Windows:</strong> a blue window appears, along the lines of \"Windows protected your PC\". Click <em>More info</em> and then <em>Run anyway</em>.",
 		"rb.step.warn.mac": "<strong>Mac:</strong> it says the file is from an unidentified developer. Close that, <strong>right-click</strong> the file (or click with two fingers) and choose <em>Open</em>; then <em>Open</em> again in the next window. If that does not work, go to <em>Settings → Privacy &amp; Security</em>, where there will be an <em>Open Anyway</em> button.",
 		"rb.step.warn.lin": "<strong>Linux:</strong> if the file will not run, the technically capable person makes it executable with <code>chmod +x inh-offline-linux-amd64</code>.",
 		"rb.step.warn.url": "If no browser opens by itself, open one and type in the address the tool prints (usually <code>http://127.0.0.1:8777</code>).",
@@ -84,7 +84,7 @@ func init() {
 		"rb.safety.h":      "6) Safety: what to watch out for",
 		"rb.safety.seed":   "<strong>Only ever type the seed into the hardware wallet.</strong> Never into a computer, a phone, an e-mail or any website, no matter who asks.",
 		"rb.safety.words":  "<strong>Only ever type the share words</strong> into <em>inh-offline</em> on a computer disconnected from the internet (or, in the emergency procedure, into another SLIP-39 tool, also without internet).",
-		"rb.safety.nobody": "Give the words, the seed or the password from the envelope to nobody outside this document, not even to „technical support“.",
+		"rb.safety.nobody": "Give the words, the seed or the password from the envelope to nobody outside this document, not even to \"technical support\".",
 		"rb.safety.wipe":   "<strong>When you are done</strong>, delete the key file from the computer and from the USB stick. Whoever has it can open the database. Burn the pieces of paper with the words, or return them to the holders.",
 		"rb.safety.move":   "<em>(optional, but strongly recommended)</em> After recovering, move the funds to a new wallet.",
 		"rb.safety.slow":   "Take your time. If something does not add up, stop and ask the technically capable person%s.",
@@ -95,7 +95,7 @@ func init() {
 		"rb.print":   "🖨 Print / Save as PDF",
 		"rb.edit":    "✏️ Edit",
 		"rb.newform": "← new form",
-		"rb.margins": "Leave the margins on „Default“ when printing.",
+		"rb.margins": "Leave the margins on \"Default\" when printing.",
 	} {
 		enMessages[k] = v
 	}

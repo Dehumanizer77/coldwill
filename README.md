@@ -664,8 +664,9 @@ enforce that: a translation must cover the English key set, must not invent keys
 of its own, and must carry the same format placeholders, which is what stops a
 `%!s(MISSING)` reaching a reader.
 
-English and Slovak are complete. **Czech is an empty catalogue**, so selecting it
-yields English; it needs a native speaker before anyone prints a runbook from it.
+English, Slovak and Czech are complete. The Czech translation has not been read
+by a native speaker, and a runbook is a document someone follows under stress, so
+have one check it before printing a Czech copy.
 
 Where the language comes from differs by tool, because the readers do:
 

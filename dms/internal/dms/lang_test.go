@@ -81,9 +81,12 @@ func TestDurationsFollowTheLanguage(t *testing.T) {
 	if got := humanDur("sk", 7*24*time.Hour); got != "7 dní" {
 		t.Errorf("Slovak duration = %q", got)
 	}
-	// Czech has no catalogue yet, so it falls back to English rather than blank.
-	if got := humanDur("cs", 7*24*time.Hour); got != "7 days" {
-		t.Errorf("Czech duration = %q, want the English fallback", got)
+	if got := humanDur("cs", 7*24*time.Hour); got != "7 dní" {
+		t.Errorf("Czech duration = %q", got)
+	}
+	// An unknown language is the default, not a blank.
+	if got := humanDur("de", 7*24*time.Hour); got != "7 days" {
+		t.Errorf("unknown language = %q, want the English default", got)
 	}
 }
 
