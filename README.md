@@ -1,498 +1,512 @@
 # inh: Bitcoin Inheritance System
 
-Systém dedičstva Bitcoinu pre rodinu: **jednoduchý pre netechnického dediča**,
-odolný voči krádeži, strate aj katastrofe a **plne self-custody**, teda bez
-kustodiánov, notárov a tretích strán. Repozitár obsahuje návrh a dva nástroje:
-offline generátor/obnovu kľúča s tlačiteľným runbookom a online dead-man's
-switch.
+A Bitcoin inheritance system your family can actually use: simple enough for a
+non-technical heir, resistant to theft, loss and disaster, and fully
+self-custodial with no third parties, custodians or notaries. The repository
+holds the design and two tools, an offline key generator and recovery tool that
+also prints a runbook for the family, and an online dead man's switch.
 
-## Ako to funguje (v kocke)
+## How it works, in a nutshell
 
-**Za života** ovládaš Bitcoin len ty. **Po smrti** ho rodina zloží z dvoch
-nezávislých vecí. Ani jedna z nich sama nestačí.
+**While you are alive**, only you control the Bitcoin. **After you die**, your
+family reassembles it from two independent things. Neither is enough on its own.
 
-Koľko častí vznikne a koľko ich treba na zloženie (**K z N**) si volíš pri
-generovaní; obrázok ukazuje bežnú voľbu 2 z 3.
+How many shares exist, and how many are needed to reassemble the key (**K of
+N**), is chosen when you generate them. The drawing shows a common choice, 2 of 3.
 
 ```
-   ČASŤ #1          ČASŤ #2          ČASŤ #3            ZAPEČATENÁ OBÁLKA
- kov, osoba A     kov, osoba B     kov, osoba C       bankový trezor + DMS
-      │                │                │                      │
-      └────────┬───────┴────────────────┘                      │
-               │   stačia ľubovoľné K z N (tu 2 z 3)           │
-               ▼                                               │
-          KEY-FILE                                             │
-               │                                               │
-               ▼   otvorí (bez hesla)                          │
-        KeePass databáza  ──►  SEED + ostatné heslá            │
-                                     │                         │
-                                     │                    PASSPHRASE
-                                     └───────────┬─────────────┘
+    SHARE #1         SHARE #2         SHARE #3            SEALED ENVELOPE
+  metal, person A  metal, person B  metal, person C     bank vault + switch
+       │                │                │                      │
+       └────────┬───────┴────────────────┘                      │
+                │   any K of N (here 2 of 3)                    │
+                ▼                                               │
+            KEY FILE                                            │
+                │                                               │
+                ▼   opens (no password)                         │
+         KeePass database  ──►  SEED + other credentials        │
+                                      │                         │
+                                      │                   PASSPHRASE
+                                      └──────────┬──────────────┘
                                                  ▼
                                             ₿  BITCOIN
 ```
 
-- **Kovové časti** (SLIP-39 slová vyryté do kovu) držia rôzni ľudia na rôznych
-  miestach. Ktorýchkoľvek **K z N** (v príklade 2 z 3) zloží *key-file*: súbor,
-  ktorým sa odomkne KeePass databáza so **seedom** a všetkými ostatnými
-  prístupmi. Prah aj počet častí sú nastaviteľné: 3 z 5, 2 z 4, čo ti vyhovuje.
-- **Zapečatená obálka** obsahuje **passphrase k peňaženke**. Leží v bankovom
-  trezore a navyše ju po tvojej smrti pošle *dead-man's switch* e-mailom.
-- **Bitcoin = seed + passphrase.** Kto má len časti, vidí databázu, ale mince
-  neminie. Kto má len obálku, má heslo, ktoré bez seedu nie je na nič. Menej než
-  K častí je bezcenných.
+- **Metal shares.** SLIP-39 words stamped into metal, held by different people
+  in different places. Any **K of N** of them reassemble a *key file*, which
+  unlocks a KeePass database holding the wallet **seed** and every other
+  credential. Threshold and count are yours to pick: 3 of 5, 2 of 4, whatever
+  fits the people you trust.
+- **A sealed envelope** holds the **wallet passphrase**. It sits in a bank vault,
+  and after your death the *dead man's switch* also mails it.
+- **Bitcoin = seed + passphrase.** Whoever holds only shares can read the
+  database but cannot spend the coins. Whoever holds only the envelope has a
+  password that is useless without the seed. Fewer than K shares are worthless.
 
-**Dead-man's switch** je len pohodlie: pravidelne sa ťa pýta „žiješ?“, a keď sa
-dlho neozveš a dôveryhodná osoba to potvrdí, po ochrannej lehote pošle obálku
-(koľko potvrdení treba, si nastavuješ, štandardne stačí jedno). Istá cesta vedie
-cez banku: DMS sa dá kedykoľvek vypnúť a dedičstvu to neublíži.
+The **dead man's switch** is a convenience, not a dependency. It asks you
+periodically whether you are alive, and once you stop answering and someone you
+trust confirms, it mails the envelope after a grace period. How many
+confirmations it takes is configurable and defaults to one. The bank vault is
+the path that always works: the switch can be turned off at any time without
+harming the inheritance.
 
-Podrobnosti nižšie; kto chce len vedieť „ako sa k tomu rodina dostane“, môže
-skončiť tu a prečítať si [Recovery](#recovery-postup-pre-netechnického-dediča).
+> **This is not audited software.** It has tests, and the SLIP-39 core is checked
+> against the official test vectors, but nobody independent has reviewed it. If
+> you are going to trust it with an inheritance, read the code, rehearse a full
+> recovery before you rely on it, and keep the manual fallback (below) in reach.
+> It is offered under the Apache License 2.0, without warranty of any kind.
 
-> ⚠️ **BEZPEČNOSTNÉ PRAVIDLO č. 1**
->
-> Do tohto repozitára **nikdy** nepatria reálne tajomstvá:
-> seed slová (BIP-39), passphrase k peňaženke, key-file ani jeho SLIP-39 časti,
-> heslo ku KeePass DB, reálny `.kdbx`, obsah „posmrtnej obálky“.
->
-> Repozitár je len **kód a dokumentácia**. Tajomstvá vznikajú a žijú výhradne
-> offline (kov, bankový trezor, šifrovaný `.kdbx`). `.gitignore` je nastavený
-> tak, aby bežné tajné súbory nešlo omylom commitnúť, ale spoľahni sa hlavne na
-> to, že ich do repa vôbec neprinesieš.
+## Contents
 
+- [How it works, in a nutshell](#how-it-works-in-a-nutshell): the whole system on one screen
+- [Design](#design): what it solves, architecture, distribution, recovery, upkeep
+- [Tools](#tools)
+  - [Offline tool (`offline/`)](#offline-tool-offline): key file, SLIP-39 shares, runbook
+  - [Dead man's switch (`dms/`)](#dead-mans-switch-dms): envelopes, deployment, Signal
+- [Running this yourself](#running-this-yourself)
+- [Licence](#licence)
 
-## Obsah
+## Design
 
-- [Ako to funguje (v kocke)](#ako-to-funguje-v-kocke): celý systém na jednej obrazovke
-- [Návrh](#návrh): čo to rieši, architektúra, rozmiestnenie, recovery, údržba
-- [Nástroje](#nástroje)
-  - [Offline nástroj (`offline/`)](#offline-nástroj-offline): key-file, SLIP-39 časti, runbook
-  - [Dead-man's switch (`dms/`)](#dead-mans-switch-dms): obálky, nasadenie, Signal
-- [Prevádzkové pravidlá repa](#prevádzkové-pravidlá-repa)
+### What it solves
 
-## Návrh
+The goal is a system that is:
 
-### Čo to rieši
+- **simple for a non-technical heir**,
+- **no weaker than what it replaces**,
+- **resilient** against attack, loss, disaster and war,
+- **fully self-custodial**, with no third parties and no custodians,
+- **as independent of any platform as possible**, surviving OS upgrades and
+  library churn.
 
-Cieľ je systém, ktorý je:
-
-- **jednoduchý pre netechnického dediča**,
-- **bez bezpečnostného kompromisu**,
-- **odolný** voči útoku / hacku / strate / katastrofe / vojne,
-- **plne self-custody**, čiže žiadne tretie strany ani kustodiáni,
-- **maximálne nezávislý od platformy** (prežije OS upgrady aj zmeny knižníc).
-
-Návrhové rozhodnutia, z ktorých všetko ostatné vyplýva:
+The decisions everything else follows from:
 
 | | |
 |---|---|
-| Hrozby | Hlavná priorita = **rodina sa k tomu dostane**; sekundárne odolnosť voči krádeži. |
-| Zariadenie | Nepodstatné, záleží len na **seede** (+ passphrase). Obnoviť sa dá na hocijakej kompatibilnej peňaženke. |
-| Peňaženka | Existujúca, nová sa **nevytvára**. Jeden seed, s passphrase. |
-| Dedičia | Viacero dôveryhodných osôb; aspoň jedna **technicky zdatná**, ostatné môžu byť netechnické. Stačí jeden technický pomocník. |
-| Hardvér u dedičov | Nie, maximálne **kovové médium** so slovami. |
-| Tretie strany / notár | Nie. |
-| Schéma | **K-z-N**, čiže prah K z N častí (ľubovoľný počet; príklady nižšie používajú 2-z-3). |
-| Kontrola za života | BTC plne kontroluje **vlastník** (passphrase). DB so seedom a ostatnými heslami vie K-z-N dôveryhodných osôb otvoriť aj za jeho života, ale BTC bez passphrase neminú. |
-| Spúšťač | Smrť. Dead-man's switch je voliteľný a kedykoľvek odstrániteľný. |
-| Geografia | Časti rozmiestnené po viacerých **lokalitách**, aby ich nezničila jedna udalosť. |
-| Údržba | Raz ročne. |
-| Ostatné prístupy | Patria do systému, stačí **jedna KeePass DB**. |
-| Gating | **Miernejší**: DB chráni len key-file; passphrase (v obálke) chráni len BTC. |
-| Key-file | **160-bit** → 23 slov na SLIP-39 časť. |
+| Threat model | First priority: **the family gets in**. Theft resistance second. |
+| Device | Irrelevant. Only the **seed** (plus passphrase) matters, and it restores on any compatible wallet. |
+| Wallet | An existing one. No new wallet is created. One seed, with a passphrase. |
+| Heirs | Several trusted people, at least one **technically capable**, the rest need not be. One technical helper is enough. |
+| Hardware at the heirs | None, at most a **metal backup** holding words. |
+| Third parties, notary | No. |
+| Scheme | **K of N**, any threshold and count. Examples below use 2 of 3. |
+| Control while alive | The owner controls the BTC through the passphrase. K of N trusted people can open the database even while he lives, but cannot spend without the passphrase. |
+| Trigger | Death. The dead man's switch is optional and removable at any time. |
+| Geography | Shares spread across several **locations**, so no single event destroys them. |
+| Upkeep | Once a year. |
+| Other credentials | Part of the system. **One KeePass database** is enough. |
+| Gating | **Lenient.** The database is protected by the key file alone; the passphrase (in the envelope) protects only the BTC. |
+| Key file | **160-bit**, giving 23 words per SLIP-39 share. |
 
-### Architektúra: dva faktory
+### Architecture: two factors
 
-- **Faktor A („posmrtná obálka“):** obsahuje **passphrase k peňaženke**. Uložená
-  len tam, kam sa rodina dostane až po smrti vlastníka: zapečatená v **bankovom
-  trezore** a doručí ju **DMS** (zašifrovaná na technicky zdatnú osobu). Kým
-  vlastník žije, passphrase má len on → **BTC kontroluje on**. Obálok môže byť
-  aj viac: tá istá viacerým ľuďom kvôli zálohe, alebo rôzne obálky rôznym ľuďom,
-  aby nikto sám nemal všetko (viď [Obálky](#obálky-koľko-ich-je-a-komu-idú)).
-- **Faktor B (kovové časti):** key-file ku KeePass DB rozdelený cez **SLIP-39
-  (K-z-N)** na slová, vyryté do kovu, časti rozmiestnené po lokalitách.
+- **Factor A, the sealed envelope.** It holds the **wallet passphrase** and lives
+  only where the family gets to it after the owner's death: sealed in a **bank
+  vault**, and delivered by the **dead man's switch**, encrypted to a technical
+  helper. While the owner lives, only he has the passphrase, so only he controls
+  the coins. There can be several envelopes: the same one to several people as a
+  backup, or different envelopes to different people so that nobody holds
+  everything (see [Envelopes](#envelopes-how-many-and-to-whom)).
+- **Factor B, the metal shares.** The key file to the KeePass database, split
+  with **SLIP-39 (K of N)** into words, stamped into metal, spread across
+  locations.
 
-**KeePass DB** (seed + všetky ostatné heslá a prístupy + návod) je zašifrovaná;
-jej **ciphertext (`.kdbx`) môže byť pokojne aj v cloude**, bez key-filu je to
-zbytočný balast.
+The **KeePass database** holds the seed, every other credential and a written
+procedure. It is encrypted, so its **ciphertext (`.kdbx`) can sit in the cloud**
+quite safely: without the key file it is ballast.
 
 ```
-KeePass DB sa otvorí  =  key-file (K z N kovových častí)        # -> seed + ostatné heslá
-BTC                   =  seed (z DB)  +  passphrase (z obálky)  # -> [K z N častí] + [obálka]
+Database opens  =  key file (K of N metal shares)          # -> seed + credentials
+Bitcoin         =  seed (from the database) + passphrase   # -> [K of N shares] + [envelope]
 
-Miernejší gating: K-z-N častí otvorí DB (aj za života vlastníka), ale BTC bez
-passphrase z obálky nikto neminie. Strata obálky => strata len BTC, nie DB.
+Lenient gating: K of N shares open the database, even while the owner lives, but
+nobody spends the coins without the passphrase from the envelope. Losing the
+envelope costs you the BTC, not the database.
 ```
 
-#### Prečo SLIP-39 na key-file (a nie na seed)
+#### Why SLIP-39 on the key file and not on the seed
 
-SLIP-39 = Shamirovo zdieľanie tajomstva + kódovanie do slov s kontrolným
-súčtom. **Nie je viazané na seed peňaženky**, vie rozdeliť ľubovoľný 160-bit
-kľúč. Použije sa teda na **náhodný key-file**, ktorým sa zamyká KeePass:
+SLIP-39 is Shamir secret sharing plus a checksummed word encoding. It is **not
+tied to a wallet seed**: it splits any 160-bit key. So it is applied to a
+**random key file** that locks the KeePass database:
 
-1. vygeneruje sa náhodný 160-bit kľúč `K` (**nie** seed),
-2. `K` → SLIP-39 split (K-z-N) → N × 23 slov → na kov,
-3. `K` = key-file pre KeePass,
-4. `K` sa vymaže, žije len ako N kovových častí.
+1. generate a random 160-bit key `K`, which is **not** a seed,
+2. `K` → SLIP-39 split (K of N) → N × 23 words → into metal,
+3. `K` is the key file for KeePass,
+4. `K` is then erased and lives only as N metal shares.
 
-Bonus: tieto slová **nie sú seed**. Keby ich niekto našiel a naťukal do
-peňaženky, dostane prázdno. Implementácia je overená proti **oficiálnym SLIP-39
-test vektorom**, žiadna vlastná kryptografia.
+A useful side effect: those words **are not a seed**. Anyone who finds them and
+types them into a wallet gets an empty one. The implementation is verified
+against the **official SLIP-39 test vectors**, so there is no homegrown
+cryptography on the critical path.
 
+### Distribution
 
-### Rozmiestnenie
+An example for 2 of 3. The number of shares is up to you:
 
-Príklad pre 2-z-3; častí môže byť ľubovoľný počet:
-
-| Lokalita | Faktor B (kovová časť) | Faktor A (obálka) | Ciphertext `.kdbx` |
+| Location | Factor B (metal share) | Factor A (envelope) | `.kdbx` ciphertext |
 |---|---|---|---|
-| **lokalita A**, hlavný dedič | časť #1 | – | kópia |
-| **bankový trezor** | – | **zapečatená obálka** | kópia |
-| **lokalita B**, dôveryhodná osoba | časť #2 | – | kópia |
-| **lokalita C**, technicky zdatná osoba | časť #3 | (od DMS po spustení, šifrovaná na ňu) | kópia |
-| **Cloud** | – | – | kópia (šifrovaná) |
-| **DMS** | – | obálky šifrované na svojich príjemcov | – |
+| **location A**, primary heir | share #1 | – | copy |
+| **bank vault** | – | **sealed envelope** | copy |
+| **location B**, trusted person | share #2 | – | copy |
+| **location C**, technical helper | share #3 | (from the switch once triggered, encrypted to them) | copy |
+| **Cloud** | – | – | copy (encrypted) |
+| **Switch** | – | envelopes encrypted to their recipients | – |
 
-Recovery BTC vyžaduje **K z N častí + obálku** (z banky alebo od DMS) → čiže
-„hlavný dedič + jeden dôveryhodný pomocník“. Jedna časť sama o sebe je
-bezcenná, preto je riziko u jednotlivých držiteľov nízke.
+Recovering the Bitcoin needs **K of N shares plus an envelope**, from the vault
+or from the switch, which in practice means the primary heir plus one trusted
+helper. A single share on its own is worthless, which is what keeps the risk to
+each individual holder low.
 
+### Recovery, as the heir experiences it
 
-### Recovery (postup pre netechnického dediča)
+1. Open the printed **runbook**, copies of which are at the bank and with the
+   trusted people.
+2. Call the **technical helper**, who walks them through it.
+3. Get the **envelope with the passphrase**, from the bank vault or from the
+   switch, which has already mailed it.
+4. Collect **K shares** from their holders.
+5. In the **offline tool**: SLIP-39 words → key file → open the KeePass database
+   with a standard app → the seed and every other credential.
+6. Restore the wallet from the **seed**, then unlock it with the **passphrase**.
+7. Optionally, and recommended, move the coins to a fresh wallet the heir
+   controls.
 
-1. Otvorí tlačený **runbook** (kópie sú v banke aj u dôveryhodných osôb).
-2. Zavolá **technicky zdatnej osobe**, ktorá ho prevedie postupom (aj cez video).
-3. Získa **obálku s passphrase**, buď z bankového trezoru, alebo ju už poslal DMS.
-4. Pozbiera **K častí** od držiteľov.
-5. V **offline nástroji**: SLIP-39 slová → key-file → otvorí KeePass DB
-   (štandardnou appkou) → dostane sa k seedu a všetkým prístupom.
-6. Na peňaženke obnoví zo **seedu + passphrase** (z obálky) → BTC.
-7. (Voliteľné) presunie BTC do vlastnej novej peňaženky.
+Words on metal are usually stamped as **four-letter abbreviations**, because a
+metal backup has no room for more. That is not a problem: the SLIP-39 wordlist is
+built so that the first four letters identify a word uniquely (1024 words, 1024
+distinct prefixes), and the recovery tool completes them. Three letters would be
+ambiguous, so the tool refuses those and names the word to re-read.
 
-Na kove sú slová spravidla len ako **4-písmenové skratky**, kovové médium viac
-pozícií nemá. Nie je to problém: SLIP-39 zoznam je navrhnutý tak, že prvé štyri
-písmená určujú slovo jednoznačne (1024 slov, 1024 rôznych prefixov), a
-obnovovací nástroj si zvyšok doplní sám. Tri písmená by už jednoznačné neboli,
-tie nástroj odmietne a povie, ktoré slovo prepísať.
+The runbook also carries a **manual fallback** that needs none of these tools:
+the shares are standard SLIP-39, any SLIP-39 implementation combines them, and
+the resulting *master secret* in hex **is** the content of the key file. If such
+a tool rejects abbreviations, the full words are in the official wordlist.
 
-Runbook obsahuje aj **núdzový postup** bez týchto nástrojov: časti sú štandardný
-SLIP-39, zloží ich hocijaký SLIP-39 nástroj, výsledný *master secret* v hexe **je
-obsahom key-filu**. Ak taký nástroj skratky neprijme, celé slová sa dohľadajú
-v oficiálnom SLIP-39 zozname.
+### Annual maintenance
 
+- All shares present and legible, confirmed with their holders.
+- Envelope in the vault intact; the `.kdbx` copies still open.
+- Test the switch's check-in.
+- **A full dry-run recovery**, once a year, on a spare machine. At least once
+  that should be on Windows, since that binary cannot be tested anywhere else.
+- Update the database when credentials change, and reprint the runbook.
 
-### Ročná údržba
+### What the system does not solve
 
-- Čitateľnosť a prítomnosť **všetkých častí** (potvrdiť s držiteľmi).
-- Obálka v banke neporušená; `.kdbx` kópie sa otvárajú.
-- Test check-inu DMS.
-- **Raz za rok nanečisto celá obnova** na náhradnom zariadení, aspoň raz aj na
-  Windows (tá binárka sa inde otestovať nedá).
-- Aktualizácia DB pri zmene prístupov + re-tlač runbooku.
+If both parents die and the children are minors, the **technical** path is
+covered: two trusted people reassemble K of N shares plus the envelope and reach
+the coins. What no system can settle is who then holds and manages them until the
+children are adults, because whoever reassembles the shares can spend them. That
+is a question of trust and inheritance law, not cryptography. If it is to be
+settled, it belongs in a will, which must never contain the seed or the
+passphrase, only a pointer to the runbook and the share holders, because a will
+ends up in a court file.
 
-### Čo systém nerieši
+### Longevity principles
 
-Ak zomrú obaja rodičia a deti sú maloleté, **technicky** je to pokryté: dve
-dôveryhodné osoby zložia K z N častí a obálku a k mincám sa dostanú. Čo systém
-vyriešiť **nemôže**, je kto ich potom drží a spravuje, kým deti dospejú: kto
-zloží časti, môže nimi disponovať. Je to otázka dôvery a dedičského práva, nie
-kryptografie. Ak sa to má riešiť, patrí to do **závetu** (vlastnoručný, bez
-notára). Ten nesmie nikdy obsahovať seed ani passphrase, len odkaz na runbook
-a držiteľov častí, lebo závet končí v súdnom spise.
+1. **Open standards on the critical path**, which makes the software replaceable:
+   SLIP-39 with its test vectors, `.kdbx`, GPG. Recovery is possible with standard
+   tools even if this code is gone, and the runbook says how.
+2. **Self-contained artifacts.** A static Go binary offline, depending only on the
+   kernel ABI and a browser; a Docker image online, with a frozen userland.
+3. **Minimal dependencies**, pinned and reproducibly buildable.
+4. **Archive alongside the data**: binaries for several operating systems, the
+   source, the build recipe, the Docker image as a tarball, and the paper
+   fallback.
 
-### Princípy životnosti
+## Tools
 
-1. **Otvorené štandardy na kritickej ceste** = softvér je nahraditeľný: SLIP-39
-   (s test vektormi), `.kdbx`, GPG. Aj bez tohto kódu sa dá recovery spraviť
-   štandardnými nástrojmi, runbook to popisuje.
-2. **Self-contained artefakty:** statický Go binár (offline; závisí len na kernel
-   ABI a prehliadači), Docker image (online; zmrazený userland).
-3. **Minimum závislostí**, pripnuté a reprodukovateľne buildnuteľné.
-4. **Archivovať** spolu s dátami: binárky pre viac OS, zdroják, build recept,
-   Docker image (tarball) a papierový fallback návod.
+The stack is **Go**: static binaries, the Go 1 compatibility promise, one
+language for both halves, no cgo and no GUI toolkit. The `.kdbx` file is neither
+created nor read by this code. A standard KeePass application does that, using
+the key file this tool produces.
 
+### Offline tool (`offline/`)
 
-## Nástroje
+An air-gapped tool that generates a key file and splits it into **K-of-N SLIP-39**
+shares, and reassembles the key file from K shares during recovery. It also
+generates the printable runbook.
 
-Stack je **Go**: statické binárky a „Go 1 compatibility promise“, jeden jazyk na
-obe časti, žiadne cgo ani GUI knižnice. `.kdbx` náš kód **netvorí ani nečíta**;
-to robí štandardná KeePass appka (KeePassXC a spol.) s naším key-filom.
-
-### Offline nástroj (`offline/`)
-
-Air-gapped nástroj na (a) vygenerovanie key-filu a jeho rozdelenie na **K-z-N
-SLIP-39** časti a (b) zloženie častí späť na key-file pri obnove.
-
-> ⚠️ **Spúšťaj LEN na offline (air-gapped) stroji.** Nástroj počúva výhradne na
-> loopbacku (`127.0.0.1`) a odmietne sa spustiť na inej adrese. Nerobí žiadny
-> sieťový prístup. Po skončení ho zavri.
+> **Run it only on an air-gapped machine.** It listens on loopback (`127.0.0.1`)
+> and refuses to start on any other address. It makes no network calls at all.
+> Close it when you are done.
 
 #### Build
 
-Potrebné je len Go (≥ 1.24, kvôli `crypto/pbkdf2`). Žiadne externé závislosti.
+Go is the only requirement (≥ 1.24, for `crypto/pbkdf2`). No external
+dependencies.
 
 ```
 cd offline && go build -o inh-offline .
 ```
 
-Výsledok je **jeden statický binár** bez závislostí (beží na hocijakom Linuxe
-danej architektúry).
-
-Dedič ale nemusí sedieť pri Linuxe, takže do ceremónie patria binárky pre všetky
-platformy naraz:
+The result is a **single static binary**. Your heir will not necessarily be
+sitting at a Linux machine, so the ceremony should produce binaries for every
+platform at once:
 
 ```
 cd offline && ./build-all.sh      # -> dist/ + SHA256SUMS
 ```
 
-Vyrobí Linux, Windows a macOS (Apple Silicon aj Intel), spolu okolo 34 MB. Celý
-obsah `dist/` ide na USB kľúč ku každému kovovému médiu aj do bankového trezoru; runbook potom hovorí, ktorý súbor na ktorom počítači spustiť.
+That builds Linux, Windows and macOS (Apple Silicon and Intel), about 34 MB in
+total. The whole of `dist/` goes onto a USB stick beside every metal backup and
+into the bank vault, and the runbook tells the heir which file to run on which
+machine.
 
-Go kríž-kompiluje samo, žiadny ďalší toolchain netreba. Otestovať sa tu dá len
-binárka pre tento stroj: **Windows a macOS treba vyskúšať na cieľovom systéme**,
-patrí to do ročnej údržby. Binárky nie sú podpísané, takže Windows SmartScreen aj
-macOS Gatekeeper zahlásia varovanie. Runbook popisuje, ako ho preklikať.
+Go cross-compiles on its own, with no extra toolchain. Only the binary for the
+build machine can be tested there, so **Windows and macOS must be tried on the
+real thing**, which belongs in the annual maintenance. The binaries are unsigned,
+so Windows SmartScreen and macOS Gatekeeper will both complain; the runbook
+explains how to click through.
 
-#### Spustenie
+#### Running it
 
 ```
 ./inh-offline                # http://127.0.0.1:8777
 ./inh-offline --addr 127.0.0.1:9000
+./inh-offline --open=false   # do not launch a browser
 ```
 
-Automaticky sa otvorí **systémový default browser** (Linux `xdg-open`, Windows
-`rundll32`, macOS `open`), nezávisle od toho, ktorý browser je nainštalovaný.
-Vypneš to cez `--open=false` (vtedy si otvor vypísanú URL ručne).
+It opens the system default browser (`xdg-open`, `rundll32`, `open`). At startup
+it runs a **power-on self-test**, a known SLIP-39 vector plus a round trip, and
+refuses to start if that fails.
 
-Na **Windows** spusti `inh-offline.exe` (dvojklik alebo z `cmd`); otvorí default
-browser rovnako. Pri štarte beží **power-on self-test** (známy SLIP-39 vektor +
-round-trip); ak zlyhá, nástroj sa nespustí.
+- **New backup** generates a 160-bit key file, splits it into N shares of 23
+  words with threshold K, shows them for stamping and offers the key file for
+  download.
+- **Recovery** gives you **one field per word**. The number of shares and the
+  words per share (20/23/26/33) are set with spinners that add and remove blocks
+  directly. Typing the four stamped letters completes the word, marks the field
+  and jumps to the next; pasting a whole share into one field distributes it
+  across the following ones; an impossible word turns the field red immediately.
+  Case, line numbering and punctuation are ignored. The fields are rendered
+  server-side, so the form **works with JavaScript disabled**: the script only
+  completes and navigates, while validation and reassembly always happen on the
+  server. A paste-everything textarea is still there under a fold.
+- **Runbook** takes the who-has-what map and produces a printable set of
+  instructions for the family. It contains **no secrets**.
 
-- **Nový backup** → vygeneruje 160-bit key-file, rozdelí ho na N častí po 23
-  slov s prahom K (default 2-z-3), zobrazí ich na vyrytie, ponúkne stiahnutie
-  key-filu a hex.
-- **Obnova** → **samostatné pole na každé slovo**; **počet častí** aj **počet
-  slov v časti** (20/23/26/33) sa nastavujú číselníkom, ktorý bloky rovno pridá
-  alebo odoberie (predvolene 2 časti × 23 slov). Ak by sa odobratím stratili už
-  zadané slová, najprv sa opýta. Po štvrtom písmene sa slovo
-  doplní celé, pole zozelenie a kurzor skočí na ďalšie; vloženie celej časti zo
-  schránky rozhádže slová do polí. Nezmyselné slovo pole očervenie. Pod
-  formulárom ostáva aj **vloženie častí ako textu**.
-  Slová píšeš **tak, ako sú na kove**: kovové médium má miesto len na **4 písmená**
-  a nástroj si zvyšok doplní (v SLIP-39 zozname je slovo prvými štyrmi písmenami
-  určené jednoznačne (1024 slov, 1024 rôznych prefixov). Tri písmená sú
-  nejednoznačné, tie nástroj odmietne a povie ktoré slovo. Veľkosť písmen,
-  číslovanie riadkov a interpunkcia sa ignorujú. Formulár renderuje server, takže
-  **funguje aj s vypnutým JavaScriptom**. Skript len dopĺňa slová a posúva
-  kurzor; kontrola a zloženie kľúča prebiehajú vždy na serveri.
-- **Runbook** → vyplníš „kto-čo-kde“ → vygeneruje tlačiteľný návod pre rodinu
-  (klik *Vytlačiť / Uložiť ako PDF*). Dokument **neobsahuje žiadne tajomstvá**.
+#### How the pieces fit
 
-#### Ako to zapadá
+- Shares are transferred to a **metal backup** that holds 23 words: a plate, a
+  cylinder or capsule, a cassette with sliding letter tiles, and so on. One per
+  holder or location. Only the **first four letters** of each word are
+  transferred, and the setup page highlights them so it is clear what goes onto
+  the metal.
+- The key file locks the **KeePass database** (in KeePassXC, protection = *Key
+  file*). KeePassXC hashes any file that is not 32 bytes, 64 hex characters or
+  KeyFile-XML with **SHA-256**, deterministically, so a **20-byte** (160-bit)
+  file works and reassembles identically. The downloaded key file is **raw
+  bytes**, not hex text: during a manual fallback, build it from the hex with
+  `xxd -r -p` (or `perl -e 'print pack "H*","…"'`, or
+  `python3 -c '…bytes.fromhex(…)'` where `xxd` is missing). Hex saved as text is
+  a different file and will not open the database.
+- Verified against **KeePassXC 2.7.10** (`keepassxc-cli`): the key file creates
+  and reopens a password-less `.kdbx`, a key reassembled from any 2 of 3 shares
+  opens the same database, and both a wrong key file and "the hex as text" are
+  refused.
+- The **wallet passphrase is not in the database.** It lives in the sealed
+  envelope, in the vault and with the switch.
 
-- Časti sa prenášajú na **kovové médium** (musí pojať 23 slov: platnička, valček, kapsula,
-  kazeta so zasúvacími písmenkami…), jedna na držiteľa/lokalitu. Prenášajú sa len
-  **prvé 4 písmená** každého slova. Setup ich na
-  výstupe zvýrazní tučným, aby bolo jasné, čo ide na kov.
-- Key-file zamyká **KeePass DB** (KeePassXC: ochrana = *Key file*). KeePassXC
-  súbor, ktorý nie je 32 B / 64 hex / KeyFile-XML, deterministicky **zahashuje
-  (SHA-256)**, takže náš **20-bajtový** (160-bit) súbor funguje a pri obnove sa
-  zloží identicky. Stiahnutý key-file sú **surové bajty**, nie hex text: pri
-  ručnom fallbacku ho z hexu vyrob cez `xxd -r -p` (alebo `perl -e 'print pack
-  "H*","…"'` / `python3 -c '…bytes.fromhex(…)'`, ak `xxd` na stroji nie je).
-  Hex uložený ako text je iný súbor a DB neotvorí.
-- Overené na **KeePassXC 2.7.10** (`keepassxc-cli`): key-file vytvorí a otvorí
-  `.kdbx` bez hesla, kľúč obnovený z ľubovoľných 2 z 3 častí otvorí tú istú DB,
-  nesprávny key-file aj „hex ako text“ ju neotvoria.
-- **Passphrase k peňaženke NIE je v DB**, je v posmrtnej obálke (banka / DMS).
+#### Correctness
 
-#### Korektnosť
+The SLIP-39 core (`internal/slip39`) is verified against **all 45 official
+SLIP-39 test vectors** plus round trips for 128, 192 and 256-bit secrets.
+`go test ./...`.
 
-SLIP-39 jadro (`internal/slip39`) je overené proti **všetkým 45 oficiálnym
-SLIP-39 test vektorom** + round-trip pre 128/192/256-bit. `go test ./...`.
+### Dead man's switch (`dms/`)
 
-### Dead-man's switch (`dms/`)
+An online service that asks the owner to **check in** periodically, asks
+**trusted people** to confirm after a long silence, and after confirmation plus a
+grace period mails **GPG-encrypted envelopes**, which it can never read itself,
+to their recipients.
 
-Online služba: pravidelne žiada vlastníka o **check-in**; po dlhom tichu požiada
-**dôveryhodné osoby** o potvrdenie; po potvrdení + ochrannej lehote pošle
-**GPG-zašifrované obálky** (ktoré sama nikdy nevie prečítať) ich príjemcom.
+**Channels:** e-mail (primary) plus optionally **Signal** (secondary). Every
+message goes out on every channel the recipient has an address for.
 
-**Kanály:** e-mail (primárny) + voliteľne **Signal** (druhý kanál). Každá správa
-ide na všetky kanály, ktoré má daný adresát nastavené.
+#### The confirmation flow
 
-#### Ako to funguje (tok potvrdenia)
+1. **Regular check-in** (click "I am alive").
+2. Miss one and **escalating reminders** go to the owner on every channel.
+3. After a long silence the switch **does not fire on its own**. It asks the
+   technical helper and another trusted person to confirm death or permanent
+   incapacity, with a link valid only for this cycle and a confirmation button.
+4. Once confirmed, the **grace period** starts, during which the owner gets a
+   daily warning that the envelope goes out in X days. One confirmation is enough
+   by default (`confirm_quorum: 1`): a false alarm is survivable, because the
+   envelope is worthless without the metal shares, whereas "nobody confirmed"
+   would stall the inheritance. With `confirm_quorum: 2` the switch counts
+   **distinct** confirmers, so the same person twice does not count twice.
+5. **The owner's check-in cancels everything, at any time**, including during the
+   countdown.
+6. After the grace period with no veto, the envelopes go out, decryptable only by
+   whoever they were encrypted to.
+7. A false or malicious confirmation is not a catastrophe: the envelope is
+   **useless without enough metal shares**.
 
-1. **Pravidelný check-in** (klik „žijem“).
-2. Vynechanie → **eskalujúce upomienky vlastníkovi** na všetky kanály.
-3. Po dlhom tichu DMS **nevystrelí sám**. Pošle **technicky zdatnej osobe a
-   ďalšej dôveryhodnej osobe** výzvu na potvrdenie úmrtia/trvalej neschopnosti
-   (odkaz platný len pre tento cyklus + potvrdzovacie tlačidlo).
-4. Po potvrdení → štart **ochrannej lehoty**, počas ktorej chodí vlastníkovi
-   denné upozornenie „obálka sa pošle o X dní“. Štandardne stačí **jedno**
-   potvrdenie (`confirm_quorum: 1`): planý poplach je prežiteľný, lebo obálka je
-   bez kovových častí bezcenná, kým „nikto nepotvrdil“ by dedičstvo zastavilo.
-   Pri `confirm_quorum: 2` počíta DMS **rôznych** potvrdzovateľov, takže jeden
-   človek dvakrát sa neráta.
-5. **Check-in vlastníka kedykoľvek všetko ruší.** Veto vždy vyhráva, aj počas
-   odpočtu.
-6. Po uplynutí lehoty bez veta → odošlú sa obálky (GPG, rozšifruje ich len ten,
-   na koho kľúč boli zašifrované).
-7. Falošné či zlomyseľné potvrdenie nie je katastrofa: obálka je **bez dostatku
-   kovových častí zbytočná**.
+Safety nets: a stuck or unconfirmed switch **never blocks the inheritance**,
+because the envelope is also in the bank vault. The switch is best-effort and
+removable, and the vault is the path that always works.
 
-Poistky: zaseknutý alebo nepotvrdený DMS **nikdy nezablokuje dedičstvo**, lebo
-obálka je aj v bankovom trezore. DMS je **best-effort a odstrániteľný**, istá
-cesta vedie cez banku.
+#### Security model
 
-#### Bezpečnostný model
+- **It never holds plaintext.** It holds only envelope ciphertext, encrypted to
+  the recipients' GPG keys, and on release it merely sends it. Who can open an
+  envelope is decided **offline when you encrypt it**, by which key you encrypt
+  to; the config only says where it is sent.
+- **Fail-safe:** if the self-test fails (mail unreachable, an envelope missing or
+  not PGP, state not writable), the switch **alerts but does not fire**.
+- **Two-step links:** check-in and confirm are a GET page plus a POST button, so
+  that automatic link prefetching by mail scanners cannot trigger them.
+- **Confirmation links are bound to one waiting cycle.** A check-in invalidates
+  them, and a link kept from an earlier cycle cannot be replayed in a later one.
+  The check-in credential is separately revocable through `checkin_key_version`.
+- **Tokens** in the links are HMACs of `hmac_secret`. Even a leaked link fails
+  safe: a check-in only delays release, and a confirmation still needs a human,
+  the grace period and the metal shares.
+- **The secondary channel never blocks release.** A broken Signal is an e-mail
+  alert, not a fault; each envelope goes out if **at least one** channel delivers
+  it, and whatever fails is retried on the next tick.
+- **Plaintext to a local postfix, TLS to anything else.** STARTTLS is
+  deliberately skipped on loopback: the bytes never leave the machine, and
+  postfix has no certificate for `127.0.0.1` and cannot have one, so Go would
+  otherwise refuse to send every message including the envelope. For a
+  non-loopback `smtp_addr`, STARTTLS is required and the certificate verified.
+- Network work never happens while the state lock is held, so a relay that
+  accepts a connection and then stops answering cannot block the owner's veto.
+  The whole SMTP conversation is bounded by `smtp_timeout`.
 
-- **Nikdy nedrží plaintext.** Drží len ciphertext obálok (zašifrovaných na GPG
-  kľúče príjemcov) a pri výstrele ich len pošle. Kto obálku otvorí, sa rozhoduje
-  **offline pri jej výrobe**, tým, na ktorý kľúč ju zašifruješ. Config hovorí
-  len, kam sa pošle.
-- **Fail-safe:** ak self-test zlyhá (mail nedostupný, niektorá obálka chýba
-  alebo nie je PGP, stav sa nedá zapísať), DMS **alertuje, ale NEODPÁLI**.
-- **Dvojkrokové odkazy:** check-in aj confirm sú GET stránka + POST tlačidlo, aby
-  ich nespustil automatický „link prefetch“ e-mailových skenerov.
-- **Tokeny** v odkazoch sú HMAC z `hmac_secret`. Aj keby odkaz unikol, najhorší
-  prípad je bezpečný (check-in len oddiali výstrel; confirm aj tak potrebuje
-  človeka + lehotu + kovové podiely).
-- **Druhý kanál nikdy nezablokuje výstrel.** Nefunkčný Signal = alert e-mailom,
-  nie porucha; každá obálka odíde, ak ju doručí **aspoň jeden** kanál (čo sa
-  nedoručí, skúsi sa znova pri ďalšom tiku).
-- **Lokálny postfix bez TLS, cudzí relay len s TLS.** Na loopbacku sa STARTTLS
-  zámerne nepoužíva: bajty nikdy neopustia stroj a postfix nemá (a nemôže mať)
-  certifikát na „127.0.0.1“. Go by inak každý e-mail vrátane obálky odmietol
-  poslať. Pri ne-loopback `smtp_addr` sa STARTTLS naopak vyžaduje aj s overením
-  certifikátu.
-- Bankový trezor je nezávislá druhá cesta k obálke, DMS je „best-effort“.
-
-#### Časová os (default)
+#### Default timeline
 
 ```
-check-in mesačne → po 60 dňoch ticha: výzva potvrdzovateľom (dôveryhodné osoby)
-→ potvrdenie (ktorýkoľvek) → 7-dňový odklad s dennými upozorneniami vlastníkovi
-→ výstrel: obálky e-mailom svojim príjemcom.   Check-in kedykoľvek všetko ruší.
-DMS → vlastníkovi týždenne „som zdravý“; pri poruche alert.
+monthly check-in → after 60 days of silence: ask the confirmers
+→ confirmation (any of them) → 7-day delay with daily warnings to the owner
+→ release: envelopes mailed to their recipients.   A check-in cancels everything.
+switch → owner, weekly "healthy"; on a fault, an alert.
 ```
 
-#### Obálky: koľko ich je a komu idú
+#### Envelopes: how many and to whom
 
-Obálok môže byť viac a **každá má vlastných príjemcov**:
+There can be several, and **each has its own recipients**:
 
 ```json
 "envelopes": [
   { "id": "passphrase", "path": "/data/envelope-passphrase.asc",
-    "to": [ {"name":"Prvá","email":"prva@…","signal":"+…"},
-            {"name":"Druhá","email":"druha@…"} ] },
-  { "id": "pristupy",   "path": "/data/envelope-pristupy.asc",
-    "note": "Vnútri sú ostatné prístupy, nie passphrase.",
-    "to": [ {"name":"Tretia","email":"tretia@…"} ] }
+    "to": [ {"name":"First","email":"first@…","signal":"+…"},
+            {"name":"Second","email":"second@…"} ] },
+  { "id": "credentials", "path": "/data/envelope-credentials.asc",
+    "note": "These are the remaining credentials, not the wallet passphrase.",
+    "to": [ {"name":"Third","email":"third@…"} ] }
 ]
 ```
 
-Pokrýva to dva rôzne zámery:
+That covers two different intentions:
 
-- **tá istá obálka viacerým ľuďom** = záloha, aby jeden nedostupný človek
-  neodrezal celú DMS cestu (napr. keď zomrieš aj ty aj on),
-- **rôzne obálky rôznym ľuďom** = rozdelenie znalostí; nikto sám nemá všetko.
+- **the same envelope to several people**, as a backup, so that one unreachable
+  person does not cut off the whole path (for instance if you and they die
+  together),
+- **different envelopes to different people**, so that nobody holds everything.
 
-Pravidlá, ktoré si služba stráži: obálka bez príjemcu alebo dve s rovnakým `id`
-sa odmietnu pri štarte; self-test kontroluje **každý** súbor (chýbajúci alebo
-nie-PGP = porucha a **nevystrelí sa vôbec**, nie polovica); pri výstrele si
-pamätá, ktoré obálky už odišli, takže sa doposiela len zvyšok a nikomu nepríde
-tá istá dvakrát. Check-in (veto) túto pamäť **zmaže**, po ňom musí ísť pri
-ďalšom ostrom výstrele von zase všetko.
+What the service enforces: an envelope with no recipients, or two sharing an
+`id`, is refused at startup; the self-test checks **every** file, and a missing
+or non-PGP one is a fault that stops the release **entirely** rather than
+delivering half of it; on release it remembers which envelopes went out, so only
+the rest is retried and nobody receives the same one twice. A check-in clears
+that memory, so a later real release delivers everything again.
 
-Starý zápis `envelope_path` + `friend_email` naďalej funguje ako jedna obálka
-s jedným príjemcom.
+The older `envelope_path` plus `friend_email` form still works, as a single
+envelope with a single recipient.
 
-> **Pozor pri rozdeľovaní obsahu:** v bankovom trezore musí byť **všetko**. DMS
-> je best-effort, banka je istá cesta. Inak si rozdelením vyrobíš scenár, kde
-> jeden nereagujúci príjemca odreže časť dedičstva.
+> **When splitting the contents, the bank vault must hold everything.** The
+> switch is best-effort and the vault is the sure path. Otherwise you have built
+> a case where one unresponsive recipient cuts off part of the inheritance.
 
-#### Kam patrí verejný GPG kľúč príjemcu
+#### Where the recipient's public GPG key goes
 
-Do `keys/` (adresár je len konvencia, `*.asc` sú gitignorované, aby repo
-neprezrádzalo identity). DMS ten kľúč nikdy nevidí, potrebuješ ho len ty pri
-výrobe obálky:
+Into `keys/`, which is only a convention; `*.asc` is gitignored so the repository
+does not reveal who is involved. The switch never sees that key. You need it only
+when you make the envelope:
 
 ```
 gpg --export --armor <key-id> > keys/friend.asc
 ```
 
-#### Vytvorenie obálok (offline, ručne)
+#### Making the envelopes, offline and by hand
 
-Do súboru daj len **passphrase k peňaženke** (+ prípadne krátky pokyn) a zašifruj na
-verejný GPG kľúč technicky zdatnej osoby (`keys/friend.asc`; fingerprint si over
-nezávisle, nie z toho istého kanála, ktorým kľúč prišiel):
+Put only the **wallet passphrase** in the file, plus a short instruction if you
+like, and encrypt it to the recipient's public GPG key. Verify the fingerprint
+independently, not through the same channel the key arrived on.
 
 ```
 gpg --import keys/friend.asc
 gpg --armor --encrypt --recipient friend@example.com passphrase.txt
-mv passphrase.txt.asc envelope.asc      # toto ide do /data, nie do gitu
+mv passphrase.txt.asc envelope.asc      # this goes to /data, never to git
 shred -u passphrase.txt
 ```
 
-Ak má tú istú obálku vedieť otvoriť viac ľudí, zašifruj ju na viac kľúčov naraz
-(`--recipient A --recipient B`). To je nezávislé od toho, komu sa doručí.
+If several people should be able to open the same envelope, encrypt it to
+several keys at once (`--recipient A --recipient B`). That is independent of who
+it gets delivered to.
 
 #### Deployment
 
-Na serveri s Dockerom a postfixom to spraví `dms/deploy.sh` (spúšťa sa
-z adresára `dms/`). Nič nenasadzuje sám od seba, každý krok vypíše a na Apache
-ani postfix nesiahne.
+On a server with Docker and postfix, `dms/deploy.sh` does it, run from the `dms/`
+directory. It deploys nothing behind your back: it prints every step and never
+touches Apache or postfix.
 
-**Compose netreba.** Ak je k dispozícii `docker compose` (v2), použije ho; inak
-(a s `--no-compose`) spraví to isté cez čisté `docker build` / `docker run`.
-Staré `docker-compose` v1 vedome ignoruje, lebo je EOL a nevie ani
-`${VAR:-default}` v compose súbore, takže by to potichu rozbil.
+**Compose is not required.** If `docker compose` (v2) is available it drives
+that; otherwise, and with `--no-compose`, it does the same through plain
+`docker build` and `docker run`. The old `docker-compose` v1 is deliberately
+ignored, because it is end-of-life and cannot even parse `${VAR:-default}` in a
+compose file, so accepting it would break a deployment half way through.
 
 ```bash
-./deploy.sh --check                              # len preflight, nič nemení
-./deploy.sh --envelope ~/envelope.asc            # ostré nasadenie (e-mail)
-./deploy.sh --envelope passphrase=~/a.asc --envelope pristupy=~/b.asc  # viac obálok
-./deploy.sh --envelope ~/envelope.asc --signal   # + Signal kanál
-./deploy.sh --config-only --force-config         # len prepíš config.json
-./deploy.sh --envelope ~/envelope.asc --no-compose      # bez compose
-./deploy.sh --envelope ~/envelope.asc --test-timings   # skúšobný beh, viď nižšie
+./deploy.sh --check                              # preflight only, changes nothing
+./deploy.sh --envelope ~/envelope.asc            # real deployment (e-mail)
+./deploy.sh --envelope passphrase=~/a.asc --envelope credentials=~/b.asc
+./deploy.sh --envelope ~/envelope.asc --signal   # + Signal channel
+./deploy.sh --config-only --force-config         # rewrite config.json only
+./deploy.sh --envelope ~/envelope.asc --no-compose
+./deploy.sh --envelope ~/envelope.asc --test-timings   # rehearsal, see below
 ```
 
-Čo skript spraví: overí docker/compose/postfix/porty → založí `/opt/inh-dms/data`
-(0700) → skopíruje obálky (a odmietne tú, ktorá nie je ASCII-armored PGP) →
-interaktívne vypýta adresy, čísla a potvrdzovateľov a zapíše `config.json`
-(0600, `hmac_secret` z `openssl rand -hex 32`) → **overí config cez `inh-dms
---validate`** → zbuildí a spustí kontajner → skontroluje HTTP, log a `state.json`
-→ vypíše Apache vhost a **tvoj check-in odkaz do záložiek**.
+What it does: check docker, compose, postfix and ports → create
+`/opt/inh-dms/data` (0700) → copy the envelopes, refusing any that is not
+ASCII-armored PGP → ask for addresses, numbers and confirmers and write
+`config.json` (0600, with `hmac_secret` from `openssl rand -hex 32`) → **validate
+the config through `inh-dms --validate`** → build and start the container → check
+HTTP, the log and `state.json` → print the reverse proxy config and **your
+check-in link to bookmark**.
 
-Beží idempotentne: existujúci `config.json` ani obálky neprepíše (na to je
-`--force-config`, ktorý starý config zálohuje), takže sa dá pustiť znova.
+It is idempotent: an existing `config.json` or envelope is left alone, so it is
+safe to run again. `--force-config` rewrites the config after backing it up.
 
-`--test-timings` je skúšobná inštancia a je **úplne oddelená od ostrej**: iný
-dátový adresár (`/opt/inh-dms-test`), iné mená kontajnerov (`inh-dms-test`,
-`inh-signal-test`), iné porty (8188 / 8180) aj vlastný compose projekt
-(`-p inh-dms-test`). Skúška teda nemôže zhodiť ani nahradiť bežiaci ostrý DMS a
-proxy naň nezačne smerovať; ak ostrý DMS beží vedľa, skript to pri štarte
-vypíše.
+`--test-timings` is a rehearsal instance, **fully isolated from the real one**:
+its own data directory (`/opt/inh-dms-test`), container names (`inh-dms-test`,
+`inh-signal-test`), ports (8188 and 8180) and Compose project
+(`-p inh-dms-test`). A rehearsal therefore cannot take down or replace a running
+production switch, and the proxy will not start pointing at it; if a production
+instance is running alongside, the script says so at startup.
 
-K tomu: intervaly v minútach namiesto dní, štart z čistého stavu (starý
-`state.json` zmaže), odkazy mieria na `http://127.0.0.1:8188` (cez SSH tunel) a
-**obálky aj výzvy potvrdzovateľom idú tebe**, skúška nesmie napísať skutočným
-ľuďom, lebo vo fáze čakania sa výzva opakuje každých pár minút. Celý reťazec
-(check-in → ticho → potvrdenie → odpočet → výstrel) sa tak dá prejsť za pár
-minút bez toho, aby si niekoho vystrašil. Po doskúšaní:
+On top of that: intervals in minutes instead of days, a clean start (the old
+`state.json` is deleted), links pointing at `http://127.0.0.1:8188` over an SSH
+tunnel, and **envelopes and confirmation requests all addressed to you**. A
+rehearsal must never write to real people, because in the waiting phase the
+request repeats every few minutes. The whole chain, check-in through silence,
+confirmation, countdown and release, can be walked in a few minutes without
+alarming anyone. Afterwards:
 
 ```bash
-docker compose -p inh-dms-test down     # alebo: docker rm -f inh-dms-test
+docker compose -p inh-dms-test down     # or: docker rm -f inh-dms-test
 rm -rf /opt/inh-dms-test
 ```
 
-Ručne je to to isté: `mkdir -p /opt/inh-dms/data`, `config.json` z
-`config.example.json` (`hmac_secret` = `openssl rand -hex 32`), obálky do
-`/opt/inh-dms/data/` (cesty v configu sú z pohľadu kontajnera, `/data/…`), potom
-`INH_UID=$(id -u) INH_GID=$(id -g) docker compose up -d` (e-mail) alebo to isté
-s `--profile signal` (+ Signal). Bez compose:
+By hand it is the same: `mkdir -p /opt/inh-dms/data`, a `config.json` from
+`config.example.json` (`hmac_secret` = `openssl rand -hex 32`), envelopes into
+`/opt/inh-dms/data/` (paths in the config are container-side, `/data/…`), then
+`INH_UID=$(id -u) INH_GID=$(id -g) docker compose up -d`, or the same with
+`--profile signal`. Without compose:
 
 ```bash
 docker build -t inh-dms .
@@ -501,16 +515,17 @@ docker run -d --name inh-dms --restart unless-stopped \
   -v /opt/inh-dms/data:/data inh-dms
 ```
 
-`--user` tam **musí** byť: image beží ako `nonroot` (uid 65532), ale `/data`
-patrí tebe a `config.json` je 0600. Bez toho kontajner skončí na
-`open /data/config.json: permission denied`. Host sieť je zámer:
-`smtp_addr` dosiahne lokálny postfix na `127.0.0.1:25`, Signal API je na
-`127.0.0.1:8080` a `listen_addr` sa naviaže na hostiteľský loopback, kam ide
-Apache proxy.
+`--user` is not optional: the image runs as `nonroot` (uid 65532) but `/data`
+belongs to you and `config.json` is 0600, so without it the container dies on
+`open /data/config.json: permission denied`. Host networking is deliberate:
+`smtp_addr` reaches the local postfix on `127.0.0.1:25`, the Signal API is on
+`127.0.0.1:8080`, and `listen_addr` binds to the host loopback where the reverse
+proxy points.
 
-Pred službu patrí reverse proxy s TLS (DMS počúva len na loopbacku a HTTP).
+The service speaks plain HTTP on loopback, so it needs a reverse proxy with TLS
+in front of it.
 
-Apache (`a2enmod proxy proxy_http headers`, TLS cez certbot):
+Apache (`a2enmod proxy proxy_http headers`, TLS through certbot):
 
 ```apache
 <VirtualHost *:443>
@@ -519,17 +534,17 @@ Apache (`a2enmod proxy proxy_http headers`, TLS cez certbot):
   ProxyPass        / http://127.0.0.1:8088/
   ProxyPassReverse / http://127.0.0.1:8088/
   RequestHeader set X-Forwarded-Proto https
-  # TLS direktívy doplní certbot
+  # certbot fills in the TLS directives
 </VirtualHost>
 ```
 
-nginx (to isté, TLS tiež cez certbot):
+nginx, the same thing:
 
 ```nginx
 server {
     listen 443 ssl;
     server_name dms.example.com;
-    # ssl_certificate / ssl_certificate_key doplní certbot
+    # certbot fills in ssl_certificate / ssl_certificate_key
 
     location / {
         proxy_pass http://127.0.0.1:8088;
@@ -541,47 +556,51 @@ server {
 }
 ```
 
-Overenie po štarte (skript to kontroluje sám, ale vedieť to treba):
+Verification after startup, which the script also does, but which is worth
+knowing:
 
-1. `curl -s https://dms.example.com/` → „Služba beží.“
-2. do minúty príde e-mail **[DMS] v poriadku** (a ak je zapnutý Signal, aj správa
-   na Signale). To je zároveň dôkaz, že self-test prešiel a všetky obálky sú čitateľné,
-3. klikni v ňom check-in odkaz → „Ďakujem“ a v `state.json` sa zmení `last_check_in`,
-4. `docker logs inh-dms` neobsahuje `failed`,
-5. **check-in odkaz si ulož do záložiek / KeePass DB**. Je stabilný, ale závisí
-   od `hmac_secret` (ten si tiež odlož; po jeho zmene platia iné odkazy),
-6. do runbooku a do KeePass DB zapíš, že DMS existuje a ako sa vypína
-   (`docker compose down` = DMS je preč, dedičstvo tým netrpí).
+1. `curl -s https://dms.example.com/` answers that the service is running.
+2. Within a minute an **"all good"** e-mail arrives, and a Signal message too if
+   that channel is on. That is also proof the self-test passed and every envelope
+   is readable.
+3. Click the check-in link in it, and `last_check_in` changes in `state.json`.
+4. `docker logs inh-dms` contains no `failed`.
+5. **Bookmark the check-in link and put it in the KeePass database.** It is
+   stable, but it depends on `hmac_secret`, so store that too; changing it makes
+   different links.
+6. Record in the runbook and in the database that the switch exists and how to
+   turn it off (`docker compose down` removes it, and the inheritance does not
+   suffer).
 
-Údržba: `docker compose pull && docker compose up -d` (Signal kontajner),
-`docker save inh-dms | gzip > inh-dms.tar.gz` do archívu k ostatným artefaktom.
+Upkeep: `docker compose pull && docker compose up -d` for the Signal container,
+and `docker save inh-dms | gzip > inh-dms.tar.gz` into the archive with the other
+artifacts.
 
-#### Konfigurácia
+#### Configuration
 
-Viď `config.example.json` (alebo si ho nechaj vygenerovať cez `deploy.sh`).
-Trvania prijímajú `30d`, `7d`, `12h`, `90m`. `inh-dms --validate` config načíta,
-skontroluje a skončí. Hodí sa po ručnej úprave, kým službu reštartneš.
-Povinné: `public_base_url`, `from_email`, `user_email`, `state_path`,
-`hmac_secret` (≥16 znakov), aspoň 1 `confirmer` a aspoň jedna obálka
-(`envelopes[]`, alebo starý `envelope_path` + `friend_email`).
+See `config.example.json`, or have `deploy.sh` generate one. Durations accept
+`30d`, `7d`, `12h`, `90m`. `inh-dms --validate` loads a config, checks it and
+exits, which is useful after editing by hand and before restarting.
 
-Voliteľné, ale dobré vedieť:
+Required: `public_base_url`, `from_email`, `user_email`, `state_path`,
+`hmac_secret` (16 characters or more), at least one `confirmer`, and at least one
+envelope (`envelopes[]`, or the older `envelope_path` plus `friend_email`).
 
-| kľúč | čo robí |
+Optional, but worth knowing:
+
+| key | what it does |
 |---|---|
-| `confirm_quorum` | koľko **rôznych** potvrdzovateľov treba na spustenie odpočtu (default 1) |
-| `checkin_key_version` | zvýš a reštartuj, ak ti unikol check-in odkaz, staré odkazy prestanú platiť |
-| `smtp_timeout` | strop na celú SMTP konverzáciu (default 30s), aby zaseknutý relay nezablokoval DMS |
+| `confirm_quorum` | how many **distinct** confirmers start the countdown (default 1) |
+| `checkin_key_version` | increment and restart if your check-in link leaks; the old links stop working |
+| `smtp_timeout` | bound on the whole SMTP conversation (default 30s), so a stalled relay cannot block the switch |
 
-Potvrdzovacie odkazy platia **len pre aktuálny cyklus čakania**: check-in ich
-zneplatní a v ďalšom cykle sa nedajú použiť znova.
+#### Signal, the second channel
 
-#### Signal (druhý kanál)
-
-Voliteľný. Vynechaj blok `signal` aj všetky `*_signal` čísla → všetko ide len
-e-mailom. Konfigurácia je **buď celá, alebo žiadna**: číslo bez `signal.api_url`
-(alebo naopak) je chyba pri štarte. Polovičná konfigurácia by potichu zahodila
-kanál, čo je presne to, čo sa v systéme, do ktorého roky nikto nepozrie, stať nesmie.
+Optional. Leave out the `signal` block and every `*_signal` number and everything
+goes by e-mail. The configuration is **all or nothing**: a number without
+`signal.api_url`, or the reverse, is a startup error, because a half-configured
+channel would be silently dropped, which is exactly what must not happen in a
+system nobody looks at for years.
 
 ```json
 "signal": { "api_url": "http://127.0.0.1:8080", "from_number": "+…" },
@@ -589,39 +608,63 @@ kanál, čo je presne to, čo sa v systéme, do ktorého roky nikto nepozrie, st
 "confirmers": [ { "id": "friend", "…": "…", "signal": "+…" } ]
 ```
 
-Kontajner (`bbernhard/signal-cli-rest-api`) drží linknuté zariadenie; DMS mu len
-POSTuje text na `/v2/send` cez loopback. Linkovanie (raz, pri deployi):
+A `bbernhard/signal-cli-rest-api` container holds the linked device, and the
+switch only POSTs text to `/v2/send` over loopback. Linking, once, at deployment:
 
 ```
-docker compose up -d signal
-# otvor v prehliadači (cez SSH tunel) a naskenuj QR v Signale:
-#   Signal → Nastavenia → Prepojené zariadenia → +
+docker compose --profile signal up -d
+# open over an SSH tunnel and scan the QR code in Signal:
+#   Signal → Settings → Linked devices → +
 xdg-open http://127.0.0.1:8080/v1/qrcodelink?device_name=inh-dms
-curl -s http://127.0.0.1:8080/v1/accounts     # musí obsahovať from_number
+curl -s http://127.0.0.1:8080/v1/accounts     # must list your from_number
 ```
 
-Self-test kontroluje presne toto `/v1/accounts`: realistické tiché zlyhanie je
-**odlinkované zariadenie**, nie spadnutý kontajner. Prichádzajúce správy
-nespracúvame (check-in je odkaz v správe, funguje z oboch kanálov).
+The self-test checks exactly that `/v1/accounts`, because the realistic silent
+failure of this channel is an **unlinked device**, not a dead container.
+Incoming messages are not processed: the check-in is a link in the message and
+works from either channel.
 
-Obálka ide pri výstrele aj na Signal (je to ciphertext, kanál je jedno). Ak by
-bola príliš dlhá na jednu Signal správu, Signal ju odmietne a doručí ju e-mail.
-Preto je e-mail primárny a obálka má obsahovať len passphrase + krátky pokyn.
+Note that linking makes the container a full Signal device on your number, which
+means it receives all your messages, not only the ones the switch sends. That is
+the price of messages coming from your own number, which is what makes a
+"confirm that he died" request credible to the recipient rather than looking like
+a scam.
 
-#### Korektnosť
+Envelopes go out over Signal too, since they are ciphertext and the channel does
+not matter. If one is too long for a single Signal message, Signal rejects it and
+e-mail delivers it, which is why e-mail is primary and an envelope should hold
+only the passphrase and a short instruction.
 
-`go test ./...` pokrýva celú časovú os (deterministicky, injektovaný čas + fake
-mailer): pripomienky, prechod do čakania, potvrdenie → odpočet → výstrel,
-zrušenie check-inom, fail-safe pri poruche/chýbajúcej obálke, a HTTP handlery.
-Pre Signal navyše: rozposlanie na oba kanály, výstrel pri spadnutom Signale,
-výstrel cez Signal pri spadnutom maile, žiadny kanál → žiadny výstrel + retry,
-HTTP klient proti fake API a validácia konfigurácie.
+#### Correctness
 
-## Prevádzkové pravidlá repa
+`go test ./...` covers the whole timeline deterministically, with injected time
+and a fake mailer: reminders, the transition into waiting, confirmation through
+countdown to release, cancellation by check-in, fail-safe on a fault or a missing
+envelope, and the HTTP handlers. For Signal: fan-out to both channels, release
+with Signal down, release over Signal with mail down, no channel meaning no
+release plus a retry, the HTTP client against a fake API, and config validation.
+The suite also runs clean under `-race`.
 
-- **Reálna mapa do repa nepatrí.** Kto drží ktorú časť, kde je obálka a na akom
-  serveri beží DMS, to žije vo **vytlačenom runbooku** a v **KeePass DB**, nie
-  v texte v repe. Dokumentácia je zámerne zovšeobecnená (lokalita A/B/C,
-  „technicky zdatná osoba“).
-- Verejné GPG kľúče príjemcov (`keys/*.asc`) a vytlačené runbooky (`*.pdf`) sú
-  gitignorované, aby repo neprezrádzalo identity.
+## Running this yourself
+
+If you fork this for your own inheritance, the one rule that matters:
+
+**Real secrets never go into the repository.** Not the seed words, the wallet
+passphrase, the key file or its SLIP-39 shares, the database password, a real
+`.kdbx`, or the contents of an envelope. Secrets are born and live offline, on
+metal, in a bank vault and in the encrypted database. The `.gitignore` here stops
+the usual files from being committed by accident, but do not rely on it: the real
+defence is never bringing them near the repository.
+
+**The map does not belong there either.** Who holds which share, where the
+envelope is and which machine runs the switch belong in the **printed runbook**
+and the **KeePass database**, not in text in a repository, private or otherwise.
+The documentation here is deliberately generic (location A/B/C, "technical
+helper") for that reason, and `keys/*.asc` and `*.pdf` are gitignored so the
+repository never reveals who is involved.
+
+## Licence
+
+Apache License 2.0. See [LICENSE](LICENSE).
+
+Copyright 2026 The inh authors.
