@@ -1,42 +1,45 @@
-# Deployment na server. Spúšťa sa cez ./deploy.sh (alebo ručne, viď README).
-# Signal je voliteľný a je za profilom, takže bez neho beží všetko na e-maile:
+# Server deployment. Driven by ./deploy.sh (or by hand, see the README).
+# Signal is optional and sits behind a profile, so without it everything runs
+# on e-mail alone:
 #
-#   docker compose up -d                      # len e-mail
-#   docker compose --profile signal up -d     # + Signal kanál
+#   docker compose up -d                      # e-mail only
+#   docker compose --profile signal up -d     # + the Signal channel
 #
-# INH_DATA_DIR presmeruje dáta (default /opt/inh-dms), INH_NAME_DMS /
-# INH_NAME_SIGNAL mená kontajnerov a INH_PORT_SIGNAL port Signal API. Test-režim
-# deploy.sh ich nastaví (a použije aj vlastný compose projekt), aby skúšobný beh
-# nemohol siahnuť na ostrý.
+# INH_DATA_DIR redirects the data (default /opt/inh-dms), INH_NAME_DMS and
+# INH_NAME_SIGNAL name the containers, INH_PORT_SIGNAL sets the Signal API port.
+# The test mode of deploy.sh sets all of them (and uses its own compose project)
+# so that a rehearsal cannot touch the live instance.
 services:
   dms:
     build: .
     image: inh-dms
     container_name: ${INH_NAME_DMS:-inh-dms}
     restart: unless-stopped
-    # /data patrí nasadzujúcemu používateľovi a config.json je 0600 — image síce
-    # beží ako nonroot (65532), ale čítať to musí pod jeho uid. deploy.sh
-    # INH_UID/INH_GID exportuje; ručne: INH_UID=$(id -u) INH_GID=$(id -g) docker compose up -d
+    # /data belongs to the deploying user and config.json is 0600. The image
+    # runs as nonroot (65532), but it has to read that file under their uid.
+    # deploy.sh exports INH_UID/INH_GID; by hand:
+    # INH_UID=$(id -u) INH_GID=$(id -g) docker compose up -d
     user: "${INH_UID:-1000}:${INH_GID:-1000}"
-    # host sieť: dosiahne lokálny postfix na 127.0.0.1:25, signal-cli na
-    # 127.0.0.1:8080, a naviaže sa na hostiteľský loopback 127.0.0.1:8088
-    # (Apache proxy pred tým rieši TLS).
+    # Host networking: reaches the local postfix on 127.0.0.1:25 and signal-cli
+    # on 127.0.0.1:8080, and binds to the host loopback at 127.0.0.1:8088,
+    # where the reverse proxy (which terminates TLS) points.
     network_mode: host
     volumes:
       - ${INH_DATA_DIR:-/opt/inh-dms}/data:/data   # config.json, envelope.asc, state.json
 
   signal:
     profiles: ["signal"]
-    # TODO pri deployi: nahradiť konkrétnym digestom (docker pull … &&
-    # docker images --digests) a image odložiť do tarballu k archívu.
+    # TODO at deployment: pin a specific digest (docker pull … &&
+    # docker images --digests) and save the image into a tarball for the archive.
     image: bbernhard/signal-cli-rest-api:latest
     container_name: ${INH_NAME_SIGNAL:-inh-signal}
     restart: unless-stopped
     environment:
       - MODE=native
-      # Občasný receive drží session pri živote a vyprázdni frontu; my len posielame.
+      # An occasional receive keeps the session alive and drains the queue;
+      # we only ever send.
       - AUTO_RECEIVE_SCHEDULE=0 4 * * *
     ports:
-      - "127.0.0.1:${INH_PORT_SIGNAL:-8080}:8080"   # len loopback, nikdy nie navonok
+      - "127.0.0.1:${INH_PORT_SIGNAL:-8080}:8080"   # loopback only, never exposed
     volumes:
       - ${INH_DATA_DIR:-/opt/inh-dms}/signal:/home/.local/share/signal-cli

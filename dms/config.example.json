@@ -6,27 +6,27 @@
   "user_email": "you@example.com",
   "user_lang": "en",
 
-  "_envelopes": "Každá obálka má vlastný súbor a vlastných príjemcov: tá istá obálka viacerým = záloha, rôzne obálky rôznym ľuďom = rozdelenie znalostí. Starý zápis envelope_path + friend_email stále funguje.",
+  "_envelopes": "Each envelope has its own file and its own recipients: the same envelope to several people = a backup, different envelopes to different people = nobody holds everything. The older envelope_path + friend_email form still works.",
   "envelopes": [
     {
       "id": "passphrase",
       "path": "/data/envelope-passphrase.asc",
-      "subject": "Dôležité — dedičstvo: passphrase",
+      "subject": "Important — inheritance: passphrase",
       "to": [
         { "name": "First", "email": "first@example.com", "signal": "+15550000002", "lang": "en" },
         { "name": "Second", "email": "second@example.com", "lang": "sk" }
       ]
     },
     {
-      "id": "pristupy",
-      "path": "/data/envelope-pristupy.asc",
-      "note": "Vnútri sú ostatné prístupy, nie passphrase k peňaženke.",
-      "to": [ { "name": "Tretia", "email": "tretia@example.com" } ]
+      "id": "credentials",
+      "path": "/data/envelope-credentials.asc",
+      "note": "These are the remaining credentials, not the wallet passphrase.",
+      "to": [ { "name": "Third", "email": "third@example.com" } ]
     }
   ],
 
-  "_lang": "Každý príjemca môže mať vlastný jazyk (en, sk, cs); default je en. // Each recipient can have their own language.",
-  "_signal": "Voliteľný druhý kanál. Vynechaj celý blok `signal` aj všetky `*_signal` čísla = všetko ide len e-mailom.",
+  "_lang": "Each recipient can have their own language (en, sk, cs); the default is en.",
+  "_signal": "An optional second channel. Leave out the whole `signal` block and every `*_signal` number and everything goes by e-mail alone.",
   "signal": {
     "api_url": "http://127.0.0.1:8080",
     "from_number": "+15550000000",
@@ -41,7 +41,7 @@
   "state_path": "/data/state.json",
   "hmac_secret": "CHANGE-ME-to-a-long-random-string-min-16-chars",
 
-  "_options": "confirm_quorum = koľko rôznych potvrdzovateľov treba (default 1). checkin_key_version zvýš, ak unikol check-in odkaz. smtp_timeout je strop na celú SMTP konverzáciu.",
+  "_options": "confirm_quorum = how many distinct confirmers are needed (default 1). Increment checkin_key_version if the check-in link leaks. smtp_timeout bounds the whole SMTP conversation.",
   "confirm_quorum": 1,
   "checkin_key_version": 0,
   "smtp_timeout": "30s",

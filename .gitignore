@@ -1,4 +1,4 @@
-# --- NIKDY necommitovať reálne tajomstvá ---
+# --- never commit real secrets ---
 *.kdbx
 *.key
 *.keyfile
@@ -27,14 +27,14 @@ config.json
 state.json
 dms/data/
 
-# --- local-only (NIKDY nepushovať): reálna mapa, kľúče, poznámky ---
+# --- local only, never pushed: the real map, keys, notes ---
 keys/*.asc
 *.pdf
 TODO.local.md
 *.local.md
 SECURITY_REVIEW*.md
 
-# --- nástroje asistenta, nie súčasť projektu ---
+# --- assistant tooling, not part of the project ---
 CLAUDE.md
 .claude/
 graphify-out/

@@ -49,6 +49,9 @@ past that.
 Built locally from this tag, not by CI."
 fi
 
+# Print the address the runbook actually sends people to, read from the repo
+# this was published into rather than hardcoded to one account.
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)
 echo
 echo "Done. The runbook's address now serves this build:"
-echo "  https://github.com/Dehumanizer77/inh/releases/latest"
+echo "  https://github.com/${REPO:-<username>/<repo>}/releases/latest"

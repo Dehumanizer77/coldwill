@@ -99,7 +99,7 @@ func TestSendToLoopbackSkipsSTARTTLS(t *testing.T) {
 	f := newFakeSMTP(t)
 	m := &SMTPMailer{Addr: f.addr(), From: "dms@example.com"}
 
-	if err := m.Send([]string{"me@example.com", "friend@example.com"}, "[DMS] v poriadku", "telo správy"); err != nil {
+	if err := m.Send([]string{"me@example.com", "friend@example.com"}, "[DMS] všetko v poriadku", "telo správy"); err != nil {
 		t.Fatalf("send: %v", err)
 	}
 	<-f.done
@@ -125,9 +125,14 @@ func TestSendToLoopbackSkipsSTARTTLS(t *testing.T) {
 			t.Errorf("message missing %q; got:\n%s", want, body)
 		}
 	}
-	// Subject is non-ASCII-safe Slovak, so it must be encoded, not raw.
-	if !strings.Contains(body, "Subject: ") {
-		t.Errorf("message has no Subject header:\n%s", body)
+	// The fixture is deliberately accented, because the switch really does send
+	// Slovak and Czech mail: a subject with non-ASCII in it has to go out
+	// MIME-encoded rather than raw, or the header is invalid.
+	if !strings.Contains(body, "Subject: =?UTF-8?") {
+		t.Errorf("subject was not MIME-encoded:\n%s", body)
+	}
+	if strings.Contains(body, "Subject: [DMS] všetko") {
+		t.Errorf("raw non-ASCII subject reached the wire:\n%s", body)
 	}
 }
 

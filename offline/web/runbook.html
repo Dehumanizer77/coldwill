@@ -15,7 +15,7 @@
       <input type="hidden" name="lang" value="{{.L}}">
       <input type="hidden" name="author" value="{{.Author}}">
       <input type="hidden" name="date" value="{{.Date}}">
-      <input type="hidden" name="wife" value="{{.Wife}}">
+      <input type="hidden" name="heir" value="{{.Heir}}">
       <input type="hidden" name="threshold" value="{{.Threshold}}">
       <input type="hidden" name="count" value="{{.Count}}">
       <input type="hidden" name="bank" value="{{.Bank}}">
@@ -42,7 +42,7 @@
 
   <section>
     <h2>{{t .L "rb.intro.h"}}</h2>
-    {{if .Wife}}<p>{{t .L "rb.intro.to" .Wife}}</p>{{end}}
+    {{if .Heir}}<p>{{t .L "rb.intro.to" .Heir}}</p>{{end}}
     <p>{{t .L "rb.intro.p"}}</p>
     <p>{{t .L "rb.intro.whatis" .Threshold .Count}}</p>
   </section>

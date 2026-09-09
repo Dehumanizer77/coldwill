@@ -143,8 +143,8 @@ func TestRunbookRender(t *testing.T) {
 				"person_name":    {"Alica", "Bob"},
 				"person_contact": {"a@example.com", "b@example.com"},
 				"person_tech":    {"tech", "nontech"},
-				"wife":           {"Jana"},
-				"bank":           {"Banka XY, schranka 42"},
+				"heir":           {"Dana"},
+				"bank":           {"Example Bank, box 42"},
 				"threshold":      {"2"}, "count": {"3"},
 			}
 			if lang != "" {
@@ -157,7 +157,7 @@ func TestRunbookRender(t *testing.T) {
 			body := rr.Body.String()
 			// Data the owner typed in, identical in every language.
 			for _, want := range []string{
-				"Alica", "Bob", "Jana", "Banka XY, schranka 42",
+				"Alica", "Bob", "Dana", "Example Bank, box 42",
 				"window.print()", `name="edit" value="1"`,
 			} {
 				if !strings.Contains(body, want) {
@@ -199,7 +199,7 @@ func TestRunbookEdit(t *testing.T) {
 		"person_name":    {"Alica", "Bob"},
 		"person_contact": {"a@example.com", "b@example.com"},
 		"person_tech":    {"tech", "nontech"},
-		"wife":           {"Jana"},
+		"heir":           {"Dana"},
 		"threshold":      {"2"}, "count": {"2"},
 	})
 	if rr.Code != 200 {
@@ -208,7 +208,7 @@ func TestRunbookEdit(t *testing.T) {
 	body := rr.Body.String()
 	for _, want := range []string{
 		"Generate the runbook", // it's the form, not the result
-		`value="Alica"`, `value="Bob"`, `value="Jana"`,
+		`value="Alica"`, `value="Bob"`, `value="Dana"`,
 		`<option value="tech" selected>`, // Alica's tech flag preserved
 	} {
 		if !strings.Contains(body, want) {
@@ -413,8 +413,9 @@ func TestRunbookNamesHelpersInTheSentences(t *testing.T) {
 	if !strings.Contains(body, "(a USB stick at the bank)") {
 		t.Errorf("the runbook does not say where the tool is kept")
 	}
-	// And the download address, which defaults to the project's own.
-	if !strings.Contains(body, ProjectURL) {
+	// And the download address. The default is a placeholder with angle
+	// brackets in it, so what reaches the page is the escaped form.
+	if !strings.Contains(body, html.EscapeString(ProjectURL)) {
 		t.Errorf("the runbook does not say where to download the tool")
 	}
 }

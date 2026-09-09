@@ -60,7 +60,7 @@
   var PART_LABEL = "{{ts .L "recover.part" "@@"}}";
   var CONFIRM_WORDS = "{{ts .L "recover.confirm.words"}}";
   var CONFIRM_PARTS = "{{ts .L "recover.confirm.parts"}}";
-  if (!WORDS.length) return;                 // bez zoznamu radšej nechaj polia tak
+  if (!WORDS.length) return;                 // without the list, leave the fields alone
   var byPrefix = {};
   WORDS.forEach(function (w) { byPrefix[w.slice(0, N)] = w; });
 

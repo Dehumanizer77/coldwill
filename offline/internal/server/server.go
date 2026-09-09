@@ -25,10 +25,12 @@ import (
 const keyBytes = 20
 
 // ProjectURL is where the heir downloads the tool: the latest release, whose
-// address stays the same as new ones are published. It is the default for the
-// runbook's download field and can be overridden there, since anyone who forks
-// this project serves the binaries from their own repository.
-const ProjectURL = "https://github.com/Dehumanizer77/inh/releases/latest"
+// address stays the same as new ones are published. It is only the default for
+// the runbook's download field, and it is a placeholder on purpose: whoever
+// runs a ceremony serves the binaries from their own repository, so they fill
+// in the real address on the form. A hardcoded owner here would send somebody
+// else's heir to somebody else's releases.
+const ProjectURL = "https://github.com/<username>/<repo>/releases/latest"
 
 type Server struct {
 	mux  *http.ServeMux
@@ -339,10 +341,10 @@ type partLoc struct {
 }
 
 // runbookForm pre-fills the runbook form (empty defaults on GET, or the
-// previously-entered values when the user clicks "Upraviť" on a result).
+// previously-entered values when the user clicks "edit" on a result).
 type runbookForm struct {
 	page
-	Author, Date, Wife       string
+	Author, Date, Heir       string
 	Persons                  []Person // every row, in order
 	Threshold, Count         int
 	Bank, KdbxCopies         string
@@ -352,11 +354,11 @@ type runbookForm struct {
 
 type runbookData struct {
 	page
-	Author, Date, Wife       string
-	AllPersons               []Person // every row, for the hidden "Upraviť" form
+	Author, Date, Heir       string
+	AllPersons               []Person // every row, for the hidden edit form
 	TechPersons              []Person
 	OtherPersons             []Person
-	TechNames                string // všetky technicky zdatné osoby, na vypísanie v texte
+	TechNames                string // every technically capable person, for naming them in the prose
 	Parts                    []partLoc
 	Threshold, Count         int
 	Bank, KdbxCopies         string
@@ -416,7 +418,7 @@ func parsePersonRows(r *http.Request) []Person {
 // things are and the recovery procedure. The user prints it to PDF.
 //
 // GET → empty form. POST with edit=1 → form pre-filled with the submitted
-// values (the result page's "Upraviť" button). POST otherwise → the result.
+// values (the result page's edit button). POST otherwise → the result.
 func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 	l := s.lang(r)
 	if r.Method != http.MethodPost {
@@ -435,7 +437,7 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("edit") == "1" {
 		s.render(w, "runbook_form.html", runbookForm{
 			page:   page{L: l},
-			Author: f("author"), Date: f("date"), Wife: f("wife"),
+			Author: f("author"), Date: f("date"), Heir: f("heir"),
 			Persons: rows, Threshold: threshold, Count: count,
 			Bank: f("bank"), KdbxCopies: f("kdbx_copies"),
 			ToolWhere: f("tool_where"), ToolURL: toolURL(f("tool_url")),
@@ -464,7 +466,7 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 
 	s.render(w, "runbook.html", runbookData{
 		page:   page{L: l},
-		Author: f("author"), Date: f("date"), Wife: f("wife"),
+		Author: f("author"), Date: f("date"), Heir: f("heir"),
 		AllPersons: rows, TechPersons: tech, OtherPersons: other, TechNames: joinNames(l, names),
 		Parts:     parts,
 		Threshold: threshold, Count: count,

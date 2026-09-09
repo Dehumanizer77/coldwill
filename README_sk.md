@@ -412,7 +412,7 @@ Obálok môže byť viac a **každá má vlastných príjemcov**:
   { "id": "passphrase", "path": "/data/envelope-passphrase.asc",
     "to": [ {"name":"Prvá","email":"prva@…","signal":"+…"},
             {"name":"Druhá","email":"druha@…"} ] },
-  { "id": "pristupy",   "path": "/data/envelope-pristupy.asc",
+  { "id": "credentials", "path": "/data/envelope-credentials.asc",
     "note": "Vnútri sú ostatné prístupy, nie passphrase.",
     "to": [ {"name":"Tretia","email":"tretia@…"} ] }
 ]
@@ -478,7 +478,7 @@ Staré `docker-compose` v1 vedome ignoruje, lebo je EOL a nevie ani
 ```bash
 ./deploy.sh --check                              # len preflight, nič nemení
 ./deploy.sh --envelope ~/envelope.asc            # ostré nasadenie (e-mail)
-./deploy.sh --envelope passphrase=~/a.asc --envelope pristupy=~/b.asc  # viac obálok
+./deploy.sh --envelope passphrase=~/a.asc --envelope credentials=~/b.asc  # viac obálok
 ./deploy.sh --envelope ~/envelope.asc --signal   # + Signal kanál
 ./deploy.sh --config-only --force-config         # len prepíš config.json
 ./deploy.sh --envelope ~/envelope.asc --no-compose      # bez compose

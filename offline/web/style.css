@@ -136,7 +136,7 @@ body.runbook th { background: #f0f0f0; }
   body.runbook section, body.runbook table { page-break-inside: avoid; }
 }
 
-/* ---- Obnova: mriežka slov ---- */
+/* ---- Recovery: the word grid ---- */
 form.wide { max-width: 900px; }
 label.inline { flex-direction: row; align-items: center; gap: 8px; }
 .part { border: 1px solid #2a2e37; border-radius: 12px; padding: 14px 16px; margin: 0 0 14px; }

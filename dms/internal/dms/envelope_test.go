@@ -26,11 +26,11 @@ func newTwoEnvelopeSvc(t *testing.T) (*Service, *fakeMailer, *clk) {
 	cfg.EnvelopePath, cfg.FriendEmail, cfg.FriendSignal = "", "", ""
 	cfg.Envelopes = []Envelope{
 		{ID: "passphrase", Path: writeEnvelope(t, dir, "pass.asc"),
-			Subject: "Dedičstvo — passphrase",
-			To:      []EnvelopeRecipient{{Name: "Prvá", Email: "prva@example.com"}}},
-		{ID: "pristupy", Path: writeEnvelope(t, dir, "acc.asc"),
-			Note: "Toto sú ostatné prístupy.",
-			To:   []EnvelopeRecipient{{Name: "Druhá", Email: "druha@example.com"}}},
+			Subject: "Inheritance: passphrase",
+			To:      []EnvelopeRecipient{{Name: "First", Email: "first@example.com"}}},
+		{ID: "credentials", Path: writeEnvelope(t, dir, "acc.asc"),
+			Note: "These are the remaining credentials.",
+			To:   []EnvelopeRecipient{{Name: "Second", Email: "second@example.com"}}},
 	}
 	cfg.applyDefaults()
 	if err := cfg.validate(); err != nil {
@@ -63,25 +63,25 @@ func TestEachEnvelopeGoesToItsOwnRecipient(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired", svc.Phase())
 	}
-	pass, ok := fm.sentTo("prva@example.com", "passphrase")
+	pass, ok := fm.sentTo("first@example.com", "passphrase")
 	if !ok {
 		t.Fatalf("passphrase envelope not sent to its recipient")
 	}
 	if !strings.Contains(pass.body, "pass.asc") {
 		t.Errorf("wrong ciphertext in the passphrase envelope")
 	}
-	acc, ok := fm.sentTo("druha@example.com", "envelope")
+	acc, ok := fm.sentTo("second@example.com", "envelope")
 	if !ok {
 		t.Fatalf("accounts envelope not sent to its recipient")
 	}
 	if !strings.Contains(acc.body, "acc.asc") {
 		t.Errorf("wrong ciphertext in the accounts envelope")
 	}
-	if !strings.Contains(acc.body, "Toto sú ostatné prístupy.") {
+	if !strings.Contains(acc.body, "These are the remaining credentials.") {
 		t.Errorf("envelope note missing from the body")
 	}
 	// Neither recipient may receive the other's envelope.
-	if _, wrong := fm.sentTo("prva@example.com", "envelope"); wrong {
+	if _, wrong := fm.sentTo("first@example.com", "envelope"); wrong {
 		t.Errorf("first recipient also got the second envelope")
 	}
 }
@@ -94,7 +94,7 @@ func TestOneEnvelopeManyRecipients(t *testing.T) {
 	cfg.EnvelopePath, cfg.FriendEmail = "", ""
 	cfg.Envelopes = []Envelope{{ID: "passphrase", Path: writeEnvelope(t, dir, "pass.asc"),
 		To: []EnvelopeRecipient{
-			{Email: "prva@example.com"}, {Email: "druha@example.com"}, {Email: "tretia@example.com"},
+			{Email: "first@example.com"}, {Email: "second@example.com"}, {Email: "third@example.com"},
 		}}}
 	cfg.applyDefaults()
 	c, fm := newClock(), &fakeMailer{}
@@ -104,7 +104,7 @@ func TestOneEnvelopeManyRecipients(t *testing.T) {
 	}
 	fireIt(t, svc, c)
 
-	for _, to := range []string{"prva@example.com", "druha@example.com", "tretia@example.com"} {
+	for _, to := range []string{"first@example.com", "second@example.com", "third@example.com"} {
 		if _, ok := fm.sentTo(to, "envelope"); !ok {
 			t.Errorf("%s did not get the envelope", to)
 		}
@@ -120,7 +120,7 @@ func TestMissingSecondEnvelopeBlocksFiring(t *testing.T) {
 	if svc.Phase() == PhaseFired {
 		t.Fatalf("fired with an unreadable envelope")
 	}
-	if _, ok := fm.sentTo("prva@example.com", "passphrase"); ok {
+	if _, ok := fm.sentTo("first@example.com", "passphrase"); ok {
 		t.Errorf("sent an envelope while the service was unhealthy")
 	}
 	if fm.countSubj("FAULT") == 0 {
@@ -142,14 +142,14 @@ func TestPartialDeliveryRetriesOnlyTheRest(t *testing.T) {
 	// A missing file is a fault and blocks firing entirely, so a partial fire
 	// can only come from delivery: the second recipient's mailbox rejects.
 	fm.reset()
-	fm.failTo = map[string]bool{"druha@example.com": true}
+	fm.failTo = map[string]bool{"second@example.com": true}
 	c.add(7 * 24 * time.Hour)
 	svc.Tick()
 
 	if svc.Phase() != PhaseCountdown {
 		t.Fatalf("phase = %s, want still counting down after a partial delivery", svc.Phase())
 	}
-	if _, ok := fm.sentTo("prva@example.com", "passphrase"); !ok {
+	if _, ok := fm.sentTo("first@example.com", "passphrase"); !ok {
 		t.Fatalf("the readable envelope was not delivered")
 	}
 	if fm.countSubj("could not be sent") == 0 {
@@ -164,10 +164,10 @@ func TestPartialDeliveryRetriesOnlyTheRest(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired once everything is out", svc.Phase())
 	}
-	if _, ok := fm.sentTo("druha@example.com", "envelope"); !ok {
+	if _, ok := fm.sentTo("second@example.com", "envelope"); !ok {
 		t.Errorf("the retried envelope was not delivered")
 	}
-	if _, again := fm.sentTo("prva@example.com", "passphrase"); again {
+	if _, again := fm.sentTo("first@example.com", "passphrase"); again {
 		t.Errorf("the already delivered envelope was sent a second time")
 	}
 }
@@ -182,7 +182,7 @@ func TestCheckInClearsPartialDelivery(t *testing.T) {
 	if err := svc.Confirm("friend"); err != nil {
 		t.Fatal(err)
 	}
-	fm.failTo = map[string]bool{"druha@example.com": true}
+	fm.failTo = map[string]bool{"second@example.com": true}
 	c.add(7 * 24 * time.Hour)
 	svc.Tick() // partial: first envelope out, second not
 
@@ -194,10 +194,10 @@ func TestCheckInClearsPartialDelivery(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired", svc.Phase())
 	}
-	if _, ok := fm.sentTo("prva@example.com", "passphrase"); !ok {
+	if _, ok := fm.sentTo("first@example.com", "passphrase"); !ok {
 		t.Errorf("after a veto the first envelope must be sent again")
 	}
-	if _, ok := fm.sentTo("druha@example.com", "envelope"); !ok {
+	if _, ok := fm.sentTo("second@example.com", "envelope"); !ok {
 		t.Errorf("second envelope not sent")
 	}
 }

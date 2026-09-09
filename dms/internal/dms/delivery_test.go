@@ -14,12 +14,12 @@ func TestRejectedRecipientDoesNotBlockTheRest(t *testing.T) {
 	cfg.EnvelopePath, cfg.FriendEmail = "", ""
 	cfg.Envelopes = []Envelope{{ID: "passphrase", Path: writeEnvelope(t, dir, "pass.asc"),
 		To: []EnvelopeRecipient{
-			{Email: "odmietnuta@example.com"},
-			{Email: "prijata@example.com"},
-			{Email: "tretia@example.com"},
+			{Email: "rejected@example.com"},
+			{Email: "accepted@example.com"},
+			{Email: "third@example.com"},
 		}}}
 	cfg.applyDefaults()
-	c, fm := newClock(), &fakeMailer{failTo: map[string]bool{"odmietnuta@example.com": true}}
+	c, fm := newClock(), &fakeMailer{failTo: map[string]bool{"rejected@example.com": true}}
 	svc, err := New(cfg, c.now, fm, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -29,12 +29,12 @@ func TestRejectedRecipientDoesNotBlockTheRest(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired — one bad address must not stop the firing", svc.Phase())
 	}
-	for _, to := range []string{"prijata@example.com", "tretia@example.com"} {
+	for _, to := range []string{"accepted@example.com", "third@example.com"} {
 		if _, ok := fm.sentTo(to, "envelope"); !ok {
 			t.Errorf("%s did not get the envelope", to)
 		}
 	}
-	if _, ok := fm.sentTo("odmietnuta@example.com", "envelope"); ok {
+	if _, ok := fm.sentTo("rejected@example.com", "envelope"); ok {
 		t.Errorf("the rejected address should not be recorded as delivered")
 	}
 }
