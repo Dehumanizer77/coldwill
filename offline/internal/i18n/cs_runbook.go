@@ -94,7 +94,7 @@ func init() {
 		"rb.print":   "🖨 Vytisknout / Uložit jako PDF",
 		"rb.edit":    "✏️ Upravit",
 		"rb.newform": "← nový formulář",
-		"rb.margins": "Při tisku nech okraje na „Výchozí“. Při „Žádné“ vyjdou všechny stránky kromě první bez horního a dolního okraje.",
+		"rb.margins": "Okraje jsou součástí dokumentu, takže na tom, co nabízí tiskový dialog, nezáleží.",
 	} {
 		csMessages[k] = v
 	}

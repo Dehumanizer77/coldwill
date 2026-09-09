@@ -125,17 +125,41 @@ body.runbook th, body.runbook td {
 body.runbook th { background: #f0f0f0; }
 .pre { white-space: pre-wrap; }
 .toolbar { margin: 0 0 18px; }
-/* The only thing that insets every page is @page: padding on the content shows
-   up once at the top of page 1 and once at the bottom of the last one, which is
-   why the runbook used to come out with the middle pages printed edge to edge. */
-@page { margin: 18mm 15mm; }
+/* ---- The printed page frame ----
+   Margins on a printed sheet can come from exactly two places, and both have a
+   hole in them. @page is overridden by a print dialog set to "Margins: None",
+   and padding on the content is drawn once at the top of the first page and
+   once at the bottom of the last, so the pages in between get nothing. A table
+   header and footer are the one thing a browser repeats on every sheet, so
+   that is where the runbook's margins come from. @page adds nothing on top,
+   which keeps the result identical whatever the dialog says. */
+@page { margin: 0; }
+
+body.runbook table.sheet { border-collapse: collapse; width: 100%; margin: 0; }
+body.runbook .sheet > * > tr > td { border: 0; padding: 0; }
+/* On screen the frame must not exist: the table parts fall back to blocks. */
+body.runbook .sheet, body.runbook .sheet > thead, body.runbook .sheet > tfoot,
+body.runbook .sheet > tbody, body.runbook .sheet > * > tr,
+body.runbook .sheet > * > tr > td { display: block; }
+body.runbook .sheet > thead, body.runbook .sheet > tfoot { display: none; }
+
 @media print {
   .noprint { display: none !important; }
   body.runbook { background: #fff; color: #000; font-size: 11.5pt; }
   body.runbook main { max-width: none; padding: 0; }
   body.runbook a { color: #000; text-decoration: none; }
   body.runbook h2 { page-break-after: avoid; }
-  body.runbook section, body.runbook table { page-break-inside: avoid; }
+  /* the frame itself has to break across pages; that is its whole job */
+  body.runbook section, body.runbook table:not(.sheet) { page-break-inside: avoid; }
+
+  body.runbook .sheet { display: table; page-break-inside: auto; }
+  body.runbook .sheet > thead { display: table-header-group; }
+  body.runbook .sheet > tfoot { display: table-footer-group; }
+  body.runbook .sheet > tbody { display: table-row-group; }
+  body.runbook .sheet > * > tr { display: table-row; }
+  body.runbook .sheet > * > tr > td { display: table-cell; }
+  body.runbook .sheet > * > tr > td.sheetpad { height: 14mm; }
+  body.runbook .sheet > * > tr > td.sheetbody { padding: 0 15mm; }
 }
 
 /* ---- Recovery: the word grid ---- */

@@ -35,6 +35,11 @@
     <p class="muted" style="margin:6px 0 0">{{t .L "rb.margins"}}</p>
   </div>
 
+  <table class="sheet">
+  <thead><tr><td class="sheetpad"></td></tr></thead>
+  <tfoot><tr><td class="sheetpad"></td></tr></tfoot>
+  <tbody><tr><td class="sheetbody">
+
   <h1>{{t .L "rb.h1"}}</h1>
   <p>{{if .Author}}{{t .L "rb.author" .Author}}{{end}}{{if .Date}}{{t .L "rb.date" .Date}}{{end}}</p>
 
@@ -160,6 +165,9 @@ python3 -c 'import sys;sys.stdout.buffer.write(bytes.fromhex("HEX"))' &gt; keyfi
     <p class="pre">{{.FamilyNotes}}</p>
   </section>
   {{end}}
+
+  </td></tr></tbody>
+  </table>
 </main>
 </body>
 </html>

@@ -95,7 +95,7 @@ func init() {
 		"rb.print":   "🖨 Print / Save as PDF",
 		"rb.edit":    "✏️ Edit",
 		"rb.newform": "← new form",
-		"rb.margins": "When printing, leave the margins on \"Default\". On \"None\" every page after the first comes out with no top or bottom margin.",
+		"rb.margins": "The margins are part of the document, so whichever setting the print dialog offers is fine.",
 	} {
 		enMessages[k] = v
 	}
