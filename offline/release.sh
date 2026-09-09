@@ -28,6 +28,29 @@ gh auth status >/dev/null 2>&1 || {
   exit 1
 }
 
+# gh attaches a release to an existing tag rather than moving it, so a leftover
+# tag would publish binaries from the working tree under a tag pointing at some
+# older commit, while the notes below claim they were built from it.
+TAG_SHA=$(git rev-parse -q --verify "refs/tags/$TAG^{commit}" 2>/dev/null || true)
+if [ -z "$TAG_SHA" ]; then
+  # A tag made by gh lives only on the remote until someone fetches it. An
+  # annotated one lists both the tag object and the peeled "^{}" commit, a
+  # lightweight one only itself, so take the last line either way.
+  TAG_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" "refs/tags/$TAG^{}" 2>/dev/null | awk 'END{print $1}')
+fi
+HEAD_SHA=$(git rev-parse HEAD)
+if [ -n "$TAG_SHA" ] && [ "$TAG_SHA" != "$HEAD_SHA" ]; then
+  {
+    echo "tag $TAG already exists and points at ${TAG_SHA:0:7}, not at HEAD (${HEAD_SHA:0:7})."
+    echo "Publishing onto it would put this build under someone else's commit."
+    echo "Either drop the tag:"
+    echo "  git push origin :refs/tags/$TAG && git tag -d $TAG"
+    echo "or release under a new one:"
+    echo "  $0 v1.0.0"
+  } >&2
+  exit 1
+fi
+
 ./build-all.sh
 
 echo
