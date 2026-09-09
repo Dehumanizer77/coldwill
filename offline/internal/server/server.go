@@ -24,6 +24,12 @@ import (
 // keyBytes is the size of the generated key-file (160-bit -> 23-word shares).
 const keyBytes = 20
 
+// ProjectURL is where the heir downloads the tool: the latest release, whose
+// address stays the same as new ones are published. It is the default for the
+// runbook's download field and can be overridden there, since anyone who forks
+// this project serves the binaries from their own repository.
+const ProjectURL = "https://github.com/Dehumanizer77/inh/releases/latest"
+
 type Server struct {
 	mux  *http.ServeMux
 	tmpl *template.Template
@@ -340,7 +346,7 @@ type runbookForm struct {
 	Persons                  []Person // every row, in order
 	Threshold, Count         int
 	Bank, KdbxCopies         string
-	ToolWhere                string // where inh-offline is kept
+	ToolWhere, ToolURL       string // where inh-offline is kept, and where to download it
 	WalletNotes, FamilyNotes string
 }
 
@@ -354,7 +360,7 @@ type runbookData struct {
 	Parts                    []partLoc
 	Threshold, Count         int
 	Bank, KdbxCopies         string
-	ToolWhere                string
+	ToolWhere, ToolURL       string
 	WalletNotes, FamilyNotes string
 
 	// Parenthetical asides that only appear when there is something to say.
@@ -414,7 +420,7 @@ func parsePersonRows(r *http.Request) []Person {
 func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 	l := s.lang(r)
 	if r.Method != http.MethodPost {
-		s.render(w, "runbook_form.html", runbookForm{page: page{L: l}, Threshold: 2, Count: 3})
+		s.render(w, "runbook_form.html", runbookForm{page: page{L: l}, Threshold: 2, Count: 3, ToolURL: ProjectURL})
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -432,7 +438,7 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 			Author: f("author"), Date: f("date"), Wife: f("wife"),
 			Persons: rows, Threshold: threshold, Count: count,
 			Bank: f("bank"), KdbxCopies: f("kdbx_copies"),
-			ToolWhere:   f("tool_where"),
+			ToolWhere: f("tool_where"), ToolURL: toolURL(f("tool_url")),
 			WalletNotes: f("wallet_notes"), FamilyNotes: f("family_notes"),
 		})
 		return
@@ -463,9 +469,29 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 		Parts:     parts,
 		Threshold: threshold, Count: count,
 		Bank: f("bank"), KdbxCopies: f("kdbx_copies"),
-		ToolWhere:   f("tool_where"),
+		ToolWhere: f("tool_where"), ToolURL: toolURL(f("tool_url")),
 		WalletNotes: f("wallet_notes"), FamilyNotes: f("family_notes"),
+		TechSuffix: aside(l, joinNames(l, names)),
+		ToolSuffix: aside(l, f("tool_where")),
 	})
+}
+
+// aside wraps a value in the language's parenthetical form, or returns nothing
+// when there is no value, so the sentence around it reads correctly either way.
+func aside(l i18n.Lang, v string) string {
+	if v == "" {
+		return ""
+	}
+	return i18n.S(l, "rb.aside", v)
+}
+
+// toolURL falls back to this project's own repository when the field is empty,
+// so a runbook never goes to print without saying where to get the tool.
+func toolURL(v string) string {
+	if v == "" {
+		return ProjectURL
+	}
+	return v
 }
 
 // ---- helpers ----

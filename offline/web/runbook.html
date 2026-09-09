@@ -21,6 +21,7 @@
       <input type="hidden" name="bank" value="{{.Bank}}">
       <input type="hidden" name="kdbx_copies" value="{{.KdbxCopies}}">
       <input type="hidden" name="tool_where" value="{{.ToolWhere}}">
+      <input type="hidden" name="tool_url" value="{{.ToolURL}}">
       <input type="hidden" name="wallet_notes" value="{{.WalletNotes}}">
       <input type="hidden" name="family_notes" value="{{.FamilyNotes}}">
       {{range .AllPersons}}
@@ -98,7 +99,7 @@
       <li>{{t .L "rb.step.call"}}</li>
       <li>{{t .L "rb.step.parts" .Threshold}}</li>
       <li>{{t .L "rb.step.env" .TechSuffix}}</li>
-      <li>{{t .L "rb.step.pc" .ToolSuffix}}
+      <li>{{t .L "rb.step.pc" .ToolURL .ToolSuffix}}
       <table>
         <tr><th>{{t .L "rb.step.pc.os"}}</th><th>{{t .L "rb.step.pc.file"}}</th></tr>
         <tr><td>{{t .L "rb.step.pc.win"}}</td><td><code>inh-offline-windows-amd64.exe</code></td></tr>

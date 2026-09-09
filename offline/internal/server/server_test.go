@@ -387,3 +387,60 @@ func TestWordlistJS(t *testing.T) {
 		t.Errorf("Content-Type = %q", ct)
 	}
 }
+
+// The runbook names the people the heir can call, in the sentences that tell
+// her to call them. This is a separate assertion from the list in section 1,
+// because those names come from a different field and were once silently empty.
+func TestRunbookNamesHelpersInTheSentences(t *testing.T) {
+	s := newTestServer(t)
+	rr := do(s, http.MethodPost, "/runbook", url.Values{
+		"lang":           {"en"},
+		"person_name":    {"Alica", "Cyril", "Bob"},
+		"person_contact": {"a@example.com", "c@example.com", "b@example.com"},
+		"person_tech":    {"tech", "tech", "nontech"},
+		"tool_where":     {"a USB stick at the bank"},
+		"threshold":      {"2"}, "count": {"3"},
+	})
+	body := rr.Body.String()
+	// Both technical helpers, joined, inside the parenthetical aside.
+	if !strings.Contains(body, "(Alica or Cyril)") {
+		t.Errorf("the runbook does not name the helpers in its sentences")
+	}
+	if strings.Contains(body, "(Bob") {
+		t.Errorf("a non-technical holder was offered as a helper")
+	}
+	// Where the tool is kept, likewise.
+	if !strings.Contains(body, "(a USB stick at the bank)") {
+		t.Errorf("the runbook does not say where the tool is kept")
+	}
+	// And the download address, which defaults to the project's own.
+	if !strings.Contains(body, ProjectURL) {
+		t.Errorf("the runbook does not say where to download the tool")
+	}
+}
+
+// A fork serves the binaries from its own repository, so the address is a field.
+func TestRunbookDownloadURLIsOverridable(t *testing.T) {
+	s := newTestServer(t)
+	const mine = "https://github.com/someone/theirfork"
+	rr := do(s, http.MethodPost, "/runbook", url.Values{
+		"lang": {"en"}, "tool_url": {mine},
+		"person_name": {"Alica"}, "person_contact": {"a@example.com"}, "person_tech": {"tech"},
+		"threshold": {"1"}, "count": {"1"},
+	})
+	body := rr.Body.String()
+	if !strings.Contains(body, mine) {
+		t.Errorf("the download address was not used")
+	}
+	if strings.Contains(body, ProjectURL) {
+		t.Errorf("the default address is still there alongside the override")
+	}
+	// It has to survive the edit button, like every other field.
+	rr = do(s, http.MethodPost, "/runbook", url.Values{
+		"edit": {"1"}, "lang": {"en"}, "tool_url": {mine},
+		"person_name": {"Alica"}, "threshold": {"1"}, "count": {"1"},
+	})
+	if !strings.Contains(rr.Body.String(), `value="`+mine+`"`) {
+		t.Errorf("the address did not survive the edit round trip")
+	}
+}

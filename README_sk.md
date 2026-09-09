@@ -251,8 +251,28 @@ platformy naraz:
 cd offline && ./build-all.sh      # -> dist/ + SHA256SUMS
 ```
 
-Vyrobí Linux, Windows a macOS (Apple Silicon aj Intel), spolu okolo 34 MB. Celý
-obsah `dist/` ide na USB kľúč ku každému kovovému médiu aj do bankového trezoru; runbook potom hovorí, ktorý súbor na ktorom počítači spustiť.
+Vyrobí Linux, Windows a macOS (Apple Silicon aj Intel), spolu okolo 34 MB, do
+gitignorovaného `dist/`.
+
+Dedič si ich sťahuje, takže po každej zmene nástroja ich treba zverejniť:
+
+```
+cd offline && ./release.sh          # tag podľa dnešného dátumu
+cd offline && ./release.sh v1.0.0   # alebo vlastný tag
+```
+
+Zbuildí a nahrá GitHub release, kam runbook posiela dediča (`/releases/latest`,
+adresa, ktorá funguje ďalej aj po vydaní novších). Binárky sa **buildia u teba a
+len sa nahrávajú**. CI build zámerne nie je: znamenal by dôverovať cudziemu
+runneru s binárkou, ktorá skladá key-file, a zmysel lokálneho buildu je práve to,
+že nemusíš.
+
+Releases namiesto commitnutých súborov preto, že 34 MB pri každom prebuilde by
+skončilo v histórii každého, kto si repo naklonuje.
+
+Tie isté súbory idú aj na USB kľúč ku každému kovovému médiu a do bankového
+trezoru, aby dedičstvo nezáviselo na tom, či GitHub ešte existuje. Runbook
+spomína obe cesty a hovorí, ktorý súbor na ktorom počítači spustiť.
 
 Go kríž-kompiluje samo, žiadny ďalší toolchain netreba. Otestovať sa tu dá len
 binárka pre tento stroj: **Windows a macOS treba vyskúšať na cieľovom systéme**,

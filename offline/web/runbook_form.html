@@ -51,6 +51,8 @@
     <fieldset>
       <legend>{{t .L "rbform.envelope"}}</legend>
       <label>{{t .L "rbform.bank"}} <input name="bank" value="{{.Bank}}" placeholder="{{ts .L "rbform.ph.bank"}}"></label>
+      <label>{{t .L "rbform.toolurl"}}
+        <input name="tool_url" value="{{.ToolURL}}" placeholder="https://github.com/…"></label>
       <label>{{t .L "rbform.toolwhere"}}
         <input name="tool_where" value="{{.ToolWhere}}" placeholder="{{ts .L "rbform.ph.toolwhere"}}"></label>
       <label>{{t .L "rbform.kdbx"}}

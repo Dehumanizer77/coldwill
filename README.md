@@ -254,9 +254,29 @@ cd offline && ./build-all.sh      # -> dist/ + SHA256SUMS
 ```
 
 That builds Linux, Windows and macOS (Apple Silicon and Intel), about 34 MB in
-total. The whole of `dist/` goes onto a USB stick beside every metal backup and
-into the bank vault, and the runbook tells the heir which file to run on which
-machine.
+total, into a gitignored `dist/`.
+
+The heir downloads them, so after any change to the tool they have to be
+published:
+
+```
+cd offline && ./release.sh          # tag from today's date
+cd offline && ./release.sh v1.0.0   # or an explicit tag
+```
+
+That builds and uploads to a GitHub release, which is where the runbook sends
+the heir (`/releases/latest`, an address that keeps working as new releases
+appear). The binaries are **built on your machine and only uploaded**. There is
+no CI build on purpose: a release pipeline would mean trusting somebody else's
+runner with the binary that reassembles the key file, and building locally is
+what saves you from having to.
+
+Releases rather than committed files, because a 34 MB rebuild in every commit
+would end up in the history of everyone who clones this.
+
+The same files also go onto a USB stick beside every metal backup and into the
+bank vault, so the inheritance does not depend on GitHub still existing. The
+runbook names both paths and tells the heir which file to run on which machine.
 
 Go cross-compiles on its own, with no extra toolchain. Only the binary for the
 build machine can be tested there, so **Windows and macOS must be tried on the

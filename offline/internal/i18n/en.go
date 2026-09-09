@@ -43,7 +43,7 @@ var enMessages = map[string]string{
 	"setupres.hex.warn":     "⚠️ This is the content of the key file (the same 20 bytes), only for <strong>creating the database right now</strong> and for checking. <strong>Do not write it into the runbook or anywhere else</strong>: the key should live only as %s shares, and storing it anywhere defeats the %s-of-%s protection.",
 	"setupres.next.h":       "Next",
 	"setupres.next.1":       "Transfer every share onto a metal medium and hand them out according to the plan.",
-	"setupres.next.2":       "In <strong>KeePassXC</strong> (<code>keepassxc.org/download</code>) create a new database and choose <em>Key file</em> as the protection, pointing at the downloaded file (<strong>leave the password field empty</strong>).",
+	"setupres.next.2":       "In <strong>KeePassXC</strong> (<code>https://keepassxc.org/download</code>) create a new database and choose <em>Key file</em> as the protection, pointing at the downloaded file (<strong>leave the password field empty</strong>).",
 	"setupres.next.3":       "Store the seed and the other credentials in the database. <strong>Do not put the wallet passphrase in it</strong>; that goes into the sealed envelope.",
 	"setupres.next.4":       "Copy the encrypted <code>.kdbx</code> around (cloud, bank, the holders). Delete the key file from disk.",
 
@@ -75,7 +75,7 @@ var enMessages = map[string]string{
        ▼
 ③  restore the wallet  →  Bitcoin ₿`,
 	"recoverres.next.h": "Next",
-	"recoverres.next.1": "Open your <code>.kdbx</code> in <strong>KeePassXC</strong> (download it on a machine with internet from <code>keepassxc.org/download</code>) and choose <em>Key file</em> as the protection, pointing at this file (<strong>leave the password field empty</strong>).",
+	"recoverres.next.1": "Open your <code>.kdbx</code> in <strong>KeePassXC</strong> (download it on a machine with internet from <code>https://keepassxc.org/download</code>) and choose <em>Key file</em> as the protection, pointing at this file (<strong>leave the password field empty</strong>).",
 	"recoverres.next.2": "You reach the <strong>seed</strong> and the other credentials. Take the <strong>wallet passphrase</strong> from the envelope (bank or e-mail).",
 	"recoverres.next.3": "On the hardware wallet, restore from the seed, then unlock with the passphrase.",
 
@@ -98,6 +98,7 @@ var enMessages = map[string]string{
 	"rbform.envelope":     "Envelope and copies",
 	"rbform.bank":         "Envelope (passphrase), bank",
 	"rbform.ph.bank":      "bank name, branch, box number",
+	"rbform.toolurl":      "Where the tool can be downloaded (repository URL)",
 	"rbform.toolwhere":    "Where the <em>inh-offline</em> tool is kept",
 	"rbform.ph.toolwhere": "e.g. a USB stick beside every metal backup, at the bank, and in the cloud next to the .kdbx",
 	"rbform.kdbx":         "Copies of the encrypted .kdbx, where",

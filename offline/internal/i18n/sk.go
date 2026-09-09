@@ -38,7 +38,7 @@ var skMessages = map[string]string{
 	"setupres.hex.warn":     "⚠️ Toto je obsah key-filu (tých istých 20 bajtov), len na <strong>okamžité vytvorenie DB</strong> a prípadné overenie. <strong>NEZAPISUJ ho do runbooku ani nikam inam</strong>: kľúč má žiť len ako %s časti; jeho uložením kdekoľvek by si obišiel ochranu %s-z-%s.",
 	"setupres.next.h":       "Ďalej",
 	"setupres.next.1":       "Prenes všetky časti na kovové médium a rozdaj ich podľa plánu.",
-	"setupres.next.2":       "V <strong>KeePassXC</strong> (<code>keepassxc.org/download</code>) vytvor novú databázu, ako ochranu zvoľ <em>Key file</em> = stiahnutý súbor (<strong>do poľa Heslo nič nezadávaj</strong>).",
+	"setupres.next.2":       "V <strong>KeePassXC</strong> (<code>https://keepassxc.org/download</code>) vytvor novú databázu, ako ochranu zvoľ <em>Key file</em> = stiahnutý súbor (<strong>do poľa Heslo nič nezadávaj</strong>).",
 	"setupres.next.3":       "Do DB ulož seed a ostatné prístupy. <strong>passphrase k peňaženke do DB NEDÁVAJ</strong>, tá ide do posmrtnej obálky.",
 	"setupres.next.4":       "Rozkopíruj zašifrovanú <code>.kdbx</code> (cloud, banka, u všetkých). Key-file z disku zmaž.",
 
@@ -68,7 +68,7 @@ var skMessages = map[string]string{
        ▼
 ③  obnova peňaženky  →  Bitcoin ₿`,
 	"recoverres.next.h": "Ďalej",
-	"recoverres.next.1": "Otvor svoju <code>.kdbx</code> v programe <strong>KeePassXC</strong> (stiahni ho na stroji s internetom z <code>keepassxc.org/download</code>); ako ochranu zvoľ <em>Key file</em> = tento súbor (<strong>do poľa Heslo nič nezadávaj</strong>).",
+	"recoverres.next.1": "Otvor svoju <code>.kdbx</code> v programe <strong>KeePassXC</strong> (stiahni ho na stroji s internetom z <code>https://keepassxc.org/download</code>); ako ochranu zvoľ <em>Key file</em> = tento súbor (<strong>do poľa Heslo nič nezadávaj</strong>).",
 	"recoverres.next.2": "Dostaneš sa k <strong>seedu</strong> a ďalším informáciám a prístupom; <strong>passphrase k peňaženke</strong> vezmi z obálky (banka / e-mail).",
 	"recoverres.next.3": "Na hardvérovej peňaženke obnov zo seedu, potom odomkni passphrase.",
 
@@ -91,6 +91,7 @@ var skMessages = map[string]string{
 	"rbform.envelope":     "Obálka a kópie",
 	"rbform.bank":         "Obálka (passphrase), banka",
 	"rbform.ph.bank":      "názov banky, pobočka, číslo schránky",
+	"rbform.toolurl":      "Odkiaľ sa nástroj dá stiahnuť (adresa repozitára)",
 	"rbform.toolwhere":    "Kde je uložený nástroj <em>inh-offline</em>",
 	"rbform.ph.toolwhere": "napr. USB kľúč pri každom kovovom médiu, v banke a v cloude vedľa .kdbx",
 	"rbform.kdbx":         "Kópie zašifrovanej .kdbx, kde",
