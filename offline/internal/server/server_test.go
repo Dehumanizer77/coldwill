@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"inh/offline/internal/slip39"
+	"coldwill/offline/internal/slip39"
 )
 
 func newTestServer(t *testing.T) *Server {

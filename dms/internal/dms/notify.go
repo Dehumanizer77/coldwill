@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"inh/dms/internal/i18n"
+	"coldwill/dms/internal/i18n"
 )
 
 // Recipient is one person and the addresses they can be reached at. An empty

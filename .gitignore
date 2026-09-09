@@ -18,11 +18,11 @@ envelope*.txt
 .env.*
 
 # --- build / runtime ---
-inh-offline
-offline/inh-offline
+coldwill
+offline/coldwill
 offline/dist/
-inh-dms
-dms/inh-dms
+coldwill-switch
+dms/coldwill-switch
 config.json
 state.json
 dms/data/

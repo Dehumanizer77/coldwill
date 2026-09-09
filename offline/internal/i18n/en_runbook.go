@@ -54,7 +54,7 @@ func init() {
 		"rb.step.call":    "Call the technically capable person (section 1). They will help with anything you do not understand.",
 		"rb.step.parts":   "Obtain <strong>at least %s shares</strong> (section 3). Copy the words down from the holders on paper, or have them read out to you. <strong>Do not photograph them with your phone</strong>, it is not safe.",
 		"rb.step.env":     "Obtain <strong>the envelope with the password (passphrase)</strong>: either sealed from the bank vault, or from the technically capable person%s, to whom the system mails it.",
-		"rb.step.pc":      "Prepare a <strong>computer disconnected from the internet</strong> (unplug the cable, turn off wifi). This matters: the words from the shares will be typed into it and must not leave it.<br>The tool is called <em>inh-offline</em>. On a computer that <em>does</em> have internet, download it from <strong>%s</strong> and carry it over on a USB stick. The files are at the bottom of that page, under <em>Assets</em>.<br>If that address no longer works, the same files are on a <strong>USB stick beside every metal backup</strong>, so any share holder has one, and on one in the <strong>bank vault</strong>%s.<br>There are several files, one for each kind of computer. <strong>Run the one that matches:</strong>",
+		"rb.step.pc":      "Prepare a <strong>computer disconnected from the internet</strong> (unplug the cable, turn off wifi). This matters: the words from the shares will be typed into it and must not leave it.<br>The tool is called <em>coldwill</em>. On a computer that <em>does</em> have internet, download it from <strong>%s</strong> and carry it over on a USB stick. The files are at the bottom of that page, under <em>Assets</em>.<br>If that address no longer works, the same files are on a <strong>USB stick beside every metal backup</strong>, so any share holder has one, and on one in the <strong>bank vault</strong>%s.<br>There are several files, one for each kind of computer. <strong>Run the one that matches:</strong>",
 		"rb.step.pc.os":   "Computer",
 		"rb.step.pc.file": "File",
 		"rb.step.pc.win":  "Windows",
@@ -66,24 +66,24 @@ func init() {
 		"rb.step.warn":     "<strong>The computer will probably object.</strong> This is neither an error nor a virus: it is a program nobody paid Microsoft or Apple to register. Go past the warning:",
 		"rb.step.warn.win": "<strong>Windows:</strong> a blue window appears, along the lines of \"Windows protected your PC\". Click <em>More info</em> and then <em>Run anyway</em>.",
 		"rb.step.warn.mac": "<strong>Mac:</strong> it says the file is from an unidentified developer. Close that, <strong>right-click</strong> the file (or click with two fingers) and choose <em>Open</em>; then <em>Open</em> again in the next window. If that does not work, go to <em>Settings → Privacy &amp; Security</em>, where there will be an <em>Open Anyway</em> button.",
-		"rb.step.warn.lin": "<strong>Linux:</strong> if the file will not run, the technically capable person makes it executable with <code>chmod +x inh-offline-linux-amd64</code>.",
+		"rb.step.warn.lin": "<strong>Linux:</strong> if the file will not run, the technically capable person makes it executable with <code>chmod +x coldwill-linux-amd64</code>.",
 		"rb.step.warn.url": "If no browser opens by itself, open one and type in the address the tool prints (usually <code>http://127.0.0.1:8777</code>).",
 
-		"rb.step.run":    "Start <em>inh-offline</em> → <em>Recovery</em> → enter %s shares → you get the <strong>key file</strong>. Save it on that computer.",
+		"rb.step.run":    "Start <em>coldwill</em> → <em>Recovery</em> → enter %s shares → you get the <strong>key file</strong>. Save it on that computer.",
 		"rb.step.kdbx":   "Open the <code>.kdbx</code> database with <strong>KeePassXC</strong> (<a href=\"https://keepassxc.org/download/\">https://keepassxc.org/download</a>).<br><strong>Best</strong> is to install KeePassXC on that same disconnected computer and copy the database there, so the seed never leaves a machine without internet.<br>If that is not possible, carry the key file on a USB stick to the computer that has KeePassXC, and <strong>disconnect that computer from the internet</strong> for the duration.<br>In KeePassXC choose <em>Key file</em> as the protection and select the key file. <strong>Leave the password field empty.</strong> You reach the <strong>seed</strong> and the other credentials.",
 		"rb.step.wallet": "On the hardware wallet, restore the wallet <strong>from the seed</strong> (those words from the database). The password (passphrase) is <strong>not</strong> entered during the restore; the wallet asks for it afterwards, when unlocking. Without it you see an empty wallet, with it the Bitcoin. An empty wallet therefore does not mean the money is gone, it means the password from the envelope is missing.",
 		"rb.step.move":   "<em>(optional, but strongly recommended)</em> Move the funds to a new wallet that you control.",
 
 		"rb.manual.h":      "5) Emergency procedure if the tool does not work",
 		"rb.manual.slip39": "The shares are standard <strong>SLIP-39</strong> and any SLIP-39 tool combines them (the reference library <code>shamir-mnemonic</code>, for instance). The result is the <strong>master secret (hex)</strong>, which <strong>is</strong> the content of the key file.",
-		"rb.manual.abbrev": "On metal the words are often only <strong>four-letter abbreviations</strong>. That is not a fault: in the SLIP-39 wordlist the first four letters identify a word uniquely. <em>inh-offline</em> completes them itself; if you use another tool that rejects abbreviations, look the full words up in the official SLIP-39 wordlist (1024 words, included in every SLIP-39 tool).",
+		"rb.manual.abbrev": "On metal the words are often only <strong>four-letter abbreviations</strong>. That is not a fault: in the SLIP-39 wordlist the first four letters identify a word uniquely. <em>coldwill</em> completes them itself; if you use another tool that rejects abbreviations, look the full words up in the official SLIP-39 wordlist (1024 words, included in every SLIP-39 tool).",
 		"rb.manual.bytes":  "This is where it is easy to go wrong: the file must contain <strong>raw bytes</strong>, not that hex written out as text, or KeePassXC will not open the database. On Linux and macOS:",
 		"rb.manual.check":  "Check: the file should be half the length of the hex (40 hex characters → 20 bytes). Then use it in KeePassXC as the <em>Key file</em> and leave the password empty. The <code>.kdbx</code> format is open (KeePassXC, KeePass, KeePassDX, Strongbox and others).",
 		"rb.manual.ask":    "If none of this makes sense to you, have the technically capable person%s read it.",
 
 		"rb.safety.h":      "6) Safety: what to watch out for",
 		"rb.safety.seed":   "<strong>Only ever type the seed into the hardware wallet.</strong> Never into a computer, a phone, an e-mail or any website, no matter who asks.",
-		"rb.safety.words":  "<strong>Only ever type the share words</strong> into <em>inh-offline</em> on a computer disconnected from the internet (or, in the emergency procedure, into another SLIP-39 tool, also without internet).",
+		"rb.safety.words":  "<strong>Only ever type the share words</strong> into <em>coldwill</em> on a computer disconnected from the internet (or, in the emergency procedure, into another SLIP-39 tool, also without internet).",
 		"rb.safety.nobody": "Give the words, the seed or the password from the envelope to nobody outside this document, not even to \"technical support\".",
 		"rb.safety.wipe":   "<strong>When you are done</strong>, delete the key file from the computer and from the USB stick. Whoever has it can open the database. Burn the pieces of paper with the words, or return them to the holders.",
 		"rb.safety.move":   "<em>(optional, but strongly recommended)</em> After recovering, move the funds to a new wallet.",
@@ -95,7 +95,7 @@ func init() {
 		"rb.print":   "🖨 Print / Save as PDF",
 		"rb.edit":    "✏️ Edit",
 		"rb.newform": "← new form",
-		"rb.margins": "Leave the margins on \"Default\" when printing.",
+		"rb.margins": "When printing, leave the margins on \"Default\". On \"None\" every page after the first comes out with no top or bottom margin.",
 	} {
 		enMessages[k] = v
 	}

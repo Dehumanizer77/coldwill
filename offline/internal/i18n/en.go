@@ -8,10 +8,10 @@ var enMessages = map[string]string{
 	"nav.back":   "back",
 	"nav.again":  "try again",
 	"lang.label": "Language",
-	"app.title":  "inh: offline tool",
+	"app.title":  "coldwill: offline tool",
 
 	// --- index ---
-	"index.h1":        "🔐 inh: offline setup and recovery",
+	"index.h1":        "🔐 coldwill: offline setup and recovery",
 	"index.setup.h":   "New backup",
 	"index.setup.p":   "Generate a key file and split it into shares.",
 	"index.recover.h": "Recovery",
@@ -99,7 +99,7 @@ var enMessages = map[string]string{
 	"rbform.bank":         "Envelope (passphrase), bank",
 	"rbform.ph.bank":      "bank name, branch, box number",
 	"rbform.toolurl":      "Where the tool can be downloaded (repository URL)",
-	"rbform.toolwhere":    "Where the <em>inh-offline</em> tool is kept",
+	"rbform.toolwhere":    "Where the <em>coldwill</em> tool is kept",
 	"rbform.ph.toolwhere": "e.g. a USB stick beside every metal backup, at the bank, and in the cloud next to the .kdbx",
 	"rbform.kdbx":         "Copies of the encrypted .kdbx, where",
 	"rbform.ph.kdbx":      "e.g. cloud, at home, bank vault, with the holders",

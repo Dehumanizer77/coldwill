@@ -30,17 +30,17 @@ if gh release view "$TAG" >/dev/null 2>&1; then
   gh release upload "$TAG" dist/* --clobber
 else
   gh release create "$TAG" dist/* \
-    --title "inh-offline $TAG" \
+    --title "coldwill $TAG" \
     --notes "Offline setup and recovery tool.
 
 Download the file for your computer:
 
 | Computer | File |
 |---|---|
-| Windows | \`inh-offline-windows-amd64.exe\` |
-| Mac (2020 onwards) | \`inh-offline-darwin-arm64\` |
-| Mac (older, Intel) | \`inh-offline-darwin-amd64\` |
-| Linux | \`inh-offline-linux-amd64\` |
+| Windows | \`coldwill-windows-amd64.exe\` |
+| Mac (2020 onwards) | \`coldwill-darwin-arm64\` |
+| Mac (older, Intel) | \`coldwill-darwin-amd64\` |
+| Linux | \`coldwill-linux-amd64\` |
 
 \`SHA256SUMS\` lists the checksums. The binaries are unsigned, so Windows and
 macOS will warn about an unidentified developer; the runbook explains how to get

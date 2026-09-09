@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"inh/dms/internal/i18n"
+	"coldwill/dms/internal/i18n"
 )
 
 // Handler returns the HTTP routes. Check-in and confirm are two-step (GET shows
@@ -24,7 +24,7 @@ func (s *Service) hRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	l := s.pageLang(r)
-	writePage(w, "inh DMS", "<p>"+string(i18n.T(l, "page.running"))+"</p>")
+	writePage(w, "coldwill switch", "<p>"+string(i18n.T(l, "page.running"))+"</p>")
 }
 
 func (s *Service) hCheckin(w http.ResponseWriter, r *http.Request) {

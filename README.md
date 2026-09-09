@@ -1,4 +1,4 @@
-# inh: Bitcoin Inheritance System
+# coldwill: Bitcoin Inheritance System
 
 A Bitcoin inheritance system your family can actually use: simple enough for a
 non-technical heir, resistant to theft, loss and disaster, and fully
@@ -242,7 +242,7 @@ Go is the only requirement (≥ 1.24, for `crypto/pbkdf2`). No external
 dependencies.
 
 ```
-cd offline && go build -o inh-offline .
+cd offline && go build -o coldwill .
 ```
 
 The result is a **single static binary**. Your heir will not necessarily be
@@ -287,9 +287,9 @@ explains how to click through.
 #### Running it
 
 ```
-./inh-offline                # http://127.0.0.1:8777
-./inh-offline --addr 127.0.0.1:9000
-./inh-offline --open=false   # do not launch a browser
+./coldwill                # http://127.0.0.1:8777
+./coldwill --addr 127.0.0.1:9000
+./coldwill --open=false   # do not launch a browser
 ```
 
 It opens the system default browser (`xdg-open`, `rundll32`, `open`). At startup
@@ -497,10 +497,10 @@ compose file, so accepting it would break a deployment half way through.
 ```
 
 What it does: check docker, compose, postfix and ports → create
-`/opt/inh-dms/data` (0700) → copy the envelopes, refusing any that is not
+`/opt/coldwill-switch/data` (0700) → copy the envelopes, refusing any that is not
 ASCII-armored PGP → ask for addresses, numbers and confirmers and write
 `config.json` (0600, with `hmac_secret` from `openssl rand -hex 32`) → **validate
-the config through `inh-dms --validate`** → build and start the container → check
+the config through `coldwill-switch --validate`** → build and start the container → check
 HTTP, the log and `state.json` → print the reverse proxy config and **your
 check-in link to bookmark**.
 
@@ -508,9 +508,9 @@ It is idempotent: an existing `config.json` or envelope is left alone, so it is
 safe to run again. `--force-config` rewrites the config after backing it up.
 
 `--test-timings` is a rehearsal instance, **fully isolated from the real one**:
-its own data directory (`/opt/inh-dms-test`), container names (`inh-dms-test`,
-`inh-signal-test`), ports (8188 and 8180) and Compose project
-(`-p inh-dms-test`). A rehearsal therefore cannot take down or replace a running
+its own data directory (`/opt/coldwill-switch-test`), container names (`coldwill-switch-test`,
+`coldwill-signal-test`), ports (8188 and 8180) and Compose project
+(`-p coldwill-switch-test`). A rehearsal therefore cannot take down or replace a running
 production switch, and the proxy will not start pointing at it; if a production
 instance is running alongside, the script says so at startup.
 
@@ -523,21 +523,21 @@ confirmation, countdown and release, can be walked in a few minutes without
 alarming anyone. Afterwards:
 
 ```bash
-docker compose -p inh-dms-test down     # or: docker rm -f inh-dms-test
-rm -rf /opt/inh-dms-test
+docker compose -p coldwill-switch-test down     # or: docker rm -f coldwill-switch-test
+rm -rf /opt/coldwill-switch-test
 ```
 
-By hand it is the same: `mkdir -p /opt/inh-dms/data`, a `config.json` from
+By hand it is the same: `mkdir -p /opt/coldwill-switch/data`, a `config.json` from
 `config.example.json` (`hmac_secret` = `openssl rand -hex 32`), envelopes into
-`/opt/inh-dms/data/` (paths in the config are container-side, `/data/…`), then
-`INH_UID=$(id -u) INH_GID=$(id -g) docker compose up -d`, or the same with
+`/opt/coldwill-switch/data/` (paths in the config are container-side, `/data/…`), then
+`COLDWILL_UID=$(id -u) COLDWILL_GID=$(id -g) docker compose up -d`, or the same with
 `--profile signal`. Without compose:
 
 ```bash
-docker build -t inh-dms .
-docker run -d --name inh-dms --restart unless-stopped \
+docker build -t coldwill-switch .
+docker run -d --name coldwill-switch --restart unless-stopped \
   --user "$(id -u):$(id -g)" --network host \
-  -v /opt/inh-dms/data:/data inh-dms
+  -v /opt/coldwill-switch/data:/data coldwill-switch
 ```
 
 `--user` is not optional: the image runs as `nonroot` (uid 65532) but `/data`
@@ -589,7 +589,7 @@ knowing:
    that channel is on. That is also proof the self-test passed and every envelope
    is readable.
 3. Click the check-in link in it, and `last_check_in` changes in `state.json`.
-4. `docker logs inh-dms` contains no `failed`.
+4. `docker logs coldwill-switch` contains no `failed`.
 5. **Bookmark the check-in link and put it in the KeePass database.** It is
    stable, but it depends on `hmac_secret`, so store that too; changing it makes
    different links.
@@ -598,13 +598,13 @@ knowing:
    suffer).
 
 Upkeep: `docker compose pull && docker compose up -d` for the Signal container,
-and `docker save inh-dms | gzip > inh-dms.tar.gz` into the archive with the other
+and `docker save coldwill-switch | gzip > coldwill-switch.tar.gz` into the archive with the other
 artifacts.
 
 #### Configuration
 
 See `config.example.json`, or have `deploy.sh` generate one. Durations accept
-`30d`, `7d`, `12h`, `90m`. `inh-dms --validate` loads a config, checks it and
+`30d`, `7d`, `12h`, `90m`. `coldwill-switch --validate` loads a config, checks it and
 exits, which is useful after editing by hand and before restarting.
 
 Required: `public_base_url`, `from_email`, `user_email`, `state_path`,
@@ -640,7 +640,7 @@ switch only POSTs text to `/v2/send` over loopback. Linking, once, at deployment
 docker compose --profile signal up -d
 # open over an SSH tunnel and scan the QR code in Signal:
 #   Signal → Settings → Linked devices → +
-xdg-open http://127.0.0.1:8080/v1/qrcodelink?device_name=inh-dms
+xdg-open http://127.0.0.1:8080/v1/qrcodelink?device_name=coldwill-switch
 curl -s http://127.0.0.1:8080/v1/accounts     # must list your from_number
 ```
 
@@ -726,4 +726,4 @@ repository never reveals who is involved.
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
-Copyright 2026 The inh authors.
+Copyright 2026 The coldwill authors.

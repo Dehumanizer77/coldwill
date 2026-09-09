@@ -52,7 +52,7 @@ func init() {
 		"rb.step.call":    "Zavolaj technicky zdatnú osobu (bod 1). Poradí ti so všetkým, čomu nebudeš rozumieť.",
 		"rb.step.parts":   "Zožeň <strong>aspoň %s časti</strong> (bod 3). Slová si od držiteľov odpíš na papier alebo si ich nechaj nadiktovať. <strong>Nefoť ich telefónom</strong>, nie je to bezpečné.",
 		"rb.step.env":     "Zožeň <strong>obálku s heslom (passphrase)</strong>: buď zapečatenú z bankového trezoru, alebo od technicky zdatnej osoby%s, ktorej ju systém pošle e-mailom.",
-		"rb.step.pc":      "Priprav <strong>počítač odpojený od internetu</strong> (vytiahni kábel, vypni wifi). Je to dôležité: slová z častí sa naň budú písať a nesmú sa odtiaľ dostať von.<br>Nástroj sa volá <em>inh-offline</em>. Na počítači, ktorý internet <em>má</em>, ho stiahni z <strong>%s</strong> a prenes ho na USB kľúči. Súbory sú na tej stránke dole, pod nadpisom <em>Assets</em>.<br>Ak tá adresa už nefunguje, tie isté súbory sú na <strong>USB kľúči pri každom kovovom médiu</strong>, čiže ho má každý držiteľ časti, a na jednom v <strong>bankovom trezore</strong>%s.<br>Súborov je viac, jeden pre každý typ počítača. <strong>Spusti ten, ktorý sedí:</strong>",
+		"rb.step.pc":      "Priprav <strong>počítač odpojený od internetu</strong> (vytiahni kábel, vypni wifi). Je to dôležité: slová z častí sa naň budú písať a nesmú sa odtiaľ dostať von.<br>Nástroj sa volá <em>coldwill</em>. Na počítači, ktorý internet <em>má</em>, ho stiahni z <strong>%s</strong> a prenes ho na USB kľúči. Súbory sú na tej stránke dole, pod nadpisom <em>Assets</em>.<br>Ak tá adresa už nefunguje, tie isté súbory sú na <strong>USB kľúči pri každom kovovom médiu</strong>, čiže ho má každý držiteľ časti, a na jednom v <strong>bankovom trezore</strong>%s.<br>Súborov je viac, jeden pre každý typ počítača. <strong>Spusti ten, ktorý sedí:</strong>",
 		"rb.step.pc.os":   "Počítač",
 		"rb.step.pc.file": "Súbor",
 		"rb.step.pc.win":  "Windows",
@@ -64,24 +64,24 @@ func init() {
 		"rb.step.warn":     "<strong>Počítač bude asi protestovať.</strong> Nie je to chyba ani vírus: je to program, za ktorý nikto nezaplatil registráciu u Microsoftu ani Apple. Varovanie pokojne obíď:",
 		"rb.step.warn.win": "<strong>Windows:</strong> objaví sa modré okno v štýle „Systém Windows ochránil váš počítač“. Klikni na <em>Ďalšie informácie</em> a potom na <em>Spustiť aj tak</em>.",
 		"rb.step.warn.mac": "<strong>Mac:</strong> napíše, že súbor je od neovereného vývojára. Zavri to, klikni na súbor <strong>pravým tlačidlom</strong> (alebo dvoma prstami) a vyber <em>Otvoriť</em>; v ďalšom okne znova <em>Otvoriť</em>. Ak to nejde, otvor <em>Nastavenia → Súkromie a bezpečnosť</em>, kde bude tlačidlo <em>Otvoriť napriek tomu</em>.",
-		"rb.step.warn.lin": "<strong>Linux:</strong> ak sa súbor nedá spustiť, technicky zdatná osoba mu dá právo príkazom <code>chmod +x inh-offline-linux-amd64</code>.",
+		"rb.step.warn.lin": "<strong>Linux:</strong> ak sa súbor nedá spustiť, technicky zdatná osoba mu dá právo príkazom <code>chmod +x coldwill-linux-amd64</code>.",
 		"rb.step.warn.url": "Ak sa neotvorí prehliadač sám, otvor ho a napíš doň adresu, ktorú nástroj vypíše (býva <code>http://127.0.0.1:8777</code>).",
 
-		"rb.step.run":    "Spusti <em>inh-offline</em> → <em>Obnova</em> → vlož %s časti → dostaneš <strong>súbor s kľúčom</strong> (key-file). Ulož si ho na ten počítač.",
+		"rb.step.run":    "Spusti <em>coldwill</em> → <em>Obnova</em> → vlož %s časti → dostaneš <strong>súbor s kľúčom</strong> (key-file). Ulož si ho na ten počítač.",
 		"rb.step.kdbx":   "Otvor databázu <code>.kdbx</code> programom <strong>KeePassXC</strong> (<a href=\"https://keepassxc.org/download/\">https://keepassxc.org/download</a>).<br><strong>Najlepšie je</strong> nainštalovať KeePassXC na ten istý odpojený počítač a databázu tam skopírovať. Seed potom nikdy neopustí stroj bez internetu.<br>Ak to nejde, prenes súbor s kľúčom na USB kľúči do počítača, kde KeePassXC máš, a ten počítač na ten čas <strong>odpoj od internetu</strong>.<br>V KeePassXC zvoľ ako ochranu <em>Key file</em> a vyber ten súbor s kľúčom. <strong>Do poľa Heslo nezadávaj nič.</strong> Dostaneš sa k <strong>seedu</strong> a ďalším informáciám a prístupom.",
 		"rb.step.wallet": "Na hardvérovej peňaženke obnov peňaženku <strong>zo seedu</strong> (tie slová z databázy). Heslo (passphrase) sa pri obnove <strong>nezadáva</strong>, peňaženka si oň povie až potom, pri odomykaní. Bez neho uvidíš prázdnu peňaženku, s ním Bitcoin. Prázdna peňaženka teda neznamená, že peniaze sú preč, ale že chýba heslo z obálky.",
 		"rb.step.move":   "<em>(voliteľné, ale dôrazne odporúčané)</em> Presuň prostriedky do novej peňaženky, ktorú ovládaš ty.",
 
 		"rb.manual.h":      "5) Núdzový (manuálny) postup, ak nástroj nefunguje",
 		"rb.manual.slip39": "Časti sú v štandarde <strong>SLIP-39</strong>, zložia sa hocijakým SLIP-39 nástrojom (napr. referenčná knižnica <code>shamir-mnemonic</code>). Výsledkom je <strong>master secret (hex)</strong>, ktorý <strong>je obsahom key-filu</strong>.",
-		"rb.manual.abbrev": "Na kove sú slová často len ako <strong>4-písmenové skratky</strong>, to nie je chyba, v SLIP-39 zozname je slovo prvými štyrmi písmenami určené jednoznačne. Nástroj <em>inh-offline</em> ich doplní sám; ak použiješ iný nástroj, ktorý skratky neprijme, dohľadaj celé slová v oficiálnom SLIP-39 zozname (1024 slov, je v každom SLIP-39 nástroji).",
+		"rb.manual.abbrev": "Na kove sú slová často len ako <strong>4-písmenové skratky</strong>, to nie je chyba, v SLIP-39 zozname je slovo prvými štyrmi písmenami určené jednoznačne. Nástroj <em>coldwill</em> ich doplní sám; ak použiješ iný nástroj, ktorý skratky neprijme, dohľadaj celé slová v oficiálnom SLIP-39 zozname (1024 slov, je v každom SLIP-39 nástroji).",
 		"rb.manual.bytes":  "Tu sa dá ľahko pomýliť: do súboru patria <strong>surové bajty</strong>, nie ten hex zapísaný ako text, inak KeePassXC databázu neotvorí. Na Linuxe/macOS:",
 		"rb.manual.check":  "Kontrola: súbor má mať polovicu dĺžky hexu (40 hex znakov → 20 bajtov). Potom ho v KeePassXC použi ako <em>Key file</em> a heslo nechaj prázdne. Databáza <code>.kdbx</code> je otvorený formát (KeePassXC, KeePass, KeePassDX, Strongbox, …).",
 		"rb.manual.ask":    "Ak tomuto nerozumieš, daj to prečítať technicky zdatnej osobe%s.",
 
 		"rb.safety.h":      "6) Bezpečnosť: na čo si dať pozor",
 		"rb.safety.seed":   "<strong>Seed zadávaj jedine do hardvérovej peňaženky.</strong> Nikdy ho nepíš do počítača, do mobilu, do e-mailu ani na žiadnu webovú stránku, ani keď o to niekto žiada.",
-		"rb.safety.words":  "<strong>Slová z častí</strong> zadávaj jedine do nástroja <em>inh-offline</em> na počítači odpojenom od internetu (pri núdzovom postupe do iného SLIP-39 nástroja, tiež bez internetu).",
+		"rb.safety.words":  "<strong>Slová z častí</strong> zadávaj jedine do nástroja <em>coldwill</em> na počítači odpojenom od internetu (pri núdzovom postupe do iného SLIP-39 nástroja, tiež bez internetu).",
 		"rb.safety.nobody": "Nikomu cudziemu (ani „technickej podpore“) nedávaj slová, seed ani heslo z obálky.",
 		"rb.safety.wipe":   "<strong>Po skončení</strong> zmaž súbor s kľúčom z počítača aj z USB kľúča. Kto ho má, otvorí si databázu. Papieriky so slovami spáľ alebo vráť držiteľom.",
 		"rb.safety.move":   "<em>(voliteľné, ale dôrazne odporúčané)</em> Po obnove presuň prostriedky do novej peňaženky.",
@@ -93,7 +93,7 @@ func init() {
 		"rb.print":   "🖨 Vytlačiť / Uložiť ako PDF",
 		"rb.edit":    "✏️ Upraviť",
 		"rb.newform": "← nový formulár",
-		"rb.margins": "Pri tlači nechaj okraje na „Predvolené“.",
+		"rb.margins": "Pri tlači nechaj okraje na „Predvolené“. Pri „Žiadne“ vyjdú všetky strany okrem prvej bez horného a dolného okraja.",
 	} {
 		skMessages[k] = v
 	}

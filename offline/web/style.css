@@ -125,12 +125,14 @@ body.runbook th, body.runbook td {
 body.runbook th { background: #f0f0f0; }
 .pre { white-space: pre-wrap; }
 .toolbar { margin: 0 0 18px; }
-@page { margin: 16mm 14mm; }
+/* The only thing that insets every page is @page: padding on the content shows
+   up once at the top of page 1 and once at the bottom of the last one, which is
+   why the runbook used to come out with the middle pages printed edge to edge. */
+@page { margin: 18mm 15mm; }
 @media print {
   .noprint { display: none !important; }
   body.runbook { background: #fff; color: #000; font-size: 11.5pt; }
-  /* keep a fallback inset even if the print dialog uses "Margins: None" */
-  body.runbook main { max-width: none; padding: 8mm; }
+  body.runbook main { max-width: none; padding: 0; }
   body.runbook a { color: #000; text-decoration: none; }
   body.runbook h2 { page-break-after: avoid; }
   body.runbook section, body.runbook table { page-break-inside: avoid; }

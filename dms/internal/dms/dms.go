@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"inh/dms/internal/i18n"
+	"coldwill/dms/internal/i18n"
 )
 
 // Service is the dead-man's switch state machine. Time and email are injected

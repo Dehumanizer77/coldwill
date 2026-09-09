@@ -1,4 +1,4 @@
-# inh: Bitcoin Inheritance System
+# coldwill: Bitcoin Inheritance System
 
 > Slovenská verzia. Primárna je [anglická](README.md), ktorá sa udržiava ako
 > prvá; ak sa obe rozídu, platí anglická.
@@ -238,7 +238,7 @@ SLIP-39** časti a (b) zloženie častí späť na key-file pri obnove.
 Potrebné je len Go (≥ 1.24, kvôli `crypto/pbkdf2`). Žiadne externé závislosti.
 
 ```
-cd offline && go build -o inh-offline .
+cd offline && go build -o coldwill .
 ```
 
 Výsledok je **jeden statický binár** bez závislostí (beží na hocijakom Linuxe
@@ -282,15 +282,15 @@ macOS Gatekeeper zahlásia varovanie. Runbook popisuje, ako ho preklikať.
 #### Spustenie
 
 ```
-./inh-offline                # http://127.0.0.1:8777
-./inh-offline --addr 127.0.0.1:9000
+./coldwill                # http://127.0.0.1:8777
+./coldwill --addr 127.0.0.1:9000
 ```
 
 Automaticky sa otvorí **systémový default browser** (Linux `xdg-open`, Windows
 `rundll32`, macOS `open`), nezávisle od toho, ktorý browser je nainštalovaný.
 Vypneš to cez `--open=false` (vtedy si otvor vypísanú URL ručne).
 
-Na **Windows** spusti `inh-offline.exe` (dvojklik alebo z `cmd`); otvorí default
+Na **Windows** spusti `coldwill.exe` (dvojklik alebo z `cmd`); otvorí default
 browser rovnako. Pri štarte beží **power-on self-test** (známy SLIP-39 vektor +
 round-trip); ak zlyhá, nástroj sa nespustí.
 
@@ -485,10 +485,10 @@ Staré `docker-compose` v1 vedome ignoruje, lebo je EOL a nevie ani
 ./deploy.sh --envelope ~/envelope.asc --test-timings   # skúšobný beh, viď nižšie
 ```
 
-Čo skript spraví: overí docker/compose/postfix/porty → založí `/opt/inh-dms/data`
+Čo skript spraví: overí docker/compose/postfix/porty → založí `/opt/coldwill-switch/data`
 (0700) → skopíruje obálky (a odmietne tú, ktorá nie je ASCII-armored PGP) →
 interaktívne vypýta adresy, čísla a potvrdzovateľov a zapíše `config.json`
-(0600, `hmac_secret` z `openssl rand -hex 32`) → **overí config cez `inh-dms
+(0600, `hmac_secret` z `openssl rand -hex 32`) → **overí config cez `coldwill-switch
 --validate`** → zbuildí a spustí kontajner → skontroluje HTTP, log a `state.json`
 → vypíše Apache vhost a **tvoj check-in odkaz do záložiek**.
 
@@ -496,9 +496,9 @@ Beží idempotentne: existujúci `config.json` ani obálky neprepíše (na to je
 `--force-config`, ktorý starý config zálohuje), takže sa dá pustiť znova.
 
 `--test-timings` je skúšobná inštancia a je **úplne oddelená od ostrej**: iný
-dátový adresár (`/opt/inh-dms-test`), iné mená kontajnerov (`inh-dms-test`,
-`inh-signal-test`), iné porty (8188 / 8180) aj vlastný compose projekt
-(`-p inh-dms-test`). Skúška teda nemôže zhodiť ani nahradiť bežiaci ostrý DMS a
+dátový adresár (`/opt/coldwill-switch-test`), iné mená kontajnerov (`coldwill-switch-test`,
+`coldwill-signal-test`), iné porty (8188 / 8180) aj vlastný compose projekt
+(`-p coldwill-switch-test`). Skúška teda nemôže zhodiť ani nahradiť bežiaci ostrý DMS a
 proxy naň nezačne smerovať; ak ostrý DMS beží vedľa, skript to pri štarte
 vypíše.
 
@@ -510,21 +510,21 @@ K tomu: intervaly v minútach namiesto dní, štart z čistého stavu (starý
 minút bez toho, aby si niekoho vystrašil. Po doskúšaní:
 
 ```bash
-docker compose -p inh-dms-test down     # alebo: docker rm -f inh-dms-test
-rm -rf /opt/inh-dms-test
+docker compose -p coldwill-switch-test down     # alebo: docker rm -f coldwill-switch-test
+rm -rf /opt/coldwill-switch-test
 ```
 
-Ručne je to to isté: `mkdir -p /opt/inh-dms/data`, `config.json` z
+Ručne je to to isté: `mkdir -p /opt/coldwill-switch/data`, `config.json` z
 `config.example.json` (`hmac_secret` = `openssl rand -hex 32`), obálky do
-`/opt/inh-dms/data/` (cesty v configu sú z pohľadu kontajnera, `/data/…`), potom
-`INH_UID=$(id -u) INH_GID=$(id -g) docker compose up -d` (e-mail) alebo to isté
+`/opt/coldwill-switch/data/` (cesty v configu sú z pohľadu kontajnera, `/data/…`), potom
+`COLDWILL_UID=$(id -u) COLDWILL_GID=$(id -g) docker compose up -d` (e-mail) alebo to isté
 s `--profile signal` (+ Signal). Bez compose:
 
 ```bash
-docker build -t inh-dms .
-docker run -d --name inh-dms --restart unless-stopped \
+docker build -t coldwill-switch .
+docker run -d --name coldwill-switch --restart unless-stopped \
   --user "$(id -u):$(id -g)" --network host \
-  -v /opt/inh-dms/data:/data inh-dms
+  -v /opt/coldwill-switch/data:/data coldwill-switch
 ```
 
 `--user` tam **musí** byť: image beží ako `nonroot` (uid 65532), ale `/data`
@@ -573,19 +573,19 @@ Overenie po štarte (skript to kontroluje sám, ale vedieť to treba):
 2. do minúty príde e-mail **[DMS] v poriadku** (a ak je zapnutý Signal, aj správa
    na Signale). To je zároveň dôkaz, že self-test prešiel a všetky obálky sú čitateľné,
 3. klikni v ňom check-in odkaz → „Ďakujem“ a v `state.json` sa zmení `last_check_in`,
-4. `docker logs inh-dms` neobsahuje `failed`,
+4. `docker logs coldwill-switch` neobsahuje `failed`,
 5. **check-in odkaz si ulož do záložiek / KeePass DB**. Je stabilný, ale závisí
    od `hmac_secret` (ten si tiež odlož; po jeho zmene platia iné odkazy),
 6. do runbooku a do KeePass DB zapíš, že DMS existuje a ako sa vypína
    (`docker compose down` = DMS je preč, dedičstvo tým netrpí).
 
 Údržba: `docker compose pull && docker compose up -d` (Signal kontajner),
-`docker save inh-dms | gzip > inh-dms.tar.gz` do archívu k ostatným artefaktom.
+`docker save coldwill-switch | gzip > coldwill-switch.tar.gz` do archívu k ostatným artefaktom.
 
 #### Konfigurácia
 
 Viď `config.example.json` (alebo si ho nechaj vygenerovať cez `deploy.sh`).
-Trvania prijímajú `30d`, `7d`, `12h`, `90m`. `inh-dms --validate` config načíta,
+Trvania prijímajú `30d`, `7d`, `12h`, `90m`. `coldwill-switch --validate` config načíta,
 skontroluje a skončí. Hodí sa po ručnej úprave, kým službu reštartneš.
 Povinné: `public_base_url`, `from_email`, `user_email`, `state_path`,
 `hmac_secret` (≥16 znakov), aspoň 1 `confirmer` a aspoň jedna obálka
@@ -622,7 +622,7 @@ POSTuje text na `/v2/send` cez loopback. Linkovanie (raz, pri deployi):
 docker compose up -d signal
 # otvor v prehliadači (cez SSH tunel) a naskenuj QR v Signale:
 #   Signal → Nastavenia → Prepojené zariadenia → +
-xdg-open http://127.0.0.1:8080/v1/qrcodelink?device_name=inh-dms
+xdg-open http://127.0.0.1:8080/v1/qrcodelink?device_name=coldwill-switch
 curl -s http://127.0.0.1:8080/v1/accounts     # musí obsahovať from_number
 ```
 

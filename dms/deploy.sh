@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deploy.sh - deploys inh-dms on THIS server. You run it, by hand.
+# deploy.sh - deploys coldwill-switch on THIS server. You run it, by hand.
 #
 #   ./deploy.sh --envelope ~/envelope.asc            # real deployment (e-mail)
 #   ./deploy.sh --envelope ~/envelope.asc --signal   # + Signal channel
@@ -13,7 +13,7 @@
 # The script never touches Apache or postfix; it prints what you must add there.
 set -euo pipefail
 
-DATA_ROOT="${INH_DATA_DIR:-/opt/inh-dms}"
+DATA_ROOT="${COLDWILL_DATA_DIR:-/opt/coldwill-switch}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_IDS=()
 ENV_SRCS=()
@@ -59,27 +59,27 @@ done
 # directory, container names, ports and the compose project. Otherwise an `up -d`
 # or `rm -f` from a rehearsal would take down the live switch, and the proxy
 # would start pointing at the rehearsal.
-NAME_DMS="inh-dms"
-NAME_SIGNAL="inh-signal"
-PROJECT="inh-dms"
+NAME_DMS="coldwill-switch"
+NAME_SIGNAL="coldwill-signal"
+PROJECT="coldwill-switch"
 if [ "$TEST_TIMINGS" = 1 ]; then
-  [ "$DATA_ROOT" = "/opt/inh-dms" ] && DATA_ROOT="/opt/inh-dms-test"
-  NAME_DMS="inh-dms-test"
-  NAME_SIGNAL="inh-signal-test"
-  PROJECT="inh-dms-test"
+  [ "$DATA_ROOT" = "/opt/coldwill-switch" ] && DATA_ROOT="/opt/coldwill-switch-test"
+  NAME_DMS="coldwill-switch-test"
+  NAME_SIGNAL="coldwill-signal-test"
+  PROJECT="coldwill-switch-test"
   PORT_APP=8188
   PORT_SIGNAL=8180
 fi
-export INH_NAME_DMS="$NAME_DMS" INH_NAME_SIGNAL="$NAME_SIGNAL"
-export INH_PORT_SIGNAL="$PORT_SIGNAL"
+export COLDWILL_NAME_DMS="$NAME_DMS" COLDWILL_NAME_SIGNAL="$NAME_SIGNAL"
+export COLDWILL_PORT_SIGNAL="$PORT_SIGNAL"
 DATA="$DATA_ROOT/data"
 CONFIG="$DATA/config.json"
 # The image runs as 'nonroot' (uid 65532) but /data belongs to you and
 # config.json is 0600, so the container must run under your uid to read it.
 DOCKER_USER=(--user "$(id -u):$(id -g)")
-export INH_UID="$(id -u)" INH_GID="$(id -g)"
+export COLDWILL_UID="$(id -u)" COLDWILL_GID="$(id -g)"
 COMPOSE=()
-export INH_DATA_DIR="$DATA_ROOT"
+export COLDWILL_DATA_DIR="$DATA_ROOT"
 
 # ---------------------------------------------------------------- preflight --
 say "Preflight"
@@ -126,8 +126,8 @@ done
 ok "sources in place ($HERE)"
 
 ok "instance: container $NAME_DMS, compose project $PROJECT, port $PORT_APP, data $DATA_ROOT"
-if [ "$TEST_TIMINGS" = 1 ] && docker ps --format '{{.Names}}' | grep -qx "inh-dms"; then
-  warn "a LIVE inh-dms is running alongside; the rehearsal will not touch it (different name, port and project)"
+if [ "$TEST_TIMINGS" = 1 ] && docker ps --format '{{.Names}}' | grep -qx "coldwill-switch"; then
+  warn "a LIVE coldwill-switch is running alongside; the rehearsal will not touch it (different name, port and project)"
 fi
 
 if [ "$CHECK_ONLY" = 1 ]; then say "Preflight OK, nothing was changed."; exit 0; fi
@@ -295,11 +295,11 @@ fi
 
 # ---------------------------------------------------------------- validation --
 say "Validating the config"
-if docker image inspect inh-dms >/dev/null 2>&1; then
-  if OUT=$(docker run --rm "${DOCKER_USER[@]}" -v "$DATA":/data inh-dms --validate 2>&1); then ok "${OUT#*config OK: }"
+if docker image inspect coldwill-switch >/dev/null 2>&1; then
+  if OUT=$(docker run --rm "${DOCKER_USER[@]}" -v "$DATA":/data coldwill-switch --validate 2>&1); then ok "${OUT#*config OK: }"
   else die "the config did not validate: $OUT"; fi
 else
-  warn "the inh-dms image does not exist yet; the config is validated right after the build"
+  warn "the coldwill-switch image does not exist yet; the config is validated right after the build"
 fi
 
 if [ "$CONFIG_ONLY" = 1 ]; then say "Config done ($CONFIG). No container was started."; exit 0; fi
@@ -317,7 +317,7 @@ have_compose() { [ ${#COMPOSE[@]} -gt 0 ]; }
 
 img_build() {
   if have_compose; then ( cd "$HERE" && "${COMPOSE[@]}" -p "$PROJECT" build dms )
-  else docker build -t inh-dms "$HERE"; fi
+  else docker build -t coldwill-switch "$HERE"; fi
 }
 
 svc_up() {
@@ -331,7 +331,7 @@ svc_up() {
   fi
   docker rm -f "$NAME_DMS" >/dev/null 2>&1 || true
   docker run -d --name "$NAME_DMS" --restart unless-stopped "${DOCKER_USER[@]}" \
-    --network host -v "$DATA":/data inh-dms >/dev/null
+    --network host -v "$DATA":/data coldwill-switch >/dev/null
   if [ "$WITH_SIGNAL" = 1 ]; then
     docker rm -f "$NAME_SIGNAL" >/dev/null 2>&1 || true
     docker run -d --name "$NAME_SIGNAL" --restart unless-stopped \
@@ -358,7 +358,7 @@ fi
 # --------------------------------------------------------------------- start --
 say "Build and start"
 img_build
-if OUT=$(docker run --rm "${DOCKER_USER[@]}" -v "$DATA":/data inh-dms --validate 2>&1); then ok "config: ${OUT#*config OK: }"
+if OUT=$(docker run --rm "${DOCKER_USER[@]}" -v "$DATA":/data coldwill-switch --validate 2>&1); then ok "config: ${OUT#*config OK: }"
 else die "the config did not validate: $OUT"; fi
 svc_up
 ok "containers are running"
@@ -368,7 +368,7 @@ say "Verification"
 for i in $(seq 1 30); do
   BODY=$(curl -fsS --max-time 2 "http://127.0.0.1:$PORT_APP/" 2>/dev/null) && break || sleep 1
 done
-case "${BODY:-}" in *"inh DMS"*) ok "HTTP on 127.0.0.1:$PORT_APP answers";; *) die "the service does not answer; see: $LOGS_CMD";; esac
+case "${BODY:-}" in *"coldwill switch"*) ok "HTTP on 127.0.0.1:$PORT_APP answers";; *) die "the service does not answer; see: $LOGS_CMD";; esac
 
 LOGS=$(svc_logs | tail -40)
 case "$LOGS" in *"listening on"*) ok "startup line in the log";; *) warn "no 'listening' line in the log; check the logs";; esac

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build-all.sh - builds inh-offline for every platform an heir might use.
+# build-all.sh - builds coldwill for every platform an heir might use.
 # Output goes to dist/ (gitignored). Run it from the offline/ directory, or
 # through release.sh, which builds and then publishes.
 #
@@ -39,7 +39,7 @@ TARGETS=(
 for t in "${TARGETS[@]}"; do
   read -r goos goarch ext _ <<<"$t"
   [ "$ext" = "''" ] && ext=""
-  name="inh-offline-$goos-$goarch$ext"
+  name="coldwill-$goos-$goarch$ext"
   GOOS=$goos GOARCH=$goarch CGO_ENABLED=0 \
     "$GO" build -trimpath -ldflags="-s -w" -o "$OUT/$name" .
   printf '  %-34s %6s KB\n' "$name" "$(( $(stat -c%s "$OUT/$name") / 1024 ))"

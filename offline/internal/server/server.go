@@ -17,8 +17,8 @@ import (
 	"strconv"
 	"strings"
 
-	"inh/offline/internal/i18n"
-	"inh/offline/internal/slip39"
+	"coldwill/offline/internal/i18n"
+	"coldwill/offline/internal/slip39"
 )
 
 // keyBytes is the size of the generated key-file (160-bit -> 23-word shares).
@@ -348,7 +348,7 @@ type runbookForm struct {
 	Persons                  []Person // every row, in order
 	Threshold, Count         int
 	Bank, KdbxCopies         string
-	ToolWhere, ToolURL       string // where inh-offline is kept, and where to download it
+	ToolWhere, ToolURL       string // where coldwill is kept, and where to download it
 	WalletNotes, FamilyNotes string
 }
 

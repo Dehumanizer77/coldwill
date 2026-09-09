@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"inh/dms/internal/i18n"
+	"coldwill/dms/internal/i18n"
 )
 
 // Duration is a time.Duration that unmarshals from JSON strings like "30d",

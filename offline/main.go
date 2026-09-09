@@ -1,4 +1,4 @@
-// Command inh-offline is the air-gapped Setup/Recovery tool for the Bitcoin
+// Command coldwill is the air-gapped Setup/Recovery tool for the Bitcoin
 // inheritance system. It serves a small web UI on a loopback address only and
 // never touches the network.
 //
@@ -20,7 +20,7 @@ import (
 	"os/exec"
 	"runtime"
 
-	"inh/offline/internal/server"
+	"coldwill/offline/internal/server"
 )
 
 //go:embed web/*.html
@@ -52,7 +52,7 @@ func main() {
 	url := "http://" + ln.Addr().String() + "/"
 
 	log.Printf("SLIP-39 self-test OK.")
-	log.Printf("inh offline tool ready — %s (open this on the AIR-GAPPED machine).", url)
+	log.Printf("coldwill ready — %s (open this on the AIR-GAPPED machine).", url)
 	log.Printf("Press Ctrl+C when finished.")
 
 	if *open {

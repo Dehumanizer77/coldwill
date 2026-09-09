@@ -5,34 +5,34 @@
 #   docker compose up -d                      # e-mail only
 #   docker compose --profile signal up -d     # + the Signal channel
 #
-# INH_DATA_DIR redirects the data (default /opt/inh-dms), INH_NAME_DMS and
-# INH_NAME_SIGNAL name the containers, INH_PORT_SIGNAL sets the Signal API port.
+# COLDWILL_DATA_DIR redirects the data (default /opt/coldwill-switch), COLDWILL_NAME_DMS and
+# COLDWILL_NAME_SIGNAL name the containers, COLDWILL_PORT_SIGNAL sets the Signal API port.
 # The test mode of deploy.sh sets all of them (and uses its own compose project)
 # so that a rehearsal cannot touch the live instance.
 services:
   dms:
     build: .
-    image: inh-dms
-    container_name: ${INH_NAME_DMS:-inh-dms}
+    image: coldwill-switch
+    container_name: ${COLDWILL_NAME_DMS:-coldwill-switch}
     restart: unless-stopped
     # /data belongs to the deploying user and config.json is 0600. The image
     # runs as nonroot (65532), but it has to read that file under their uid.
-    # deploy.sh exports INH_UID/INH_GID; by hand:
-    # INH_UID=$(id -u) INH_GID=$(id -g) docker compose up -d
-    user: "${INH_UID:-1000}:${INH_GID:-1000}"
+    # deploy.sh exports COLDWILL_UID/COLDWILL_GID; by hand:
+    # COLDWILL_UID=$(id -u) COLDWILL_GID=$(id -g) docker compose up -d
+    user: "${COLDWILL_UID:-1000}:${COLDWILL_GID:-1000}"
     # Host networking: reaches the local postfix on 127.0.0.1:25 and signal-cli
     # on 127.0.0.1:8080, and binds to the host loopback at 127.0.0.1:8088,
     # where the reverse proxy (which terminates TLS) points.
     network_mode: host
     volumes:
-      - ${INH_DATA_DIR:-/opt/inh-dms}/data:/data   # config.json, envelope.asc, state.json
+      - ${COLDWILL_DATA_DIR:-/opt/coldwill-switch}/data:/data   # config.json, envelope.asc, state.json
 
   signal:
     profiles: ["signal"]
     # TODO at deployment: pin a specific digest (docker pull … &&
     # docker images --digests) and save the image into a tarball for the archive.
     image: bbernhard/signal-cli-rest-api:latest
-    container_name: ${INH_NAME_SIGNAL:-inh-signal}
+    container_name: ${COLDWILL_NAME_SIGNAL:-coldwill-signal}
     restart: unless-stopped
     environment:
       - MODE=native
@@ -40,6 +40,6 @@ services:
       # we only ever send.
       - AUTO_RECEIVE_SCHEDULE=0 4 * * *
     ports:
-      - "127.0.0.1:${INH_PORT_SIGNAL:-8080}:8080"   # loopback only, never exposed
+      - "127.0.0.1:${COLDWILL_PORT_SIGNAL:-8080}:8080"   # loopback only, never exposed
     volumes:
-      - ${INH_DATA_DIR:-/opt/inh-dms}/signal:/home/.local/share/signal-cli
+      - ${COLDWILL_DATA_DIR:-/opt/coldwill-switch}/signal:/home/.local/share/signal-cli

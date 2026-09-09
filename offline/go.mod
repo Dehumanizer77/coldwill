@@ -1,3 +1,3 @@
-module inh/offline
+module coldwill/offline
 
 go 1.24

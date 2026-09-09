@@ -1,4 +1,4 @@
-// Command inh-dms is the online dead-man's switch for the Bitcoin inheritance
+// Command coldwill-switch is the online dead-man's switch for the Bitcoin inheritance
 // system. It periodically asks the owner to check in; after prolonged silence
 // it asks trusted confirmers to attest, and after a confirmation + release
 // delay it emails a GPG-encrypted envelope (which it can never read) to the
@@ -16,7 +16,7 @@ import (
 	"net/http"
 	"time"
 
-	"inh/dms/internal/dms"
+	"coldwill/dms/internal/dms"
 )
 
 func main() {
@@ -68,7 +68,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("inh-dms listening on %s (public base %s); tick every %s", cfg.ListenAddr, cfg.PublicBaseURL, cfg.TickInterval.D())
+	log.Printf("coldwill-switch listening on %s (public base %s); tick every %s", cfg.ListenAddr, cfg.PublicBaseURL, cfg.TickInterval.D())
 	log.Fatal(http.ListenAndServe(cfg.ListenAddr, svc.Handler()))
 }
 
