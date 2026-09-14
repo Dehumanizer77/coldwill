@@ -86,3 +86,15 @@ func TestParse(t *testing.T) {
 		}
 	}
 }
+
+// The database is kept by the primary heir and optionally in the bank vault,
+// never in the cloud, so no message in any language may suggest otherwise.
+func TestNoMessageSendsTheDatabaseToTheCloud(t *testing.T) {
+	for l, msgs := range catalogs {
+		for k, v := range msgs {
+			if strings.Contains(strings.ToLower(v), "cloud") {
+				t.Errorf("%s %s mentions the cloud: %q", l, k, v)
+			}
+		}
+	}
+}

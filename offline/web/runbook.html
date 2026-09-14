@@ -19,7 +19,8 @@
       <input type="hidden" name="threshold" value="{{.Threshold}}">
       <input type="hidden" name="count" value="{{.Count}}">
       <input type="hidden" name="bank" value="{{.Bank}}">
-      <input type="hidden" name="kdbx_copies" value="{{.KdbxCopies}}">
+      {{if .BankShare}}<input type="hidden" name="bank_share" value="1">{{end}}
+      {{if .BankKdbx}}<input type="hidden" name="bank_kdbx" value="1">{{end}}
       <input type="hidden" name="tool_where" value="{{.ToolWhere}}">
       <input type="hidden" name="tool_url" value="{{.ToolURL}}">
       <input type="hidden" name="wallet_notes" value="{{.WalletNotes}}">
@@ -49,7 +50,7 @@
     <h2>{{t .L "rb.intro.h"}}</h2>
     {{if .Heir}}<p>{{t .L "rb.intro.to" .Heir}}</p>{{end}}
     <p>{{t .L "rb.intro.p"}}</p>
-    <p>{{t .L "rb.intro.whatis" .Threshold .Count}}</p>
+    <p>{{t .L "rb.intro.whatis" .Threshold .Count}}{{if .BankShare}} {{t .L "rb.intro.bankshare"}}{{end}}</p>
   </section>
 
   <section>
@@ -90,9 +91,9 @@
     <table>
       <tr><th>{{t .L "rb.map.item"}}</th><th>{{t .L "rb.map.where"}}</th></tr>
       {{$l := .L}}
-      {{range .Parts}}<tr><td>{{t $l "rb.map.part" .Num}}</td><td>{{if .Holder}}{{t $l "rb.map.held" .Holder}}{{else}}–{{end}}</td></tr>{{end}}
+      {{range .Parts}}<tr><td>{{t $l "rb.map.part" .Num}}</td><td>{{if .InBank}}{{t $l "rb.map.inbank"}}{{else if .Holder}}{{t $l "rb.map.held" .Holder}}{{else}}–{{end}}</td></tr>{{end}}
       <tr><td>{{t .L "rb.map.env"}}</td><td>{{if .Bank}}{{.Bank}}{{else}}–{{end}}</td></tr>
-      <tr><td>{{t .L "rb.map.kdbx"}}</td><td class="pre">{{if .KdbxCopies}}{{.KdbxCopies}}{{else}}–{{end}}</td></tr>
+      <tr><td>{{t .L "rb.map.kdbx"}}</td><td>{{t .L "rb.map.held" .KdbxHolder}}{{if .BankKdbx}}{{t .L "rb.map.kdbx.bank"}}{{end}}</td></tr>
     </table>
   </section>
 
@@ -102,7 +103,7 @@
     <pre class="chain">{{t .L "rb.steps.chain" .Threshold .Count}}</pre>
     <ol>
       <li>{{t .L "rb.step.call"}}</li>
-      <li>{{t .L "rb.step.parts" .Threshold}}</li>
+      <li>{{t .L "rb.step.parts" .Threshold}}{{if .BankShare}} {{t .L "rb.step.parts.bank"}}{{end}}</li>
       <li>{{t .L "rb.step.env" .TechSuffix}}</li>
       <li>{{t .L "rb.step.pc" .ToolURL .ToolSuffix}}
       <table>
@@ -121,7 +122,7 @@
       </ul>
       {{t .L "rb.step.warn.url"}}</li>
       <li>{{t .L "rb.step.run" .Threshold}}</li>
-      <li>{{t .L "rb.step.kdbx"}}</li>
+      <li>{{t .L "rb.step.kdbx.where" .KdbxHolder}}{{if .BankKdbx}} {{t .L "rb.step.kdbx.bank"}}{{end}}<br>{{t .L "rb.step.kdbx"}}</li>
       <li>{{t .L "rb.step.wallet"}}</li>
       <li>{{t .L "rb.step.move"}}</li>
     </ol>

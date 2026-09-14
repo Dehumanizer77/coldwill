@@ -338,6 +338,7 @@ type Person struct {
 type partLoc struct {
 	Num    int
 	Holder string
+	InBank bool // the share kept in the bank vault with the envelope, held by nobody
 }
 
 // runbookForm pre-fills the runbook form (empty defaults on GET, or the
@@ -347,7 +348,8 @@ type runbookForm struct {
 	Author, Date, Heir       string
 	Persons                  []Person // every row, in order
 	Threshold, Count         int
-	Bank, KdbxCopies         string
+	Bank                     string
+	BankShare, BankKdbx      bool   // a share, and the database, also in the bank vault
 	ToolWhere, ToolURL       string // where coldwill is kept, and where to download it
 	WalletNotes, FamilyNotes string
 }
@@ -361,7 +363,9 @@ type runbookData struct {
 	TechNames                string // every technically capable person, for naming them in the prose
 	Parts                    []partLoc
 	Threshold, Count         int
-	Bank, KdbxCopies         string
+	Bank                     string
+	BankShare, BankKdbx      bool
+	KdbxHolder               string // who keeps the database: the heir by name, or the role
 	ToolWhere, ToolURL       string
 	WalletNotes, FamilyNotes string
 
@@ -433,13 +437,15 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 	rows := parsePersonRows(r)
 	threshold := atoiDefault(f("threshold"), 2)
 	count := atoiDefault(f("count"), 3)
+	bankShare := r.FormValue("bank_share") == "1"
+	bankKdbx := r.FormValue("bank_kdbx") == "1"
 
 	if r.FormValue("edit") == "1" {
 		s.render(w, "runbook_form.html", runbookForm{
 			page:   page{L: l},
 			Author: f("author"), Date: f("date"), Heir: f("heir"),
 			Persons: rows, Threshold: threshold, Count: count,
-			Bank: f("bank"), KdbxCopies: f("kdbx_copies"),
+			Bank: f("bank"), BankShare: bankShare, BankKdbx: bankKdbx,
 			ToolWhere: f("tool_where"), ToolURL: toolURL(f("tool_url")),
 			WalletNotes: f("wallet_notes"), FamilyNotes: f("family_notes"),
 		})
@@ -459,6 +465,16 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 			other = append(other, p)
 		}
 	}
+	if bankShare {
+		// The vault's share has no holder row, so it is numbered after the people's.
+		parts = append(parts, partLoc{Num: len(rows) + 1, InBank: true})
+	}
+	// The database stays with the primary heir. The runbook names who has it,
+	// never where it is kept, because the share holders get a copy of this page.
+	kdbxHolder := f("heir")
+	if kdbxHolder == "" {
+		kdbxHolder = i18n.S(l, "rb.map.heir")
+	}
 	names := make([]string, 0, len(tech))
 	for _, p := range tech {
 		names = append(names, p.Name)
@@ -470,7 +486,7 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 		AllPersons: rows, TechPersons: tech, OtherPersons: other, TechNames: joinNames(l, names),
 		Parts:     parts,
 		Threshold: threshold, Count: count,
-		Bank: f("bank"), KdbxCopies: f("kdbx_copies"),
+		Bank: f("bank"), BankShare: bankShare, BankKdbx: bankKdbx, KdbxHolder: kdbxHolder,
 		ToolWhere: f("tool_where"), ToolURL: toolURL(f("tool_url")),
 		WalletNotes: f("wallet_notes"), FamilyNotes: f("family_notes"),
 		TechSuffix: aside(l, joinNames(l, names)),

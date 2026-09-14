@@ -445,3 +445,98 @@ func TestRunbookDownloadURLIsOverridable(t *testing.T) {
 		t.Errorf("the address did not survive the edit round trip")
 	}
 }
+
+// A share kept in the bank vault has no holder row: it is numbered after the
+// people's shares, and the text tells the heir it is there with the envelope.
+func TestRunbookBankShare(t *testing.T) {
+	s := newTestServer(t)
+	form := url.Values{
+		"lang":           {"en"},
+		"person_name":    {"Alica", "Bob"},
+		"person_contact": {"a@example.com", "b@example.com"},
+		"person_tech":    {"tech", "nontech"},
+		"threshold":      {"2"}, "count": {"3"},
+		"bank_share": {"1"},
+	}
+	body := do(s, http.MethodPost, "/runbook", form).Body.String()
+	for _, want := range []string{
+		"<td>Share 3</td><td>bank vault, together with the envelope</td>",
+		"One of the shares is in the <strong>bank vault</strong>",
+		"One of them is in the bank vault",
+		`<input type="hidden" name="bank_share" value="1">`, // so editing keeps it
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("runbook with a share in the vault is missing %q", want)
+		}
+	}
+
+	form.Del("bank_share")
+	form["person_name"] = []string{"Alica", "Bob", "Cyril"}
+	form["person_contact"] = []string{"a@example.com", "b@example.com", "c@example.com"}
+	form["person_tech"] = []string{"tech", "nontech", "nontech"}
+	body = do(s, http.MethodPost, "/runbook", form).Body.String()
+	if strings.Contains(body, "together with the envelope") {
+		t.Errorf("a share was put in the vault without being asked for")
+	}
+	if !strings.Contains(body, "<td>Share 3</td><td>held by: Cyril</td>") {
+		t.Errorf("the third share lost its holder")
+	}
+}
+
+// The database stays with the primary heir, and the runbook says so by name, or
+// by role when no name was given, plus the vault when it is there as well.
+func TestRunbookDatabaseStaysWithTheHeir(t *testing.T) {
+	s := newTestServer(t)
+	form := url.Values{
+		"lang": {"en"}, "heir": {"Dana"},
+		"person_name": {"Alica"}, "person_contact": {"a@example.com"}, "person_tech": {"tech"},
+		"threshold": {"1"}, "count": {"1"},
+	}
+	body := do(s, http.MethodPost, "/runbook", form).Body.String()
+	for _, want := range []string{
+		"<td>Password database (.kdbx)</td><td>held by: Dana</td>",
+		"The database is kept by <strong>Dana</strong>.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("runbook missing %q", want)
+		}
+	}
+	if strings.Contains(body, "It is also in the <strong>bank vault</strong>") {
+		t.Errorf("the database was placed in the vault without being asked for")
+	}
+
+	form.Set("bank_kdbx", "1")
+	body = do(s, http.MethodPost, "/runbook", form).Body.String()
+	for _, want := range []string{
+		"<td>held by: Dana, and in the bank vault</td>",
+		"It is also in the <strong>bank vault</strong>.",
+		`<input type="hidden" name="bank_kdbx" value="1">`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("runbook with the database in the vault is missing %q", want)
+		}
+	}
+
+	form.Del("heir")
+	body = do(s, http.MethodPost, "/runbook", form).Body.String()
+	if !strings.Contains(body, "held by: the primary heir") {
+		t.Errorf("without a name the database row should name the role")
+	}
+}
+
+// Both vault choices come back ticked when the owner clicks edit.
+func TestRunbookEditKeepsVaultChoices(t *testing.T) {
+	s := newTestServer(t)
+	body := do(s, http.MethodPost, "/runbook", url.Values{
+		"edit": {"1"}, "lang": {"en"}, "bank_share": {"1"}, "bank_kdbx": {"1"},
+		"threshold": {"2"}, "count": {"3"},
+	}).Body.String()
+	for _, want := range []string{
+		`name="bank_share" value="1" checked`,
+		`name="bank_kdbx" value="1" checked`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("edit form lost %q", want)
+		}
+	}
+}

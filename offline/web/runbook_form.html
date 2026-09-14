@@ -28,6 +28,7 @@
       <legend>{{t .L "rbform.scheme"}}</legend>
       <label>{{t .L "rbform.threshold"}} <input type="number" name="threshold" value="{{.Threshold}}" min="1" max="16"></label>
       <label>{{t .L "rbform.count"}} <input type="number" id="count" name="count" value="{{.Count}}" min="1" max="16"></label>
+      <label class="inline"><input type="checkbox" id="bank_share" name="bank_share" value="1"{{if .BankShare}} checked{{end}}> {{t .L "rbform.bankshare"}}</label>
     </fieldset>
 
     <fieldset>
@@ -51,13 +52,15 @@
     <fieldset>
       <legend>{{t .L "rbform.envelope"}}</legend>
       <label>{{t .L "rbform.bank"}} <input name="bank" value="{{.Bank}}" placeholder="{{ts .L "rbform.ph.bank"}}"></label>
+      <label class="inline"><input type="checkbox" name="bank_kdbx" value="1"{{if .BankKdbx}} checked{{end}}> {{t .L "rbform.bankkdbx"}}</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>{{t .L "rbform.tool"}}</legend>
       <label>{{t .L "rbform.toolurl"}}
         <input name="tool_url" value="{{.ToolURL}}" placeholder="https://github.com/…"></label>
       <label>{{t .L "rbform.toolwhere"}}
         <input name="tool_where" value="{{.ToolWhere}}" placeholder="{{ts .L "rbform.ph.toolwhere"}}"></label>
-      <label>{{t .L "rbform.kdbx"}}
-        <textarea name="kdbx_copies" rows="3" placeholder="{{ts .L "rbform.ph.kdbx"}}">{{.KdbxCopies}}</textarea>
-      </label>
     </fieldset>
 
     <fieldset>
@@ -103,10 +106,13 @@
       var n = parseInt(document.getElementById('count').value, 10);
       if (isNaN(n) || n < 1) n = 1;
       if (n > 16) n = 16;
+      // the share in the bank vault has no holder, so it gets no row
+      if (document.getElementById('bank_share').checked) n -= 1;
       setRows(n);
     }
     document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('count').addEventListener('input', syncRows);
+      document.getElementById('bank_share').addEventListener('change', syncRows);
       var c = document.getElementById('parts');
       if (c.children.length === 0) syncRows(); // fresh form: build from count
       else renumber(c);                        // pre-filled (edit): keep rows
