@@ -116,9 +116,11 @@ Návrhové rozhodnutia, z ktorých všetko ostatné vyplýva:
 - **Faktor B (kovové časti):** key-file ku KeePass DB rozdelený cez **SLIP-39
   (K-z-N)** na slová, vyryté do kovu, časti rozmiestnené po lokalitách.
 
-**KeePass DB** (seed + všetky ostatné heslá a prístupy + návod) je zašifrovaná;
-jej **ciphertext (`.kdbx`) môže byť pokojne aj v cloude**, bez key-filu je to
-zbytočný balast.
+**KeePass DB** (seed + všetky ostatné heslá a prístupy + návod) má u seba
+**hlavný dedič** a voliteľne je jedna aj v bankovom trezore. Držitelia častí ju
+zámerne nemajú a v cloude nie je. Kto databázu nemá a nevie, kde je, tomu
+zložený key-file nepomôže, ani keď sa dá dokopy dosť držiteľov. A keby ju mal
+každý držiteľ, pri každej zmene prístupov by bolo treba obísť všetkých.
 
 ```
 KeePass DB sa otvorí  =  key-file (K z N kovových častí)        # -> seed + ostatné heslá
@@ -148,18 +150,38 @@ test vektorom**, žiadna vlastná kryptografia.
 
 Príklad pre 2-z-3; častí môže byť ľubovoľný počet:
 
-| Lokalita | Faktor B (kovová časť) | Faktor A (obálka) | Ciphertext `.kdbx` |
+| Lokalita | Faktor B (kovová časť) | Faktor A (obálka) | Databáza (`.kdbx`) |
 |---|---|---|---|
-| **lokalita A**, hlavný dedič | časť #1 | – | kópia |
-| **bankový trezor** | – | **zapečatená obálka** | kópia |
-| **lokalita B**, dôveryhodná osoba | časť #2 | – | kópia |
-| **lokalita C**, technicky zdatná osoba | časť #3 | (od DMS po spustení, šifrovaná na ňu) | kópia |
-| **Cloud** | – | – | kópia (šifrovaná) |
+| **lokalita A**, hlavný dedič | časť #1 | – | ✓ |
+| **bankový trezor** | voliteľne jedna z častí | **zapečatená obálka** | ✓ (voliteľne) |
+| **lokalita B**, dôveryhodná osoba | časť #2 | – | – |
+| **lokalita C**, technicky zdatná osoba | časť #3 | (od DMS po spustení, šifrovaná na ňu) | – |
 | **DMS** | – | obálky šifrované na svojich príjemcov | – |
 
 Recovery BTC vyžaduje **K z N častí + obálku** (z banky alebo od DMS) → čiže
 „hlavný dedič + jeden dôveryhodný pomocník“. Jedna časť sama o sebe je
 bezcenná, preto je riziko u jednotlivých držiteľov nízke.
+
+Obe voľby pre trezor sú vo formulári runbooku ako zaškrtávacie políčka, takže ich
+vytlačená mapa uvedie. Každá z nich ale robí trezor lákavejším: s oboma má ten,
+kto sa dostane do schránky, jednu časť, obálku aj databázu, a ak je passphrase
+v nej čitateľná, chýba mu k minciam už len K−1 častí. Aj preto sa oplatí
+passphrase v trezore chrániť.
+
+#### Passphrase v trezore
+
+Napísaná ako obyčajný text je passphrase v trezore chránená len tou schránkou.
+Ako ju uložiť lepšie, toto repo nerieši, ale možností je viac:
+
+- **zašifrovať ju na GPG kľúč hlavného dediča**, takže v trezore je ciphertext,
+  ktorý otvorí len dedič, rovnako ako to DMS robí so svojou obálkou;
+- **ukryť ju v dlhšom texte** tak, aby ju vedel prečítať len dedič;
+- **rozdeliť ju**: časť v trezore, zvyšok niečo, čo vie len dedič;
+- **zašifrovať ju heslom, ktoré dedič pozná** a ktoré nikde nie je napísané.
+
+Každá z nich pridáva niečo, čo dedič musí mať alebo si pamätať práve vtedy, keď
+na tom záleží: kľúč, postup, spomienku. Keď sa to stratí, stratí sa s tým aj
+passphrase v trezore, preto to patrí do ročnej obnovy nanečisto.
 
 
 ### Recovery (postup pre netechnického dediča)
@@ -167,9 +189,9 @@ bezcenná, preto je riziko u jednotlivých držiteľov nízke.
 1. Otvorí tlačený **runbook** (kópie sú v banke aj u dôveryhodných osôb).
 2. Zavolá **technicky zdatnej osobe**, ktorá ho prevedie postupom (aj cez video).
 3. Získa **obálku s passphrase**, buď z bankového trezoru, alebo ju už poslal DMS.
-4. Pozbiera **K častí** od držiteľov.
-5. V **offline nástroji**: SLIP-39 slová → key-file → otvorí KeePass DB
-   (štandardnou appkou) → dostane sa k seedu a všetkým prístupom.
+4. Pozbiera **K častí** od držiteľov (jedna môže byť v bankovom trezore).
+5. V **offline nástroji**: SLIP-39 slová → key-file → otvorí KeePass DB (svoju,
+   alebo tú z trezoru) štandardnou appkou → dostane sa k seedu a všetkým prístupom.
 6. Na peňaženke obnoví zo **seedu + passphrase** (z obálky) → BTC.
 7. (Voliteľné) presunie BTC do vlastnej novej peňaženky.
 
@@ -188,11 +210,11 @@ v oficiálnom SLIP-39 zozname.
 ### Ročná údržba
 
 - Čitateľnosť a prítomnosť **všetkých častí** (potvrdiť s držiteľmi).
-- Obálka v banke neporušená; `.kdbx` kópie sa otvárajú.
+- Obálka v banke neporušená a databáza sa otvára: dedičova, aj tá v trezore, ak tam je.
 - Test check-inu DMS.
 - **Raz za rok nanečisto celá obnova** na náhradnom zariadení, aspoň raz aj na
   Windows (tá binárka sa inde otestovať nedá).
-- Aktualizácia DB pri zmene prístupov + re-tlač runbooku.
+- Aktualizácia DB pri zmene prístupov (aj tej v trezore, ak tam je) + re-tlač runbooku.
 
 ### Čo systém nerieši
 

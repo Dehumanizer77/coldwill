@@ -114,8 +114,12 @@ The decisions everything else follows from:
   locations.
 
 The **KeePass database** holds the seed, every other credential and a written
-procedure. It is encrypted, so its **ciphertext (`.kdbx`) can sit in the cloud**
-quite safely: without the key file it is ballast.
+procedure. It stays with the **primary heir**, and optionally one more sits in the
+bank vault. It deliberately does not go to the share holders or into the cloud.
+Holders who neither have the database nor know where it is gain nothing by
+reassembling the key file, even if enough of them get together. And a database
+kept by every holder would mean visiting all of them whenever a credential
+changes.
 
 ```
 Database opens  =  key file (K of N metal shares)          # -> seed + credentials
@@ -146,19 +150,40 @@ cryptography on the critical path.
 
 An example for 2 of 3. The number of shares is up to you:
 
-| Location | Factor B (metal share) | Factor A (envelope) | `.kdbx` ciphertext |
+| Location | Factor B (metal share) | Factor A (envelope) | Database (`.kdbx`) |
 |---|---|---|---|
-| **location A**, primary heir | share #1 | – | copy |
-| **bank vault** | – | **sealed envelope** | copy |
-| **location B**, trusted person | share #2 | – | copy |
-| **location C**, technical helper | share #3 | (from the switch once triggered, encrypted to them) | copy |
-| **Cloud** | – | – | copy (encrypted) |
+| **location A**, primary heir | share #1 | – | ✓ |
+| **bank vault** | optionally one of the shares | **sealed envelope** | ✓ (optional) |
+| **location B**, trusted person | share #2 | – | – |
+| **location C**, technical helper | share #3 | (from the switch once triggered, encrypted to them) | – |
 | **Switch** | – | envelopes encrypted to their recipients | – |
 
 Recovering the Bitcoin needs **K of N shares plus an envelope**, from the vault
 or from the switch, which in practice means the primary heir plus one trusted
 helper. A single share on its own is worthless, which is what keeps the risk to
 each individual holder low.
+
+Both vault options are checkboxes on the runbook form, so the printed map shows
+whichever you chose. Each makes the vault a bigger prize: with both, whoever gets
+into the box has a share, the envelope and the database, and if the passphrase
+in it is readable, is K−1 shares away from the coins. That is one more reason to
+protect the passphrase there.
+
+#### The passphrase in the vault
+
+Written out in plain text, the passphrase in the vault is only as safe as the
+box. How to store it better is outside the scope of this repository, but there
+are several ways to go about it:
+
+- **encrypt it to the primary heir's GPG key**, so the vault holds ciphertext only
+  the heir can open, which is what the switch already does with its envelope;
+- **hide it in a longer text**, in a way only the heir knows how to read back;
+- **split it**, with part in the vault and the rest something only the heir knows;
+- **encrypt it with a password the heir knows** and that is never written down.
+
+Each of these adds something the heir must still have or remember when it
+matters: a key, a method, a memory. Lose that and the passphrase in the vault is
+lost with it, so walk through it during the annual dry run.
 
 ### Recovery, as the heir experiences it
 
@@ -167,9 +192,10 @@ each individual holder low.
 2. Call the **technical helper**, who walks them through it.
 3. Get the **envelope with the passphrase**, from the bank vault or from the
    switch, which has already mailed it.
-4. Collect **K shares** from their holders.
+4. Collect **K shares** from their holders, one of which may be in the bank vault.
 5. In the **offline tool**: SLIP-39 words → key file → open the KeePass database
-   with a standard app → the seed and every other credential.
+   (the heir's own, or the one in the vault) with a standard app → the seed and
+   every other credential.
 6. Restore the wallet from the **seed**, then unlock it with the **passphrase**.
 7. Optionally, and recommended, move the coins to a fresh wallet the heir
    controls.
@@ -188,11 +214,13 @@ a tool rejects abbreviations, the full words are in the official wordlist.
 ### Annual maintenance
 
 - All shares present and legible, confirmed with their holders.
-- Envelope in the vault intact; the `.kdbx` copies still open.
+- Envelope in the vault intact, and the database opens: the heir's, and the one
+  in the vault if there is one.
 - Test the switch's check-in.
 - **A full dry-run recovery**, once a year, on a spare machine. At least once
   that should be on Windows, since that binary cannot be tested anywhere else.
-- Update the database when credentials change, and reprint the runbook.
+- Update the database when credentials change, replace the one in the vault if
+  there is one, and reprint the runbook.
 
 ### What the system does not solve
 
