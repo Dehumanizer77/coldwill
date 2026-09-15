@@ -6,27 +6,12 @@
   "user_email": "you@example.com",
   "user_lang": "en",
 
-  "_envelopes": "Each envelope has its own file and its own recipients: the same envelope to several people = a backup, different envelopes to different people = nobody holds everything. The older envelope_path + friend_email form still works.",
-  "envelopes": [
-    {
-      "id": "passphrase",
-      "path": "/data/envelope-passphrase.asc",
-      "subject": "Important — inheritance: passphrase",
-      "to": [
-        { "name": "First", "email": "first@example.com", "signal": "+15550000002", "lang": "en" },
-        { "name": "Second", "email": "second@example.com", "lang": "sk" }
-      ]
-    },
-    {
-      "id": "credentials",
-      "path": "/data/envelope-credentials.asc",
-      "note": "These are the remaining credentials, not the wallet passphrase.",
-      "to": [ { "name": "Third", "email": "third@example.com" } ]
-    }
-  ],
+  "_heir": "The envelope goes to the primary heir and nobody else, on every channel they have an address for. It is the PDF from 'Passphrase in a text': worthless without the password database, so it is stored and sent as it is.",
+  "heir": { "name": "Heir", "email": "heir@example.com", "signal": "+15550000004", "lang": "sk" },
+  "envelope_path": "/data/envelope.pdf",
 
-  "_lang": "Each recipient can have their own language (en, sk, cs); the default is en.",
-  "_signal": "An optional second channel. Leave out the whole `signal` block and every `*_signal` number and everything goes by e-mail alone.",
+  "_lang": "The heir and each confirmer can have their own language (en, sk, cs); the default is en.",
+  "_signal": "An optional second channel. Leave out the whole `signal` block and every signal number and everything goes by e-mail alone.",
   "signal": {
     "api_url": "http://127.0.0.1:8080",
     "from_number": "+15550000000",

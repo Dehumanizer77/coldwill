@@ -34,10 +34,6 @@ type State struct {
 	// bound to it, so they die when a check-in clears it or a new cycle starts.
 	CycleID string `json:"cycle_id,omitempty"`
 
-	// Envelopes already delivered, by id. A partial fire retries only the rest,
-	// so nobody gets the same envelope twice while another is still stuck.
-	Delivered []string `json:"delivered,omitempty"`
-
 	// Secondary channel health; degraded Signal alerts but never blocks firing.
 	SignalOK          bool      `json:"signal_ok"`
 	LastSignalAlertAt time.Time `json:"last_signal_alert_at,omitempty"`
@@ -79,15 +75,6 @@ func (s State) save(path string) error {
 func (s State) hasConfirmed(id string) bool {
 	for _, c := range s.Confirmations {
 		if c == id {
-			return true
-		}
-	}
-	return false
-}
-
-func (s State) wasDelivered(id string) bool {
-	for _, d := range s.Delivered {
-		if d == id {
 			return true
 		}
 	}

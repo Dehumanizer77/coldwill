@@ -16,10 +16,10 @@ var enMessages = map[string]string{
 	"subj.partial":    "[DMS] Confirmation received, waiting for more",
 	"subj.countdown":  "[DMS] The envelope goes out shortly",
 	"subj.sendfail":   "[DMS] ERROR: the envelope could not be sent",
-	"subj.sent":       "[DMS] Envelopes sent",
+	"subj.sent":       "[DMS] The envelope has been sent",
 	"subj.cancelled":  "[DMS] Sending cancelled by your check-in",
 	"subj.signaldown": "[DMS] Signal is not working",
-	"subj.envelope":   "Important, inheritance: encrypted envelope",
+	"subj.envelope":   "Important, inheritance: the envelope",
 
 	// --- bodies to the owner ---
 	"body.checkin":            "Click to confirm you are all right:\n\n%s\n\nIf you do not respond, the process of handing your credentials to the family begins.\n— DMS",
@@ -33,20 +33,17 @@ var enMessages = map[string]string{
 	"body.healthy.signal.bad": "\nSignal channel: NOT WORKING (e-mail carries on).",
 	"body.fault":              "The switch's self-test FAILED: %s\n\nIt will NOT release anything until this is fixed. Check the service on the server.\n— DMS",
 	"body.signaldown":         "The second channel (Signal) is not answering: %s\n\nE-mail carries on and the switch is running normally. Fix Signal when you can.\n— DMS",
-	"body.envfail":            "The envelope cannot be read, so nothing was released. Check the switch.",
-	"body.sendfail":           "The envelope could not be delivered on any channel, so nothing was released. It will be retried.",
-	"body.sendfail.sent":      "Sent: %s\n",
-	"body.sendfail.list":      "Could not deliver: %s\nIt will be retried on the next tick.",
-	"body.sent":               "Envelopes sent: %s.\nIf this is a mistake, contact the recipients.",
-	"body.cancelled":          "Your check-in arrived while the envelopes were going out, so the rest were NOT sent.",
-	"body.cancelled.some":     "\nThese had already gone out: %s. Those cannot be recalled, so let the recipients know it was a false alarm.",
+	"body.envfail":            "The envelope file is unreadable or not a PDF, so nothing was sent. It will be retried; check the switch.",
+	"body.sendfail":           "The envelope could not be delivered on any channel, so nothing was released: %s\nIt will be retried on the next tick.",
+	"body.sent":               "The envelope has been sent to the primary heir (%s).\nIf this is a mistake, let them know.",
+	"body.cancelled":          "Your check-in arrived while the envelope was going out, and it had already reached the primary heir (%s). It cannot be recalled, so let them know it was a false alarm.",
 	"body.cycleid":            "Could not generate a cycle id (the random number generator failed); the confirmation request was NOT sent. It will be retried.",
 
 	// --- to a confirmer ---
-	"body.confirmreq": "Hello %s,\n\nthis is an automatic message. %s has not been heard from for some time.\n\nIF you can confirm that they have died or are permanently incapacitated, open the link and confirm with the button.\nThe encrypted envelope with instructions is then sent after %s.\nIF you cannot confirm this, do nothing.\n\n%s\n— DMS",
+	"body.confirmreq": "Hello %s,\n\nthis is an automatic message. %s has not been heard from for some time.\n\nIF you can confirm that they have died or are permanently incapacitated, open the link and confirm with the button.\nThe envelope is then sent to the primary heir after %s.\nIF you cannot confirm this, do nothing.\n\n%s\n— DMS",
 
-	// --- to an envelope recipient ---
-	"body.envelope": "Hello,\n\nif this message has reached you, %s has probably died or is permanently incapacitated.\n\n%sBelow is a GPG-encrypted envelope. Decrypt it with your key.\nPlease help the family according to the runbook. Thank you.\n\n-----\n%s",
+	// --- to the primary heir ---
+	"body.envelope": "Hello,\n\nif this message has reached you, %s has probably died or is permanently incapacitated.\n\nThe attached PDF is the envelope the runbook talks about: the same text that is kept in the bank vault. On its own it gives nothing away. How to read the passphrase out of it is written in the password database.\n\nTake the runbook and call the technically capable person listed in it, who will help you with the rest.\n— DMS",
 
 	// --- HTTP pages ---
 	"page.running":              "The service is running.",
@@ -58,10 +55,10 @@ var enMessages = map[string]string{
 	"page.checkin.done.title":   "Recorded",
 	"page.checkin.done":         "✓ Thank you, it is recorded that you are alive. The timer is reset.",
 	"page.confirm.title":        "Confirmation",
-	"page.confirm.warn":         "<strong>Careful, this is a serious step.</strong> By confirming you declare that the owner has died or is permanently incapacitated. Handing the credentials to the family begins (an encrypted envelope after a grace period). If you are not certain, DO NOT CONFIRM.",
+	"page.confirm.warn":         "<strong>Careful, this is a serious step.</strong> By confirming you declare that the owner has died or is permanently incapacitated. Handing the credentials to the family begins (the envelope goes to the primary heir after a grace period). If you are not certain, DO NOT CONFIRM.",
 	"page.confirm.btn":          "I confirm the death or permanent incapacity",
 	"page.confirm.done.title":   "Confirmed",
-	"page.confirm.done":         "✓ Confirmed. The envelopes go out after the grace period, unless the owner confirms in the meantime that they are alive.",
+	"page.confirm.done":         "✓ Confirmed. The envelope goes out to the primary heir after the grace period, unless the owner confirms in the meantime that they are alive.",
 	"page.confirm.partial":      "✓ Confirmed. %d of the %d required confirmations so far; the countdown starts when the others confirm too.",
 	"page.confirm.failed.title": "Cannot confirm",
 

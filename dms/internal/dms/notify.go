@@ -29,6 +29,10 @@ func (c Confirmer) recipient() Recipient {
 	return Recipient{Name: c.Name, Email: c.Email, Signal: c.Signal, Lang: i18n.Parse(c.Lang)}
 }
 
+func (h Heir) recipient() Recipient {
+	return Recipient{Name: h.Name, Email: h.Email, Signal: h.Signal, Lang: i18n.Parse(h.Lang)}
+}
+
 // durArg is a duration that is spelled out in each recipient's language at
 // render time, since "7 days" and "7 dní" cannot both be baked into one string.
 type durArg time.Duration
@@ -38,16 +42,11 @@ type durArg time.Duration
 // recipient/channel deliveries succeeded and the failures. Failures are logged,
 // never fatal: the caller decides what a zero delivery count means.
 func (s *Service) notify(rcpts []Recipient, subjKey, bodyKey string, args ...any) (int, error) {
-	return s.send(rcpts, func(l i18n.Lang) string { return i18n.S(l, subjKey) }, subjKey, bodyKey, args...)
+	return s.send(rcpts, nil, subjKey, bodyKey, args...)
 }
 
-// notifyWithSubject is notify for a message whose subject is supplied verbatim,
-// which is how an envelope carries its own.
-func (s *Service) notifyWithSubject(rcpts []Recipient, subject, bodyKey string, args ...any) (int, error) {
-	return s.send(rcpts, func(i18n.Lang) string { return subject }, subject, bodyKey, args...)
-}
-
-func (s *Service) send(rcpts []Recipient, subjOf func(i18n.Lang) string, label, bodyKey string, args ...any) (int, error) {
+// send is notify with optional attachments, which is how the envelope travels.
+func (s *Service) send(rcpts []Recipient, atts []Attachment, subjKey, bodyKey string, args ...any) (int, error) {
 	delivered := 0
 	var errs []error
 
@@ -55,19 +54,19 @@ func (s *Service) send(rcpts []Recipient, subjOf func(i18n.Lang) string, label, 
 	// the whole transaction, so a batched send would silently drop the message
 	// for everyone else on the list, including recipients the relay accepted.
 	for _, r := range rcpts {
-		subject := subjOf(r.Lang)
+		subject := i18n.S(r.Lang, subjKey)
 		body := i18n.S(r.Lang, bodyKey, localize(r.Lang, args)...)
 		if r.Email != "" {
-			if err := s.mail.Send([]string{r.Email}, subject, body); err != nil {
-				log.Printf("dms: email %q to %s failed: %v", label, r.Email, err)
+			if err := s.mail.Send([]string{r.Email}, subject, body, atts...); err != nil {
+				log.Printf("dms: email %q to %s failed: %v", subjKey, r.Email, err)
 				errs = append(errs, fmt.Errorf("e-mail %s: %w", r.Email, err))
 			} else {
 				delivered++
 			}
 		}
 		if r.Signal != "" && s.sig != nil {
-			if err := s.sig.Send([]string{r.Signal}, subject+"\n\n"+body); err != nil {
-				log.Printf("dms: signal %q to %s failed: %v", label, r.Signal, err)
+			if err := s.sig.Send([]string{r.Signal}, subject+"\n\n"+body, atts...); err != nil {
+				log.Printf("dms: signal %q to %s failed: %v", subjKey, r.Signal, err)
 				errs = append(errs, fmt.Errorf("signal %s: %w", r.Signal, err))
 			} else {
 				delivered++

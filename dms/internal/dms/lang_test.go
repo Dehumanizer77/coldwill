@@ -10,18 +10,12 @@ import (
 // gets their own language while the owner keeps his.
 func TestEachRecipientGetsTheirOwnLanguage(t *testing.T) {
 	cfg := testConfig(t)
-	dir := t.TempDir()
 	cfg.UserLang = "sk"
-	cfg.EnvelopePath, cfg.FriendEmail = "", ""
 	cfg.Confirmers = []Confirmer{
 		{ID: "friend", Name: "Adam", Email: "adam@example.com", Lang: "en"},
 		{ID: "brother", Name: "Boris", Email: "boris@example.com", Lang: "sk"},
 	}
-	cfg.Envelopes = []Envelope{{ID: "passphrase", Path: writeEnvelope(t, dir, "p.asc"),
-		To: []EnvelopeRecipient{
-			{Name: "Cyril", Email: "cyril@example.com", Lang: "en"},
-			{Name: "Dana", Email: "dana@example.com", Lang: "sk"},
-		}}}
+	cfg.Heir = Heir{Name: "Dana", Email: "dana@example.com", Lang: "cs"}
 	cfg.applyDefaults()
 	if err := cfg.validate(); err != nil {
 		t.Fatalf("config: %v", err)
@@ -61,15 +55,10 @@ func TestEachRecipientGetsTheirOwnLanguage(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired", svc.Phase())
 	}
-	if m, ok := fm.sentTo("cyril@example.com", "envelope"); !ok {
-		t.Errorf("Cyril's envelope was not in English")
-	} else if !strings.Contains(m.body, "probably died") {
-		t.Errorf("Cyril's envelope body was not in English")
-	}
 	if m, ok := fm.sentTo("dana@example.com", "obálka"); !ok {
-		t.Errorf("Dana's envelope was not in Slovak")
-	} else if !strings.Contains(m.body, "pravdepodobne zomrel") {
-		t.Errorf("Dana's envelope body was not in Slovak")
+		t.Errorf("Dana's envelope was not in Czech")
+	} else if !strings.Contains(m.body, "pravděpodobně zemřel") {
+		t.Errorf("Dana's envelope body was not in Czech")
 	}
 }
 

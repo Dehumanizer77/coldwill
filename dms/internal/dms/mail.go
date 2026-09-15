@@ -2,18 +2,30 @@ package dms
 
 import (
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"mime"
+	"mime/multipart"
 	"net"
 	"net/smtp"
+	"net/textproto"
 	"strings"
 	"time"
 )
 
-// Mailer sends plain-text UTF-8 email and can check that its transport is
-// reachable (used by the self-test).
+// Attachment is a file sent along with a message. The envelope PDF is the only
+// one there is.
+type Attachment struct {
+	Name        string // file name the recipient sees
+	ContentType string // e.g. application/pdf
+	Data        []byte
+}
+
+// Mailer sends UTF-8 email, with attachments if there are any, and can check
+// that its transport is reachable (used by the self-test).
 type Mailer interface {
-	Send(to []string, subject, body string) error
+	Send(to []string, subject, body string, atts ...Attachment) error
 	Check() error
 }
 
@@ -53,7 +65,7 @@ func (m *SMTPMailer) Check() error {
 // contain any IP SANs") — and every notification, the envelope included, would
 // fail. On loopback TLS buys nothing: the bytes never leave the machine. Any
 // other relay must offer STARTTLS and present a certificate that verifies.
-func (m *SMTPMailer) Send(to []string, subject, body string) error {
+func (m *SMTPMailer) Send(to []string, subject, body string, atts ...Attachment) error {
 	host, _, err := net.SplitHostPort(m.Addr)
 	if err != nil {
 		return fmt.Errorf("smtp addr %q: %w", m.Addr, err)
@@ -96,7 +108,7 @@ func (m *SMTPMailer) Send(to []string, subject, body string) error {
 	if err != nil {
 		return fmt.Errorf("smtp DATA: %w", err)
 	}
-	if _, err := w.Write([]byte(m.message(to, subject, body))); err != nil {
+	if _, err := w.Write([]byte(m.message(to, subject, body, atts))); err != nil {
 		return fmt.Errorf("smtp write: %w", err)
 	}
 	if err := w.Close(); err != nil {
@@ -105,17 +117,49 @@ func (m *SMTPMailer) Send(to []string, subject, body string) error {
 	return c.Quit()
 }
 
-func (m *SMTPMailer) message(to []string, subject, body string) string {
+func (m *SMTPMailer) message(to []string, subject, body string, atts []Attachment) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "From: %s\r\n", m.From)
 	fmt.Fprintf(&b, "To: %s\r\n", strings.Join(to, ", "))
 	fmt.Fprintf(&b, "Subject: %s\r\n", mime.QEncoding.Encode("UTF-8", subject))
 	fmt.Fprintf(&b, "Date: %s\r\n", time.Now().UTC().Format(time.RFC1123Z))
 	b.WriteString("MIME-Version: 1.0\r\n")
-	b.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n")
-	b.WriteString("\r\n")
-	b.WriteString(body)
+	if len(atts) == 0 {
+		b.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n")
+		b.WriteString("\r\n")
+		b.WriteString(body)
+		return b.String()
+	}
+
+	// Everything below writes into a strings.Builder, which cannot fail, so the
+	// multipart errors are not checked.
+	mw := multipart.NewWriter(&b)
+	fmt.Fprintf(&b, "Content-Type: multipart/mixed; boundary=%q\r\n\r\n", mw.Boundary())
+	text, _ := mw.CreatePart(textproto.MIMEHeader{
+		"Content-Type":              {`text/plain; charset="UTF-8"`},
+		"Content-Transfer-Encoding": {"8bit"},
+	})
+	io.WriteString(text, body)
+	for _, a := range atts {
+		h := textproto.MIMEHeader{}
+		h.Set("Content-Type", mime.FormatMediaType(a.ContentType, map[string]string{"name": a.Name}))
+		h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": a.Name}))
+		h.Set("Content-Transfer-Encoding", "base64")
+		part, _ := mw.CreatePart(h)
+		writeBase64(part, a.Data)
+	}
+	mw.Close()
 	return b.String()
+}
+
+// writeBase64 wraps the encoding at 76 characters, the line length MIME allows.
+func writeBase64(w io.Writer, data []byte) {
+	enc := base64.StdEncoding.EncodeToString(data)
+	for len(enc) > 76 {
+		io.WriteString(w, enc[:76]+"\r\n")
+		enc = enc[76:]
+	}
+	io.WriteString(w, enc+"\r\n")
 }
 
 func isLoopbackHost(host string) bool {

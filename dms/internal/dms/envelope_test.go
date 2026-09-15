@@ -1,6 +1,7 @@
 package dms
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,42 +9,8 @@ import (
 	"time"
 )
 
-func writeEnvelope(t *testing.T, dir, name string) string {
-	t.Helper()
-	p := filepath.Join(dir, name)
-	if err := os.WriteFile(p, []byte("-----BEGIN PGP MESSAGE-----\n"+name+"\n-----END PGP MESSAGE-----\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	return p
-}
-
-// Two envelopes with different contents and different recipients: the split
-// case — one person gets the passphrase, another gets the rest.
-func newTwoEnvelopeSvc(t *testing.T) (*Service, *fakeMailer, *clk) {
-	t.Helper()
-	cfg := testConfig(t)
-	dir := t.TempDir()
-	cfg.EnvelopePath, cfg.FriendEmail, cfg.FriendSignal = "", "", ""
-	cfg.Envelopes = []Envelope{
-		{ID: "passphrase", Path: writeEnvelope(t, dir, "pass.asc"),
-			Subject: "Inheritance: passphrase",
-			To:      []EnvelopeRecipient{{Name: "First", Email: "first@example.com"}}},
-		{ID: "credentials", Path: writeEnvelope(t, dir, "acc.asc"),
-			Note: "These are the remaining credentials.",
-			To:   []EnvelopeRecipient{{Name: "Second", Email: "second@example.com"}}},
-	}
-	cfg.applyDefaults()
-	if err := cfg.validate(); err != nil {
-		t.Fatalf("config: %v", err)
-	}
-	c, fm := newClock(), &fakeMailer{}
-	svc, err := New(cfg, c.now, fm, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return svc, fm, c
-}
-
+// fireIt walks a service through silence, a confirmation and the countdown to
+// the tick that releases the envelope.
 func fireIt(t *testing.T, svc *Service, c *clk) {
 	t.Helper()
 	svc.Tick()
@@ -56,164 +23,102 @@ func fireIt(t *testing.T, svc *Service, c *clk) {
 	svc.Tick()
 }
 
-func TestEachEnvelopeGoesToItsOwnRecipient(t *testing.T) {
-	svc, fm, c := newTwoEnvelopeSvc(t)
+// The envelope goes to the primary heir and to nobody else: not the confirmers,
+// who only attest, and not the owner.
+func TestEnvelopeGoesOnlyToTheHeir(t *testing.T) {
+	svc, fm, c := newSvc(t)
 	fireIt(t, svc, c)
 
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired", svc.Phase())
 	}
-	pass, ok := fm.sentTo("first@example.com", "passphrase")
+	m, ok := fm.sentTo("heir@example.com", "inheritance")
 	if !ok {
-		t.Fatalf("passphrase envelope not sent to its recipient")
+		t.Fatalf("the heir did not get the envelope")
 	}
-	if !strings.Contains(pass.body, "pass.asc") {
-		t.Errorf("wrong ciphertext in the passphrase envelope")
+	if len(m.atts) != 1 || m.atts[0].Name != "envelope.pdf" || string(m.atts[0].Data) != testPDF {
+		t.Errorf("envelope not attached as the PDF from envelope_path: %+v", m.atts)
 	}
-	acc, ok := fm.sentTo("second@example.com", "envelope")
-	if !ok {
-		t.Fatalf("accounts envelope not sent to its recipient")
+	if strings.Contains(m.body, "%PDF") {
+		t.Errorf("the PDF was pasted into the body instead of attached")
 	}
-	if !strings.Contains(acc.body, "acc.asc") {
-		t.Errorf("wrong ciphertext in the accounts envelope")
-	}
-	if !strings.Contains(acc.body, "These are the remaining credentials.") {
-		t.Errorf("envelope note missing from the body")
-	}
-	// Neither recipient may receive the other's envelope.
-	if _, wrong := fm.sentTo("first@example.com", "envelope"); wrong {
-		t.Errorf("first recipient also got the second envelope")
-	}
-}
-
-// The same envelope to several people: redundancy, so one unreachable person
-// does not sink the whole path.
-func TestOneEnvelopeManyRecipients(t *testing.T) {
-	cfg := testConfig(t)
-	dir := t.TempDir()
-	cfg.EnvelopePath, cfg.FriendEmail = "", ""
-	cfg.Envelopes = []Envelope{{ID: "passphrase", Path: writeEnvelope(t, dir, "pass.asc"),
-		To: []EnvelopeRecipient{
-			{Email: "first@example.com"}, {Email: "second@example.com"}, {Email: "third@example.com"},
-		}}}
-	cfg.applyDefaults()
-	c, fm := newClock(), &fakeMailer{}
-	svc, err := New(cfg, c.now, fm, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fireIt(t, svc, c)
-
-	for _, to := range []string{"first@example.com", "second@example.com", "third@example.com"} {
-		if _, ok := fm.sentTo(to, "envelope"); !ok {
-			t.Errorf("%s did not get the envelope", to)
+	for _, other := range []string{"friend@example.com", "brother@example.com", "me@example"} {
+		if _, ok := fm.sentTo(other, "inheritance"); ok {
+			t.Errorf("%s received the envelope", other)
 		}
 	}
 }
 
-// A missing second envelope must block the whole firing, not send half of it.
-func TestMissingSecondEnvelopeBlocksFiring(t *testing.T) {
-	svc, fm, c := newTwoEnvelopeSvc(t)
-	_ = os.Remove(svc.cfg.Envelopes[1].Path)
+// A file that is not a PDF is a fault, so the wrong file is caught while the
+// owner can still replace it, not on the day it goes out.
+func TestEnvelopeThatIsNotAPDFIsAFault(t *testing.T) {
+	svc, fm, c := newSvc(t)
+	if err := os.WriteFile(svc.cfg.EnvelopePath, []byte("passphrase character 1: paragraph 1, word 3\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	fireIt(t, svc, c)
 
 	if svc.Phase() == PhaseFired {
-		t.Fatalf("fired with an unreadable envelope")
-	}
-	if _, ok := fm.sentTo("first@example.com", "passphrase"); ok {
-		t.Errorf("sent an envelope while the service was unhealthy")
+		t.Fatalf("fired with an envelope that is not a PDF")
 	}
 	if fm.countSubj("FAULT") == 0 {
-		t.Errorf("expected a fault alert naming the broken envelope")
+		t.Errorf("expected a fault alert about the envelope")
+	}
+	if _, ok := fm.sentTo("heir@example.com", "inheritance"); ok {
+		t.Errorf("the wrong file was sent to the heir")
 	}
 }
 
-// Partial delivery: what got out is remembered, the rest is retried, and
-// nobody receives the same envelope twice.
-func TestPartialDeliveryRetriesOnlyTheRest(t *testing.T) {
-	svc, fm, c := newTwoEnvelopeSvc(t)
-	svc.Tick()
-	c.add(61 * 24 * time.Hour)
-	svc.Tick()
-	if err := svc.Confirm("friend"); err != nil {
-		t.Fatal(err)
-	}
-
-	// A missing file is a fault and blocks firing entirely, so a partial fire
-	// can only come from delivery: the second recipient's mailbox rejects.
-	fm.reset()
-	fm.failTo = map[string]bool{"second@example.com": true}
-	c.add(7 * 24 * time.Hour)
-	svc.Tick()
-
+// A check-in after a delivery that failed leaves nothing behind: if the owner
+// later really dies, the envelope goes out in full.
+func TestCheckInAfterFailedDeliverySendsItAgain(t *testing.T) {
+	svc, fm, c := newSvc(t)
+	fm.failTo = map[string]bool{"heir@example.com": true}
+	fireIt(t, svc, c)
 	if svc.Phase() != PhaseCountdown {
-		t.Fatalf("phase = %s, want still counting down after a partial delivery", svc.Phase())
+		t.Fatalf("phase = %s, want still counting down after a failed delivery", svc.Phase())
 	}
-	if _, ok := fm.sentTo("first@example.com", "passphrase"); !ok {
-		t.Fatalf("the readable envelope was not delivered")
-	}
-	if fm.countSubj("could not be sent") == 0 {
-		t.Errorf("owner was not told about the failed envelope")
-	}
-
-	// Their mailbox recovers: the next tick delivers only what is left.
-	fm.failTo = nil
-	fm.reset()
-	svc.Tick()
-
-	if svc.Phase() != PhaseFired {
-		t.Fatalf("phase = %s, want fired once everything is out", svc.Phase())
-	}
-	if _, ok := fm.sentTo("second@example.com", "envelope"); !ok {
-		t.Errorf("the retried envelope was not delivered")
-	}
-	if _, again := fm.sentTo("first@example.com", "passphrase"); again {
-		t.Errorf("the already delivered envelope was sent a second time")
-	}
-}
-
-// A veto after a partial fire must forget what was delivered: if the owner
-// later really dies, every envelope has to go out again.
-func TestCheckInClearsPartialDelivery(t *testing.T) {
-	svc, fm, c := newTwoEnvelopeSvc(t)
-	svc.Tick()
-	c.add(61 * 24 * time.Hour)
-	svc.Tick()
-	if err := svc.Confirm("friend"); err != nil {
-		t.Fatal(err)
-	}
-	fm.failTo = map[string]bool{"second@example.com": true}
-	c.add(7 * 24 * time.Hour)
-	svc.Tick() // partial: first envelope out, second not
 
 	svc.CheckIn() // alive after all
 	fm.failTo = nil
 	fm.reset()
 
-	fireIt(t, svc, c) // silence, confirm and countdown all over again
+	fireIt(t, svc, c) // silence, confirmation and countdown all over again
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired", svc.Phase())
 	}
-	if _, ok := fm.sentTo("first@example.com", "passphrase"); !ok {
-		t.Errorf("after a veto the first envelope must be sent again")
-	}
-	if _, ok := fm.sentTo("second@example.com", "envelope"); !ok {
-		t.Errorf("second envelope not sent")
+	if _, ok := fm.sentTo("heir@example.com", "inheritance"); !ok {
+		t.Errorf("the envelope was not sent on the second release")
 	}
 }
 
-// The old single-envelope config keeps working unchanged.
-func TestLegacySingleEnvelopeConfig(t *testing.T) {
-	cfg := testConfig(t) // envelope_path + friend_email, no envelopes[]
-	cfg.applyDefaults()
-	if err := cfg.validate(); err != nil {
-		t.Fatalf("legacy config rejected: %v", err)
+// Configs from when envelopes could go to anyone name other recipients.
+// Starting one would silently drop them, so it is refused instead.
+func TestRetiredEnvelopeKeysAreRejected(t *testing.T) {
+	example, err := os.ReadFile("../../config.example.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if len(cfg.Envelopes) != 1 || cfg.Envelopes[0].ID != "default" {
-		t.Fatalf("legacy config folded into %#v", cfg.Envelopes)
-	}
-	if to := cfg.Envelopes[0].To; len(to) != 1 || to[0].Email != "friend@example.com" {
-		t.Fatalf("legacy recipient = %#v", to)
+	for _, key := range []string{"envelopes", "friend_email", "friend_signal"} {
+		t.Run(key, func(t *testing.T) {
+			var raw map[string]any
+			if err := json.Unmarshal(example, &raw); err != nil {
+				t.Fatal(err)
+			}
+			raw[key] = "x"
+			b, err := json.Marshal(raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p := filepath.Join(t.TempDir(), "config.json")
+			if err := os.WriteFile(p, b, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			_, err = LoadConfig(p)
+			if err == nil || !strings.Contains(err.Error(), key) || !strings.Contains(err.Error(), "heir") {
+				t.Fatalf("err = %v, want a refusal naming %s and pointing at heir", err, key)
+			}
+		})
 	}
 }
 
@@ -223,25 +128,10 @@ func TestEnvelopeValidation(t *testing.T) {
 		mutate  func(*Config)
 		wantErr string
 	}{
-		{"no envelope at all", func(c *Config) { c.EnvelopePath, c.FriendEmail = "", "" }, "at least one envelope"},
-		{"duplicate id", func(c *Config) {
-			c.Envelopes = []Envelope{
-				{ID: "a", Path: "/x", To: []EnvelopeRecipient{{Email: "a@b"}}},
-				{ID: "a", Path: "/y", To: []EnvelopeRecipient{{Email: "c@d"}}},
-			}
-		}, "duplicate envelope id"},
-		{"no recipient", func(c *Config) {
-			c.Envelopes = []Envelope{{ID: "a", Path: "/x"}}
-		}, "at least one recipient"},
-		{"recipient with no address", func(c *Config) {
-			c.Envelopes = []Envelope{{ID: "a", Path: "/x", To: []EnvelopeRecipient{{Name: "X"}}}}
-		}, "neither email nor signal"},
-		{"no path", func(c *Config) {
-			c.Envelopes = []Envelope{{ID: "a", To: []EnvelopeRecipient{{Email: "a@b"}}}}
-		}, "path required"},
-		{"signal number without transport", func(c *Config) {
-			c.Envelopes = []Envelope{{ID: "a", Path: "/x", To: []EnvelopeRecipient{{Signal: "+15550000001"}}}}
-		}, "api_url"},
+		{"no envelope", func(c *Config) { c.EnvelopePath = "" }, "envelope_path required"},
+		{"no heir", func(c *Config) { c.Heir = Heir{} }, "heir needs"},
+		{"heir with a name only", func(c *Config) { c.Heir = Heir{Name: "Heir"} }, "heir needs"},
+		{"heir number without transport", func(c *Config) { c.Heir.Signal = "+15550000004" }, "api_url"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

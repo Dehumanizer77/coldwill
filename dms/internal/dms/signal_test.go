@@ -1,6 +1,7 @@
 package dms
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,8 +13,9 @@ import (
 )
 
 type sentSignal struct {
-	to  []string
-	msg string
+	to   []string
+	msg  string
+	atts []Attachment
 }
 
 type fakeSignal struct {
@@ -23,13 +25,13 @@ type fakeSignal struct {
 	sendErr  error
 }
 
-func (f *fakeSignal) Send(numbers []string, message string) error {
+func (f *fakeSignal) Send(numbers []string, message string, atts ...Attachment) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.sendErr != nil {
 		return f.sendErr
 	}
-	f.sent = append(f.sent, sentSignal{numbers, message})
+	f.sent = append(f.sent, sentSignal{numbers, message, atts})
 	return nil
 }
 func (f *fakeSignal) Check() error { return f.checkErr }
@@ -55,13 +57,14 @@ const (
 	numOwner   = "+15550000001"
 	numFriend  = "+15550000002"
 	numBrother = "+15550000003"
+	numHeir    = "+15550000004"
 )
 
 func newSignalSvc(t *testing.T) (*Service, *fakeMailer, *fakeSignal, *clk) {
 	t.Helper()
 	cfg := testConfig(t)
 	cfg.UserSignal = numOwner
-	cfg.FriendSignal = numFriend
+	cfg.Heir.Signal = numHeir
 	cfg.Confirmers[0].Signal = numFriend
 	cfg.Confirmers[1].Signal = numBrother
 	cfg.Signal = SignalConfig{APIURL: "http://127.0.0.1:8080", FromNumber: "+15550000000", Timeout: Duration(5 * time.Second)}
@@ -133,7 +136,7 @@ func TestSignalDownStillFires(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired despite a broken Signal", svc.Phase())
 	}
-	if _, ok := fm.sentTo("friend@example.com", "inheritance"); !ok {
+	if _, ok := fm.sentTo("heir@example.com", "inheritance"); !ok {
 		t.Errorf("envelope not delivered by e-mail")
 	}
 	if fm.countSubj("Signal is not working") == 0 {
@@ -162,12 +165,12 @@ func TestSignalDeliversEnvelopeWhenMailSendFails(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired via Signal", svc.Phase())
 	}
-	m, ok := fs.sentTo(numFriend, "BEGIN PGP MESSAGE")
+	m, ok := fs.sentTo(numHeir, "inheritance")
 	if !ok {
 		t.Fatalf("envelope not delivered on Signal")
 	}
-	if !strings.Contains(m.msg, "inheritance") {
-		t.Errorf("Signal envelope missing its subject line: %q", m.msg)
+	if len(m.atts) != 1 || string(m.atts[0].Data) != testPDF {
+		t.Errorf("the Signal message does not carry the envelope PDF: %+v", m.atts)
 	}
 }
 
@@ -195,7 +198,7 @@ func TestNoChannelDeliversDoesNotFire(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired on retry", svc.Phase())
 	}
-	if _, ok := fm.sentTo("friend@example.com", "inheritance"); !ok {
+	if _, ok := fm.sentTo("heir@example.com", "inheritance"); !ok {
 		t.Errorf("envelope not delivered on retry")
 	}
 }
@@ -225,6 +228,35 @@ func TestSignalAPISend(t *testing.T) {
 	}
 	if r, _ := got["recipients"].([]any); len(r) != 1 || r[0] != numOwner {
 		t.Errorf("bad recipients: %v", got["recipients"])
+	}
+	if _, ok := got["base64_attachments"]; ok {
+		t.Errorf("a plain message must not carry an attachments field: %v", got)
+	}
+}
+
+// The envelope reaches Signal as a data URI, the form the API takes for a file
+// with a name the recipient's phone can show.
+func TestSignalAPISendsAttachment(t *testing.T) {
+	var got struct {
+		Attachments []string `json:"base64_attachments"`
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	pdf := []byte(testPDF)
+	err := NewSignalAPI(srv.URL, "+15550000000", 5*time.Second).Send([]string{numHeir}, "envelope",
+		Attachment{Name: "envelope.pdf", ContentType: "application/pdf", Data: pdf})
+	if err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	want := "data:application/pdf;filename=envelope.pdf;base64," + base64.StdEncoding.EncodeToString(pdf)
+	if len(got.Attachments) != 1 || got.Attachments[0] != want {
+		t.Errorf("attachments = %v, want [%s]", got.Attachments, want)
 	}
 }
 
@@ -284,6 +316,7 @@ func TestSignalConfigValidation(t *testing.T) {
 		{"complete", func(c *Config) { c.Signal, c.UserSignal = full, numOwner }, ""},
 		{"number without transport", func(c *Config) { c.UserSignal = numOwner }, "api_url"},
 		{"confirmer number without transport", func(c *Config) { c.Confirmers[0].Signal = numFriend }, "api_url"},
+		{"heir number without transport", func(c *Config) { c.Heir.Signal = numHeir }, "api_url"},
 		{"transport without numbers", func(c *Config) { c.Signal = full }, "no recipient"},
 		{"half transport", func(c *Config) { c.Signal = SignalConfig{APIURL: full.APIURL} }, "both api_url and from_number"},
 		{"not E.164", func(c *Config) { c.Signal, c.UserSignal = full, "15550000001" }, "E.164"},

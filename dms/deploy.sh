@@ -1,23 +1,22 @@
 #!/usr/bin/env bash
 # deploy.sh - deploys coldwill-switch on THIS server. You run it, by hand.
 #
-#   ./deploy.sh --envelope ~/envelope.asc            # real deployment (e-mail)
-#   ./deploy.sh --envelope ~/envelope.asc --signal   # + Signal channel
-#   ./deploy.sh --envelope passphrase=~/a.asc --envelope credentials=~/b.asc
-#                                                    # several envelopes, each to its own recipients
+#   ./deploy.sh --envelope ~/envelope.pdf            # real deployment (e-mail)
+#   ./deploy.sh --envelope ~/envelope.pdf --signal   # + Signal channel
 #   ./deploy.sh --check                              # preflight only, changes nothing
 #   ./deploy.sh --config-only --force-config         # rewrite config.json only
 #   ./deploy.sh --envelope ... --no-compose          # no compose, plain docker commands
-#   ./deploy.sh --envelope ~/env.asc --test-timings  # rehearsal, minute-scale intervals
+#   ./deploy.sh --envelope ~/env.pdf --test-timings  # rehearsal, minute-scale intervals
+#
+# The envelope is the PDF from "Passphrase in a text" in the offline tool. It
+# goes to the primary heir and nobody else.
 #
 # The script never touches Apache or postfix; it prints what you must add there.
 set -euo pipefail
 
 DATA_ROOT="${COLDWILL_DATA_DIR:-/opt/coldwill-switch}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_IDS=()
-ENV_SRCS=()
-ENV_DSTS=()
+ENV_SRC=""
 WITH_SIGNAL=0
 CHECK_ONLY=0
 CONFIG_ONLY=0
@@ -37,11 +36,8 @@ usage() { sed -n '2,${/^#/!q;s/^# \{0,1\}//;p;}' "${BASH_SOURCE[0]}"; exit 0; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --envelope)
-      spec="${2:?--envelope needs a path (or id=path)}"
-      case "$spec" in
-        *=*) ENV_IDS+=("${spec%%=*}"); ENV_SRCS+=("${spec#*=}") ;;
-        *)   ENV_IDS+=("default");     ENV_SRCS+=("$spec") ;;
-      esac
+      [ -z "$ENV_SRC" ] || die "--envelope given twice: there is one envelope, and it goes to the primary heir"
+      ENV_SRC="${2:?--envelope needs the path to the envelope PDF}"
       shift 2 ;;
     --signal)       WITH_SIGNAL=1; shift ;;
     --check)        CHECK_ONLY=1; shift ;;
@@ -145,29 +141,24 @@ fi
 chmod 700 "$DATA_ROOT" "$DATA" 2>/dev/null || true
 ok "$DATA"
 
-# ----------------------------------------------------------------- envelopes --
-say "Envelopes (GPG ciphertext)"
-if [ ${#ENV_IDS[@]} -gt 0 ]; then
-  for i in "${!ENV_IDS[@]}"; do
-    id="${ENV_IDS[$i]}"; src="${ENV_SRCS[$i]}"
-    case "$id" in *[!a-zA-Z0-9_-]*) die "envelope id '$id' may only contain letters, digits, - and _";; esac
-    [ -f "$src" ] || die "envelope '$src' does not exist"
-    grep -q "BEGIN PGP MESSAGE" "$src" || die "'$src' does not look like an ASCII-armored PGP message"
-    dst="$DATA/envelope-$id.asc"
-    [ "$id" = "default" ] && dst="$DATA/envelope.asc"
-    if [ "$src" -ef "$dst" ]; then
-      ok "$id: already in place ($dst, $(wc -c <"$dst") B)"
-    else
-      install -m 600 "$src" "$dst"
-      ok "$id → $dst ($(wc -c <"$dst") B)"
-    fi
-    ENV_DSTS+=("$dst")
-  done
-elif [ -f "$DATA/envelope.asc" ]; then
-  ENV_IDS=("default"); ENV_DSTS=("$DATA/envelope.asc")
-  ok "envelope.asc already in place (left alone)"
+# ------------------------------------------------------------------ envelope --
+say "Envelope (PDF for the primary heir)"
+ENV_DST="$DATA/envelope.pdf"
+if [ -n "$ENV_SRC" ]; then
+  [ -f "$ENV_SRC" ] || die "envelope '$ENV_SRC' does not exist"
+  # Only a sanity check: it catches the wrong file (the map, say) now rather
+  # than on the day the switch sends it.
+  [ "$(head -c 5 "$ENV_SRC")" = "%PDF-" ] || die "'$ENV_SRC' is not a PDF; the envelope is the PDF from 'Passphrase in a text'"
+  if [ "$ENV_SRC" -ef "$ENV_DST" ]; then
+    ok "already in place ($ENV_DST, $(wc -c <"$ENV_DST") B)"
+  else
+    install -m 600 "$ENV_SRC" "$ENV_DST"
+    ok "$ENV_SRC → $ENV_DST ($(wc -c <"$ENV_DST") B)"
+  fi
+elif [ -f "$ENV_DST" ]; then
+  ok "envelope.pdf already in place (left alone)"
 else
-  die "no envelope; run with --envelope /path/envelope.asc (or --envelope id=path several times; make it offline, see the README)"
+  die "no envelope; run with --envelope /path/envelope.pdf (the PDF from 'Passphrase in a text' in the offline tool)"
 fi
 
 # --------------------------------------------------------------------- config --
@@ -198,40 +189,22 @@ else
     [ -n "$USER_SIG" ] && SIGNAL_BLOCK="$SIGNAL_BLOCK\n$(printf '  "user_signal": "%s",' "$USER_SIG")"
   fi
 
-  # --- recipients of each envelope ---
-  ENVELOPES=""
-  for i in "${!ENV_IDS[@]}"; do
-    eid="${ENV_IDS[$i]}"; epath="${ENV_DSTS[$i]}"
-    # The config is for the container, which has $DATA mounted as /data.
-    cpath="/data/$(basename "$epath")"
-    echo "   -- envelope: $eid ($cpath) --"
-    ETO=""
-    if [ "$TEST_TIMINGS" = 1 ]; then
-      echo "      test: this envelope will go to you, $USER_MAIL"
-      SIGJSON=""
-      [ -n "$USER_SIG" ] && SIGJSON=$(printf ', "signal": "%s"' "$USER_SIG")
-      ETO=$(printf '{ "name": "test", "email": "%s"%s }' "$USER_MAIL" "$SIGJSON")
-    else
-      RN=$(ask "  how many recipients for this envelope?" "1")
-      for r in $(seq 1 "$RN"); do
-        RNAME=$(ask "    $r. name")
-        RMAIL=$(ask "    $r. e-mail")
-        RSIG=""
-        if [ "$WITH_SIGNAL" = 1 ]; then RSIG=$(ask "    $r. Signal number, Enter for none"); fi
-        for v in "$RNAME" "$RMAIL" "$RSIG"; do json_safe "$v"; done
-        if [ -z "$RMAIL" ] && [ -z "$RSIG" ]; then die "a recipient needs at least an e-mail or a Signal number"; fi
-        SIGJSON=""
-        [ -n "$RSIG" ] && SIGJSON=$(printf ', "signal": "%s"' "$RSIG")
-        ONE=$(printf '{ "name": "%s", "email": "%s"%s }' "$RNAME" "$RMAIL" "$SIGJSON")
-        [ -n "$ETO" ] && ETO="$ETO, "
-        ETO="$ETO$ONE"
-      done
-    fi
-    [ -z "$ETO" ] && die "envelope '$eid' has no recipients"
-    [ -n "$ENVELOPES" ] && ENVELOPES="$ENVELOPES,\n"
-    ONE=$(printf '    { "id": "%s", "path": "%s", "to": [ %s ] }' "$eid" "$cpath" "$ETO")
-    ENVELOPES="$ENVELOPES$ONE"
-  done
+  # --- the primary heir, the only person the envelope goes to ---
+  HSIG=""
+  if [ "$TEST_TIMINGS" = 1 ]; then
+    HNAME="test"; HMAIL="$USER_MAIL"; HSIG="$USER_SIG"
+    echo "   (test: the envelope will come to you, $USER_MAIL)"
+  else
+    echo "   -- the primary heir (the envelope goes to them and nobody else) --"
+    HNAME=$(ask "  name")
+    HMAIL=$(ask "  e-mail")
+    [ "$WITH_SIGNAL" = 1 ] && HSIG=$(ask "  Signal number (Enter for none)")
+  fi
+  for v in "$HNAME" "$HMAIL" "$HSIG"; do json_safe "$v"; done
+  [ -n "$HMAIL" ] || [ -n "$HSIG" ] || die "the heir needs at least an e-mail or a Signal number"
+  HEIR=$(printf '  "heir": { "name": "%s", "email": "%s"%s },' \
+    "$HNAME" "$HMAIL" "$([ -n "$HSIG" ] && printf ', "signal": "%s"' "$HSIG")")
+
   N=$(ask "How many confirmers (people who can attest to the death)?" "2")
   CONFIRMERS=""
   for i in $(seq 1 "$N"); do
@@ -256,7 +229,7 @@ else
   done
 
   if [ "$TEST_TIMINGS" = 1 ]; then
-    warn "TEST mode: minute-scale intervals; envelopes and confirmation requests all go to YOU ($USER_MAIL)"
+    warn "TEST mode: minute-scale intervals; the envelope and confirmation requests all go to YOU ($USER_MAIL)"
     T_CHECKIN='"5m"'; T_REMIND='"2m"'; T_SILENCE='"10m"'; T_RELEASE='"5m"'
     T_HEALTH='"5m"';  T_WARN='"1m"';  T_ALERT='"5m"';     T_TICK='"30s"'
   else
@@ -275,7 +248,8 @@ else
     printf '  "user_email": "%s",\n' "$USER_MAIL"
     [ -n "$SIGNAL_BLOCK" ] && printf '%b\n' "$SIGNAL_BLOCK"
     printf '  "confirmers": [\n%b\n  ],\n' "$CONFIRMERS"
-    printf '  "envelopes": [\n%b\n  ],\n' "$ENVELOPES"
+    printf '%s\n' "$HEIR"
+    printf '  "envelope_path": "/data/envelope.pdf",\n'
     printf '  "state_path": "/data/state.json",\n'
     printf '  "hmac_secret": "%s",\n' "$SECRET"
     printf '  "check_in_interval": %s,\n'    "$T_CHECKIN"
@@ -435,6 +409,6 @@ TXT
 [ "$TEST_TIMINGS" = 1 ] && cat <<TXT
 
 NOTE: this is the TEST instance ($DATA_ROOT). Intervals are in minutes and the
-envelopes come to you. When you are done: $DOWN_CMD && rm -rf $DATA_ROOT
+envelope comes to you. When you are done: $DOWN_CMD && rm -rf $DATA_ROOT
 TXT
 say "Done."

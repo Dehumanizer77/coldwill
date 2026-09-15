@@ -6,6 +6,6 @@ RUN CGO_ENABLED=0 go build -trimpath -o /coldwill-switch .
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /coldwill-switch /coldwill-switch
-# /data holds config.json, envelope.asc (GPG ciphertext) and state.json.
+# /data holds config.json, envelope.pdf and state.json.
 VOLUME ["/data"]
 ENTRYPOINT ["/coldwill-switch", "--config", "/data/config.json"]

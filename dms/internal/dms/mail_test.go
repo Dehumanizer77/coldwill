@@ -2,8 +2,14 @@ package dms
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/base64"
 	"fmt"
+	"io"
+	"mime"
+	"mime/multipart"
 	"net"
+	"net/mail"
 	"strings"
 	"sync"
 	"testing"
@@ -144,5 +150,60 @@ func TestIsLoopbackHost(t *testing.T) {
 		if got := isLoopbackHost(host); got != want {
 			t.Errorf("isLoopbackHost(%q) = %v, want %v", host, got, want)
 		}
+	}
+}
+
+// The envelope travels as a real attachment: a multipart message whose second
+// part decodes back to the exact PDF bytes, under the file name the heir sees.
+func TestSendWithAttachment(t *testing.T) {
+	f := newFakeSMTP(t)
+	m := &SMTPMailer{Addr: f.addr(), From: "dms@example.com"}
+	pdf := []byte("%PDF-1.4\n" + strings.Repeat("binary\x00\xff", 40) + "\n%%EOF\n")
+
+	err := m.Send([]string{"heir@example.com"}, "Dôležité — dedičstvo: obálka", "V prílohe je obálka.",
+		Attachment{Name: "envelope.pdf", ContentType: "application/pdf", Data: pdf})
+	if err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	<-f.done
+	f.mu.Lock()
+	raw := f.body
+	f.mu.Unlock()
+
+	msg, err := mail.ReadMessage(strings.NewReader(raw))
+	if err != nil {
+		t.Fatalf("not a parseable message: %v\n%s", err, raw)
+	}
+	mediaType, params, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
+	if err != nil || mediaType != "multipart/mixed" {
+		t.Fatalf("Content-Type = %q (%v), want multipart/mixed", msg.Header.Get("Content-Type"), err)
+	}
+	mr := multipart.NewReader(msg.Body, params["boundary"])
+
+	text, err := mr.NextPart()
+	if err != nil {
+		t.Fatalf("text part: %v", err)
+	}
+	if b, _ := io.ReadAll(text); !strings.Contains(string(b), "V prílohe je obálka.") {
+		t.Errorf("text part = %q", b)
+	}
+
+	att, err := mr.NextPart()
+	if err != nil {
+		t.Fatalf("attachment part: %v", err)
+	}
+	if att.FileName() != "envelope.pdf" {
+		t.Errorf("file name = %q, want envelope.pdf", att.FileName())
+	}
+	if ct := att.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/pdf") {
+		t.Errorf("attachment Content-Type = %q", ct)
+	}
+	encoded, _ := io.ReadAll(att)
+	got, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(string(encoded)), ""))
+	if err != nil {
+		t.Fatalf("attachment is not base64: %v", err)
+	}
+	if !bytes.Equal(got, pdf) {
+		t.Errorf("attachment does not decode to the original PDF")
 	}
 }

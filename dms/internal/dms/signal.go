@@ -2,6 +2,7 @@ package dms
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,17 +11,17 @@ import (
 	"time"
 )
 
-// SignalSender delivers a plain-text message to Signal numbers. It is the
-// secondary channel: e-mail stays primary, and a broken Signal never blocks
-// firing (see Service.Tick).
+// SignalSender delivers a text message, with attachments if there are any, to
+// Signal numbers. It is the secondary channel: e-mail stays primary, and a
+// broken Signal never blocks firing (see Service.Tick).
 type SignalSender interface {
-	Send(numbers []string, message string) error
+	Send(numbers []string, message string, atts ...Attachment) error
 	Check() error
 }
 
 // SignalAPI talks to a signal-cli-rest-api container (bbernhard/signal-cli-rest-api)
 // running next to us on loopback. The container holds the linked device; we only
-// ever POST plain text to it.
+// ever POST messages to it, with the envelope as an attachment.
 type SignalAPI struct {
 	BaseURL string // e.g. http://127.0.0.1:8080
 	From    string // registered/linked sender number, E.164
@@ -35,15 +36,26 @@ func NewSignalAPI(baseURL, from string, timeout time.Duration) *SignalAPI {
 	}
 }
 
-func (s *SignalAPI) Send(numbers []string, message string) error {
+func (s *SignalAPI) Send(numbers []string, message string, atts ...Attachment) error {
 	if len(numbers) == 0 {
 		return nil
 	}
-	body, err := json.Marshal(map[string]any{
+	payload := map[string]any{
 		"message":    message,
 		"number":     s.From,
 		"recipients": numbers,
-	})
+	}
+	if len(atts) > 0 {
+		// The API takes each file as a data URI; the file name is what the
+		// recipient's phone shows.
+		files := make([]string, 0, len(atts))
+		for _, a := range atts {
+			files = append(files, "data:"+a.ContentType+";filename="+a.Name+";base64,"+
+				base64.StdEncoding.EncodeToString(a.Data))
+		}
+		payload["base64_attachments"] = files
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
