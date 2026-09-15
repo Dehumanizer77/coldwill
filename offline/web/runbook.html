@@ -55,7 +55,7 @@
 
   <section>
     <h2>{{t .L "rb.auto.h"}}</h2>
-    <p>{{t .L "rb.auto.p" .TechSuffix}}</p>
+    <p>{{t .L "rb.auto.p" .HeirSuffix}}</p>
   </section>
 
   <section>
@@ -104,7 +104,7 @@
     <ol>
       <li>{{t .L "rb.step.call"}}</li>
       <li>{{t .L "rb.step.parts" .Threshold}}{{if .BankShare}} {{t .L "rb.step.parts.bank"}}{{end}}</li>
-      <li>{{t .L "rb.step.env" .TechSuffix}}</li>
+      <li>{{t .L "rb.step.env" .HeirSuffix}}</li>
       <li>{{t .L "rb.step.pc" .ToolURL}}<br>{{if .ToolWhere}}{{t .L "rb.step.pc.where" .ToolWhere}}<br>{{end}}{{t .L "rb.step.pc.pick"}}
       <table>
         <tr><th>{{t .L "rb.step.pc.os"}}</th><th>{{t .L "rb.step.pc.file"}}</th></tr>
@@ -123,6 +123,7 @@
       {{t .L "rb.step.warn.url"}}</li>
       <li>{{t .L "rb.step.run" .Threshold}}</li>
       <li>{{t .L "rb.step.kdbx.where" .KdbxHolder}}{{if .BankKdbx}} {{t .L "rb.step.kdbx.bank"}}{{end}}<br>{{t .L "rb.step.kdbx"}}</li>
+      <li>{{t .L "rb.step.pass"}}</li>
       <li>{{t .L "rb.step.wallet"}}</li>
       <li>{{t .L "rb.step.move"}}</li>
     </ol>

@@ -374,6 +374,7 @@ type runbookData struct {
 	// Built here rather than in the template so the message stays one sentence
 	// in the catalogue instead of being assembled from fragments.
 	TechSuffix string
+	HeirSuffix string // the heir's name, for the sentences saying the envelope goes to them
 }
 
 // joinNames renders a list of people the way a sentence needs it: "A",
@@ -491,6 +492,7 @@ func (s *Server) handleRunbook(w http.ResponseWriter, r *http.Request) {
 		ToolWhere: f("tool_where"), ToolURL: toolURL(f("tool_url")),
 		WalletNotes: f("wallet_notes"), FamilyNotes: f("family_notes"),
 		TechSuffix: aside(l, joinNames(l, names)),
+		HeirSuffix: aside(l, f("heir")),
 	})
 }
 

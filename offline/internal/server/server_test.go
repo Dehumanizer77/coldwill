@@ -543,3 +543,26 @@ func TestRunbookEditKeepsVaultChoices(t *testing.T) {
 		}
 	}
 }
+
+// The envelope goes to the primary heir, so the runbook has to say so, and it
+// has to tell the heir to read the passphrase out of the text with the map.
+func TestRunbookEnvelopeGoesToTheHeir(t *testing.T) {
+	s := newTestServer(t)
+	body := do(s, http.MethodPost, "/runbook", url.Values{
+		"lang": {"en"}, "heir": {"Dana"},
+		"person_name": {"Alica"}, "person_contact": {"a@example.com"}, "person_tech": {"tech"},
+		"threshold": {"1"}, "count": {"1"},
+	}).Body.String()
+	for _, want := range []string{
+		"e-mails the envelope to the primary heir (Dana)",
+		"the PDF the system e-mails to the primary heir (Dana)",
+		"find the <strong>map for the envelope</strong>",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("runbook missing %q", want)
+		}
+	}
+	if strings.Contains(body, "to whom the system mails it") {
+		t.Errorf("the runbook still sends the envelope to a helper")
+	}
+}
