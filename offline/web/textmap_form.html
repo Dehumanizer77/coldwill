@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="{{.L}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{t .L "tm.title"}}</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>{{t .L "tm.title"}}</h1>
+  <p class="muted">{{t .L "tm.intro"}}</p>
+  {{if .Problem}}<p class="err">{{.Problem}}</p>{{end}}
+
+  <form method="post" action="/textmap" class="wide" autocomplete="off">
+    <label>{{t .L "tm.lang"}}
+      <select name="lang">
+        {{$cur := .L}}{{range langs}}<option value="{{.}}"{{if eq . $cur}} selected{{end}}>{{langName .}}</option>{{end}}
+      </select>
+    </label>
+    <label>{{t .L "tm.headline"}} <input name="headline" value="{{.Headline}}"></label>
+    <label>{{t .L "tm.text"}}
+      <textarea class="prose" name="text" rows="18" spellcheck="false">{{.Text}}</textarea>
+    </label>
+    <p class="muted">{{t .L "tm.text.p"}}</p>
+    <label>{{t .L "tm.passphrase"}}
+      <input name="passphrase" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
+    <p class="muted">{{t .L "tm.passphrase.p"}}</p>
+    <button type="submit">{{t .L "tm.submit"}}</button>
+  </form>
+  <p><a href="/?lang={{.L}}">← {{t .L "nav.home"}}</a></p>
+</main>
+</body>
+</html>

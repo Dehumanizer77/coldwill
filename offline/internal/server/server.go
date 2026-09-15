@@ -75,6 +75,7 @@ func New(tmpl *template.Template, css []byte) *Server {
 	s.mux.HandleFunc("/setup", s.handleSetup)
 	s.mux.HandleFunc("/recover", s.handleRecover)
 	s.mux.HandleFunc("/runbook", s.handleRunbook)
+	s.mux.HandleFunc("/textmap", s.handleTextmap)
 	s.mux.HandleFunc("/style.css", s.handleCSS)
 	s.mux.HandleFunc("/wordlist.js", s.handleWordlistJS)
 	return s

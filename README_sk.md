@@ -171,19 +171,92 @@ passphrase v trezore chrániť.
 #### Passphrase v trezore
 
 Napísaná ako obyčajný text je passphrase v trezore chránená len tou schránkou.
-Ako ju uložiť lepšie, toto repo nerieši, ale možností je viac:
+Možností je viac a s druhou pomôže offline nástroj:
 
 - **zašifrovať ju na GPG kľúče hlavného dediča aj technicky zdatných osôb**,
   naraz na všetkých (rovnako `--recipient A --recipient B` ako pri obálke pre DMS),
   takže v trezore je ciphertext, ktorý otvoria len oni. Zašifrovaná len na
   dediča by bola nečitateľná, keby ste zomreli obaja naraz a DMS by už nebežal;
-- **ukryť ju v dlhšom texte** tak, aby ju vedel prečítať len dedič;
+- **ukryť ju v dlhšom texte** tak, aby ju vedel prečítať len dedič
+  ([jeden spôsob](#ukrytie-passphrase-v-texte));
 - **rozdeliť ju**: časť v trezore, zvyšok niečo, čo vie len dedič;
 - **zašifrovať ju heslom, ktoré dedič pozná** a ktoré nikde nie je napísané.
 
 Každá z nich pridáva niečo, čo dedič musí mať alebo si pamätať práve vtedy, keď
 na tom záleží: kľúč, postup, spomienku. Keď sa to stratí, stratí sa s tým aj
 passphrase v trezore, preto to patrí do ročnej obnovy nanečisto.
+
+#### Ukrytie passphrase v texte
+
+Passphrase je len z písmen a číslic a každý jej znak je prvé písmeno alebo prvá
+číslica jedného slova v obyčajnom texte, napríklad v krátkom článku z obecných
+novín. V trezore je vytlačený text. Zoznam, ktoré slová z neho vziať, je uložený
+inde.
+
+Počítanie za teba urobí offline nástroj: **Passphrase v texte** vezme text aj
+passphrase, slová vyberie náhodne, overí, že zoznam vráti presne passphrase, a dá
+ti zoznam spolu s PDF textu. PDF vysádza sám nástroj, takže odseky a slová na
+papieri sú presne tie, ktoré počítal, nech tlačíš na čomkoľvek. Rovnako dobre sa
+to dá urobiť ručne podľa pravidiel nižšie.
+
+**Passphrase.** Náhodné malé písmená a číslice 1 až 9. Bez písmen q, w, x a y,
+ktorými v slovenčine skoro žiadne slovo nezačína, a bez nuly, ktorou nezačína
+žiadne číslo. Zostane 31 znakov a 16 z nich dá asi 79 bitov. Veľké písmená sú
+vynechané zámerne: potrebovali by ďalšie pravidlo a pribudlo by chýb, pár znakov
+navyše to vynahradí.
+
+**Text.** Poslúži skutočný článok z novín, strana z knihy aj text, ktorý napíšeš
+sám. Samotný text nič neprezradí a samotný zoznam nepovie, k akému textu patrí.
+Tak to aj nechaj: pri zozname neuvádzaj zdroj (noviny, dátum, nadpis), lebo
+zverejnený text by sa potom dal dohľadať aj bez trezoru. Text od passphrase
+nezávisí. Stačí, aby bol každý povolený znak aspoň raz na začiatku slova, preto
+vyber taký, v ktorom je veľa čísel: roky, ceny, dátumy, výsledky. Keď potom
+passphrase zmeníš, mení sa len zoznam, papier v trezore ostáva.
+
+**Zoznam.** Jeden riadok na znak, vypísaný slovami, lebo „3.17“ vyzerá ako
+desatinné číslo:
+
+```
+1. znak:  3. odsek, 17. slovo
+2. znak:  1. odsek, 7. slovo
+3. znak:  3. odsek, 27. slovo
+...
+```
+
+a k nemu pravidlá čítania:
+
+- **odsek** začína na novom riadku, za prázdnym riadkom alebo odsadením; nadpis
+  sa nepočíta a pravidlá majú povedať, či sa počíta tučný úvod pod ním. Prvý
+  odsek, ktorý sa počíta, je 1. odsek;
+- slová sa v každom odseku počítajú znova od 1 a počíta sa každé slovo, aj „a“,
+  „v“ a čísla; „7.“ aj „9:30“ sú po jednom slove, rovnako aj slovo rozdelené
+  spojovníkom na konci riadku;
+- samostatná pomlčka ani iné samostatné znamienko medzi medzerami sa nepočíta
+  a číslo s medzerami, napríklad „4 300“, je jedno slovo;
+- z každého slova sa berie prvé písmeno alebo číslica, malým písmenom, bez
+  mäkčeňov a dĺžňov („ch“ je c), a znaky sa píšu za sebou bez medzier.
+
+Napríklad ak je toto tretí odsek textu:
+
+> V mlynici zostalo pôvodné zariadenie aj s dvoma mlynskými kameňmi, každý váži
+> vyše 600 kilogramov. Starý bicykel opretý o múr patril poslednému mlynárovi,
+> ktorý tu pracoval 56 rokov.
+
+potom v 3. odseku je 14. slovo „600“ a dá `6`, 17. slovo „bicykel“ dá `b`,
+25. slovo „tu“ dá `t` a 27. slovo „56“ dá `5`.
+
+**Kde je zoznam uložený**, rozhoduje o tom, pred čím text chráni:
+
+- **v databáze**: kto sa pozrie do schránky, vidí obyčajný článok, ale viac to
+  nepridá. Kto otvorí databázu, má aj zoznam, takže s časťou a databázou
+  v trezore chýba k minciam stále len K−1 častí, rovnako ako pri čitateľnej
+  passphrase;
+- **na papieri, mimo trezoru aj databázy**, u dediča a v kópii u toho, kto má
+  vedieť passphrase obnoviť, keby ste zomreli obaja naraz: trezor potom nestačí
+  ani s K−1 časťami, za cenu ďalšej veci, ktorá sa nesmie stratiť.
+
+Tak či tak, kópia runbooku v tej istej schránke prezradí, že je v nej passphrase,
+takže článok sa skryje pred letmým pohľadom, nie pred tým, kto si runbook prečíta.
 
 
 ### Recovery (postup pre netechnického dediča)
@@ -260,6 +333,8 @@ SLIP-39** časti a (b) zloženie častí späť na key-file pri obnove.
 #### Build
 
 Potrebné je len Go (≥ 1.24, kvôli `crypto/pbkdf2`). Žiadne externé závislosti.
+Písmo pre text na vytlačenie, Liberation Serif pod licenciou SIL Open Font
+License, je vložené do binárky a licencia je vedľa neho v `internal/pdf/`.
 
 ```
 cd offline && go build -o coldwill .
@@ -337,6 +412,10 @@ round-trip); ak zlyhá, nástroj sa nespustí.
   kurzor; kontrola a zloženie kľúča prebiehajú vždy na serveri.
 - **Runbook** → vyplníš „kto-čo-kde“ → vygeneruje tlačiteľný návod pre rodinu
   (klik *Vytlačiť / Uložiť ako PDF*). Dokument **neobsahuje žiadne tajomstvá**.
+- **Passphrase v texte** → vložíš text a passphrase → dostaneš zoznam pozícií
+  slov do databázy a PDF textu na vytlačenie (viď
+  [Ukrytie passphrase v texte](#ukrytie-passphrase-v-texte)). Passphrase sa už
+  na žiadnej stránke nezobrazí a PDF nemá žiadne metadáta.
 
 #### Ako to zapadá
 

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="{{.L}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{t .L "tm.res.title"}}</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>{{t .L "tm.res.title"}}</h1>
+  <p class="ok">{{t .L "tm.res.ok" .Chars}}</p>
+
+  <h2>{{t .L "tm.res.map.h"}}</h2>
+  <p class="muted">{{t .L "tm.res.map.p"}}</p>
+  <textarea class="map" readonly wrap="off" rows="{{.MapRows}}">{{.Map}}</textarea>
+
+  <h2>{{t .L "tm.res.pdf.h"}}</h2>
+  <p class="muted">{{t .L "tm.res.pdf.p"}}</p>
+  <p><a class="btn" download="text.pdf" href="{{.PDFURL}}">{{t .L "tm.res.download"}}</a></p>
+
+  <h2>{{t .L "tm.res.paras.h"}}</h2>
+  <p class="muted">{{t .L "tm.res.paras.p"}}</p>
+  {{if .Headline}}<p><strong>{{.Headline}}</strong></p>{{end}}
+  <ol class="paras">
+    {{range .Paragraphs}}<li>{{.}}</li>{{end}}
+  </ol>
+
+  <p><a href="/textmap?lang={{.L}}">← {{t .L "tm.res.new"}}</a> · <a href="/?lang={{.L}}">{{t .L "nav.home"}}</a></p>
+</main>
+</body>
+</html>

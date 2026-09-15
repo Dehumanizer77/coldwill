@@ -172,21 +172,99 @@ protect the passphrase there.
 #### The passphrase in the vault
 
 Written out in plain text, the passphrase in the vault is only as safe as the
-box. How to store it better is outside the scope of this repository, but there
-are several ways to go about it:
+box. There are several ways to store it better, and the offline tool helps with
+the second:
 
 - **encrypt it to the GPG keys of the primary heir and the technical helpers**,
   all at once (the same `--recipient A --recipient B` as for the switch's
   envelope), so the vault holds ciphertext only they can open. Encrypted to the
   heir alone, it becomes unreadable if you both die at once and the switch is no
   longer running;
-- **hide it in a longer text**, in a way only the heir knows how to read back;
+- **hide it in a longer text**, in a way only the heir knows how to read back
+  ([one way to do it](#hiding-the-passphrase-in-a-text));
 - **split it**, with part in the vault and the rest something only the heir knows;
 - **encrypt it with a password the heir knows** and that is never written down.
 
 Each of these adds something the heir must still have or remember when it
 matters: a key, a method, a memory. Lose that and the passphrase in the vault is
 lost with it, so walk through it during the annual dry run.
+
+#### Hiding the passphrase in a text
+
+The passphrase is made of letters and digits only, and each of its characters is
+the first letter or digit of one word in an ordinary text, such as a short
+article from a local newspaper. The vault holds the printed text. The list of
+which words to take is kept elsewhere.
+
+The offline tool can do the counting: **Passphrase in a text** takes the text and
+the passphrase, picks the words at random, checks that the list reads back to the
+passphrase, and gives you the list together with a PDF of the text. The tool lays
+the PDF out itself, so the paragraphs and words on paper are exactly the ones it
+counted, whatever printer you use. Doing it by hand works just as well, by the
+rules below.
+
+**The passphrase.** Random lowercase letters and the digits 1 to 9. Leave out
+the letters that hardly any word in the text's language starts with (q, x and z
+in English; q, w, x and y in Slovak), and 0, which no number starts with. That
+leaves about 30 characters, and 16 of them give close to 80 bits. Uppercase is
+left out on purpose: it would need one more rule and invite mistakes, and a
+couple of extra characters make up for it.
+
+**The text.** A real newspaper article, a page from a book or a text you write
+yourself all work. The text alone gives nothing away, and the list alone does
+not say what kind of text it belongs to. Keep it that way: do not name the
+source next to the list (paper, date, headline), because a published text could
+then be looked up without ever going to the vault. The text does not depend on
+the passphrase. It only needs every allowed character at the start of at least
+one word, so pick one with plenty of numbers: years, prices, dates, scores.
+Changing the passphrase later then changes only the list, not the paper in the
+vault.
+
+**The list.** One line per character, written out in words, because "3.18"
+reads like a decimal number:
+
+```
+character 1:  paragraph 3, word 18
+character 2:  paragraph 1, word 7
+character 3:  paragraph 3, word 32
+...
+```
+
+and next to it the rules for reading it:
+
+- a **paragraph** starts on a new line, after an empty line or with an indent;
+  the headline does not count, and the rules should say whether a bold lead
+  under it does. The first paragraph that counts is paragraph 1;
+- words are counted from 1 again in every paragraph, and every word counts,
+  including "a", "of" and numbers; "7." and "9:30" are one word each, and so is
+  a word split with a hyphen at the end of a line;
+- a dash or another mark standing on its own between spaces does not count, and
+  a number with spaces in it, such as "4 300", is one word;
+- from each word take its first letter or digit, in lowercase and without
+  accents, and write the characters together without spaces.
+
+For example, if this is the third paragraph of the text:
+
+> In the old mill the original machinery survived, including two millstones
+> weighing over 600 kilograms each. A bicycle leaning against the wall belonged
+> to the last miller, who worked there for 56 years.
+
+then in paragraph 3, word 14 is "600" and gives `6`, word 18 is "bicycle" and
+gives `b`, and word 32 is "56" and gives `5`.
+
+**Where the list is kept** decides what the text protects against:
+
+- **in the database**: whoever looks into the box sees an ordinary article, but
+  that is all it adds. Whoever opens the database has the list too, so with a
+  share and the database in the vault, the box is still K−1 shares from the
+  coins, just as with a readable passphrase;
+- **on paper, outside both the vault and the database**, with the heir, plus a
+  copy with whoever should be able to recover it if you both die at once: the
+  vault is then not enough even with K−1 shares, at the cost of one more thing
+  that must not be lost.
+
+Either way, a runbook copy in the same box says the passphrase is there, so the
+article hides from a glance, not from someone who reads the runbook.
 
 ### Recovery, as the heir experiences it
 
@@ -270,7 +348,9 @@ generates the printable runbook.
 #### Build
 
 Go is the only requirement (≥ 1.24, for `crypto/pbkdf2`). No external
-dependencies.
+dependencies. The font for the printable text, Liberation Serif under the SIL
+Open Font License, is embedded in the binary, with its licence next to it in
+`internal/pdf/`.
 
 ```
 cd offline && go build -o coldwill .
@@ -341,6 +421,10 @@ refuses to start if that fails.
   server. A paste-everything textarea is still there under a fold.
 - **Runbook** takes the who-has-what map and produces a printable set of
   instructions for the family. It contains **no secrets**.
+- **Passphrase in a text** takes a text you paste and the wallet passphrase, and
+  produces the list of word positions for the database plus a PDF of the text to
+  print (see [Hiding the passphrase in a text](#hiding-the-passphrase-in-a-text)).
+  No page shows the passphrase again, and the PDF carries no metadata.
 
 #### How the pieces fit
 

@@ -22,6 +22,10 @@
       <h2>{{t .L "index.runbook.h"}}</h2>
       <p class="muted">{{t .L "index.runbook.p"}}</p>
     </a>
+    <a class="card" href="/textmap?lang={{.L}}">
+      <h2>{{t .L "index.textmap.h"}}</h2>
+      <p class="muted">{{t .L "index.textmap.p"}}</p>
+    </a>
   </div>
   <p class="muted langpick">{{t .L "lang.label"}}:
     {{range langs}}<a href="/?lang={{.}}">{{langName .}}</a> {{end}}

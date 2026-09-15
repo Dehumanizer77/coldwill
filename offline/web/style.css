@@ -175,3 +175,9 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; }
 .wordgrid input.ok { border-color: #2f7d4f; }
 .wordgrid input.bad { border-color: #b3455e; background: #2a1b21; }
 details summary { cursor: pointer; color: var(--muted); }
+
+/* ---- Passphrase in a text ---- */
+textarea.prose { font-family: inherit; }
+textarea.map { max-width: 900px; }
+ol.paras { padding-left: 2.2em; }
+ol.paras li { margin: 0 0 .8em; }
