@@ -17,18 +17,17 @@ How many shares exist, and how many are needed to reassemble the key (**K of
 N**), is chosen when you generate them. The drawing shows a common choice, 2 of 3.
 
 ```
-    SHARE #1         SHARE #2         SHARE #3            SEALED ENVELOPE
-  metal, person A  metal, person B  metal, person C     bank vault + switch
+    SHARE #1         SHARE #2         SHARE #3              ENVELOPE
+  metal, person A  metal, person B  metal, person C  vault text + switch PDF
        │                │                │                      │
        └────────┬───────┴────────────────┘                      │
                 │   any K of N (here 2 of 3)                    │
                 ▼                                               │
             KEY FILE                                            │
                 │                                               │
-                ▼   opens (no password)                         │
-         KeePass database  ──►  SEED + other credentials        │
+                ▼   opens (no password)                         ▼
+         KeePass database  ──►  SEED + credentials + MAP ──► PASSPHRASE
                                       │                         │
-                                      │                   PASSPHRASE
                                       └──────────┬──────────────┘
                                                  ▼
                                             ₿  BITCOIN
@@ -39,15 +38,17 @@ N**), is chosen when you generate them. The drawing shows a common choice, 2 of 
   unlocks a KeePass database holding the wallet **seed** and every other
   credential. Threshold and count are yours to pick: 3 of 5, 2 of 4, whatever
   fits the people you trust.
-- **A sealed envelope** holds the **wallet passphrase**. It sits in a bank vault,
-  and after your death the *dead man's switch* also mails it.
+- **The envelope** is an ordinary printed text with the **wallet passphrase**
+  hidden in it. The **map** that reads it out is kept in the database, so the
+  text on its own gives nothing away. It lies in a bank vault, and after your
+  death the *dead man's switch* also sends it to the primary heir as a PDF.
 - **Bitcoin = seed + passphrase.** Whoever holds only shares can read the
-  database but cannot spend the coins. Whoever holds only the envelope has a
-  password that is useless without the seed. Fewer than K shares are worthless.
+  database and the map, but has no text to read. Whoever holds only the envelope
+  has an article and nothing to read it with. Fewer than K shares are worthless.
 
 The **dead man's switch** is a convenience, not a dependency. It asks you
 periodically whether you are alive, and once you stop answering and someone you
-trust confirms, it mails the envelope after a grace period. How many
+trust confirms, it sends the envelope to the primary heir after a grace period. How many
 confirmations it takes is configurable and defaults to one. The bank vault is
 the path that always works: the switch can be turned off at any time without
 harming the inheritance.
@@ -64,7 +65,7 @@ harming the inheritance.
 - [Design](#design): what it solves, architecture, distribution, recovery, upkeep
 - [Tools](#tools)
   - [Offline tool (`offline/`)](#offline-tool-offline): key file, SLIP-39 shares, runbook
-  - [Dead man's switch (`dms/`)](#dead-mans-switch-dms): envelopes, deployment, Signal
+  - [Dead man's switch (`dms/`)](#dead-mans-switch-dms): the envelope, deployment, Signal
 - [Running this yourself](#running-this-yourself)
 - [Licence](#licence)
 
@@ -97,24 +98,24 @@ The decisions everything else follows from:
 | Geography | Shares spread across several **locations**, so no single event destroys them. |
 | Upkeep | Once a year. |
 | Other credentials | Part of the system. **One KeePass database** is enough. |
-| Gating | **Lenient.** The database is protected by the key file alone; the passphrase (in the envelope) protects only the BTC. |
+| Gating | **Lenient.** The database is protected by the key file alone; the passphrase (hidden in the envelope) protects only the BTC. |
 | Key file | **160-bit**, giving 23 words per SLIP-39 share. |
 
 ### Architecture: two factors
 
-- **Factor A, the sealed envelope.** It holds the **wallet passphrase** and lives
-  only where the family gets to it after the owner's death: sealed in a **bank
-  vault**, and delivered by the **dead man's switch**, encrypted to a technical
-  helper. While the owner lives, only he has the passphrase, so only he controls
-  the coins. There can be several envelopes: the same one to several people as a
-  backup, or different envelopes to different people so that nobody holds
-  everything (see [Envelopes](#envelopes-how-many-and-to-whom)).
+- **Factor A, the envelope.** An ordinary printed text with the **wallet
+  passphrase** hidden in it, readable only with the map kept in the database. It
+  lives only where the family gets to it after the owner's death: sealed in a
+  **bank vault**, and sent by the **dead man's switch** to the primary heir as a
+  PDF. Nothing is encrypted, because the text without the database is worthless.
+  While the owner lives, only he has the passphrase, so only he controls the
+  coins.
 - **Factor B, the metal shares.** The key file to the KeePass database, split
   with **SLIP-39 (K of N)** into words, stamped into metal, spread across
   locations.
 
-The **KeePass database** holds the seed, every other credential and a written
-procedure. It stays with the **primary heir**, and optionally one more sits in the
+The **KeePass database** holds the seed, every other credential, the map for
+the envelope and a written procedure. It stays with the **primary heir**, and optionally one more sits in the
 bank vault. It deliberately does not go to the share holders or into the cloud.
 Holders who neither have the database nor know where it is gain nothing by
 reassembling the key file, even if enough of them get together. And a database
@@ -122,8 +123,9 @@ kept by every holder would mean visiting all of them whenever a credential
 changes.
 
 ```
-Database opens  =  key file (K of N metal shares)          # -> seed + credentials
+Database opens  =  key file (K of N metal shares)          # -> seed + credentials + map
 Bitcoin         =  seed (from the database) + passphrase   # -> [K of N shares] + [envelope]
+Passphrase      =  the envelope, read with the map          # the text alone says nothing
 
 Lenient gating: K of N shares open the database, even while the owner lives, but
 nobody spends the coins without the passphrase from the envelope. Losing the
@@ -152,11 +154,11 @@ An example for 2 of 3. The number of shares is up to you:
 
 | Location | Factor B (metal share) | Factor A (envelope) | Database (`.kdbx`) |
 |---|---|---|---|
-| **location A**, primary heir | share #1 | – | ✓ |
-| **bank vault** | optionally one of the shares | **sealed envelope** | ✓ (optional) |
+| **location A**, primary heir | share #1 | (PDF from the switch once triggered) | ✓ |
+| **bank vault** | optionally one of the shares | **envelope** (the printed text) | ✓ (optional) |
 | **location B**, trusted person | share #2 | – | – |
-| **location C**, technical helper | share #3 | (from the switch once triggered, encrypted to them) | – |
-| **Switch** | – | envelopes encrypted to their recipients | – |
+| **location C**, technical helper | share #3 | – | – |
+| **Switch** | – | the envelope as a PDF, for the primary heir | – |
 
 Recovering the Bitcoin needs **K of N shares plus an envelope**, from the vault
 or from the switch, which in practice means the primary heir plus one trusted
@@ -165,35 +167,30 @@ each individual holder low.
 
 Both vault options are checkboxes on the runbook form, so the printed map shows
 whichever you chose. Each makes the vault a bigger prize: with both, whoever gets
-into the box has a share, the envelope and the database, and if the passphrase
-in it is readable, is K−1 shares away from the coins. That is one more reason to
-protect the passphrase there.
+into the box has a share, the envelope and the database, and K−1 more shares open
+the database, whose map reads the passphrase out of the envelope.
 
-#### The passphrase in the vault
+#### The envelope
 
-Written out in plain text, the passphrase in the vault is only as safe as the
-box. There are several ways to store it better, and the offline tool helps with
-the second:
+The passphrase is written down nowhere. The envelope is an ordinary text, such
+as a newspaper article, with the passphrase hidden in its characters, and the
+map that reads it out is kept in the KeePass database
+([how it works](#hiding-the-passphrase-in-a-text)). Without the database the
+text is worthless, which is what lets it lie in the vault as a plain printout
+and travel by e-mail and Signal as a plain PDF: there are no keys to make, keep
+or lose, and nothing for the heir to decrypt.
 
-- **encrypt it to the GPG keys of the primary heir and the technical helpers**,
-  all at once (the same `--recipient A --recipient B` as for the switch's
-  envelope), so the vault holds ciphertext only they can open. Encrypted to the
-  heir alone, it becomes unreadable if you both die at once and the switch is no
-  longer running;
-- **hide it in a longer text**, in a way only the heir knows how to read back
-  ([one way to do it](#hiding-the-passphrase-in-a-text));
-- **split it**, with part in the vault and the rest something only the heir knows;
-- **encrypt it with a password the heir knows** and that is never written down.
-
-Each of these adds something the heir must still have or remember when it
-matters: a key, a method, a memory. Lose that and the passphrase in the vault is
-lost with it, so walk through it during the annual dry run.
+The same text exists twice, printed in the vault and as a PDF on the switch,
+which sends it to the primary heir and nobody else. If you and the heir die
+together, that copy lands in a mailbox nobody reads, and the others use the
+printout in the vault.
 
 #### Hiding the passphrase in a text
 
 Each passphrase character comes from any position in a word of an ordinary
 text, such as a newspaper article, or from the space and marks after the word.
-The vault holds the printed text. The map of positions is kept elsewhere.
+The vault holds the printed text, the switch holds the same text as a PDF,
+and the map of positions is kept in the database.
 
 The offline tool **Passphrase in a text** picks positions at random, reads the
 map back and checks that it matches the passphrase exactly. It gives you the
@@ -259,33 +256,29 @@ the space after “thousand”, and the period from “1874.”. The space is va
 only if “thousand” and the following word are on the same PDF line. The actual
 map contains only positions and counting rules.
 
-**Where the list is kept** decides what the text protects against:
+**The map is kept in the database**, which is what makes the text worthless on
+its own: whoever looks into the box, or reads the heir's e-mail, sees an
+ordinary article. Whoever opens the database has the map too, so with a share
+and the database in the vault, the box is still K−1 shares from the coins.
 
-- **in the database**: whoever looks into the box sees an ordinary article, but
-  that is all it adds. Whoever opens the database has the list too, so with a
-  share and the database in the vault, the box is still K−1 shares from the
-  coins, just as with a readable passphrase;
-- **on paper, outside both the vault and the database**, with the heir, plus a
-  copy with whoever should be able to recover it if you both die at once: the
-  vault is then not enough even with K−1 shares, at the cost of one more thing
-  that must not be lost.
-
-Either way, a runbook copy in the same box says the passphrase is there, so the
-article hides from a glance, not from someone who reads the runbook.
+A runbook copy in the same box says the envelope is there, so the article hides
+from a glance, not from someone who reads the runbook. What protects it is the
+database.
 
 ### Recovery, as the heir experiences it
 
 1. Open the printed **runbook**, copies of which are at the bank and with the
    trusted people.
 2. Call the **technical helper**, who walks them through it.
-3. Get the **envelope with the passphrase**, from the bank vault or from the
-   switch, which has already mailed it.
+3. Get the **envelope**: the printed text from the bank vault, or the PDF the
+   switch has already sent to the primary heir.
 4. Collect **K shares** from their holders, one of which may be in the bank vault.
 5. In the **offline tool**: SLIP-39 words → key file → open the KeePass database
    (the heir's own, or the one in the vault) with a standard app → the seed and
    every other credential.
-6. Restore the wallet from the **seed**, then unlock it with the **passphrase**.
-7. Optionally, and recommended, move the coins to a fresh wallet the heir
+6. Read the **passphrase** out of the envelope with the map from the database.
+7. Restore the wallet from the **seed**, then unlock it with the **passphrase**.
+8. Optionally, and recommended, move the coins to a fresh wallet the heir
    controls.
 
 Words on metal are usually stamped as **four-letter abbreviations**, because a
@@ -305,6 +298,7 @@ a tool rejects abbreviations, the full words are in the official wordlist.
 - Envelope in the vault intact, and the database opens: the heir's, and the one
   in the vault if there is one.
 - Test the switch's check-in.
+- The PDF on the switch still matches the printout in the vault.
 - **A full dry-run recovery**, once a year, on a spare machine. At least once
   that should be on Windows, since that binary cannot be tested anywhere else.
 - Update the database when credentials change, replace the one in the vault if
@@ -313,7 +307,7 @@ a tool rejects abbreviations, the full words are in the official wordlist.
 ### What the system does not solve
 
 If both parents die and the children are minors, the **technical** path is
-covered: two trusted people reassemble K of N shares plus the envelope and reach
+covered: two trusted people reassemble K of N shares plus the envelope from the vault and reach
 the coins. What no system can settle is who then holds and manages them until the
 children are adults, because whoever reassembles the shares can spend them. That
 is a question of trust and inheritance law, not cryptography. If it is to be
@@ -324,7 +318,7 @@ ends up in a court file.
 ### Longevity principles
 
 1. **Open standards on the critical path**, which makes the software replaceable:
-   SLIP-39 with its test vectors, `.kdbx`, GPG. Recovery is possible with standard
+   SLIP-39 with its test vectors, `.kdbx`, a printed text. Recovery is possible with standard
    tools even if this code is gone, and the runbook says how.
 2. **Self-contained artifacts.** A static Go binary offline, depending only on the
    kernel ABI and a browser; a Docker image online, with a frozen userland.
@@ -453,8 +447,9 @@ refuses to start if that fails.
   and reopens a password-less `.kdbx`, a key reassembled from any 2 of 3 shares
   opens the same database, and both a wrong key file and "the hex as text" are
   refused.
-- The **wallet passphrase is not in the database.** It lives in the sealed
-  envelope, in the vault and with the switch.
+- The **wallet passphrase is not in the database**, or written down anywhere:
+  the envelope (printed in the vault, a PDF on the switch) holds the text, and
+  the database holds the map that reads it.
 
 #### Correctness
 
@@ -466,8 +461,8 @@ SLIP-39 test vectors** plus round trips for 128, 192 and 256-bit secrets.
 
 An online service that asks the owner to **check in** periodically, asks
 **trusted people** to confirm after a long silence, and after confirmation plus a
-grace period mails **GPG-encrypted envelopes**, which it can never read itself,
-to their recipients.
+grace period sends **the envelope**, a PDF that is worthless without the
+database, to the **primary heir**.
 
 **Channels:** e-mail (primary) plus optionally **Signal** (secondary). Every
 message goes out on every channel the recipient has an address for.
@@ -487,8 +482,8 @@ message goes out on every channel the recipient has an address for.
    **distinct** confirmers, so the same person twice does not count twice.
 5. **The owner's check-in cancels everything, at any time**, including during the
    countdown.
-6. After the grace period with no veto, the envelopes go out, decryptable only by
-   whoever they were encrypted to.
+6. After the grace period with no veto, the envelope goes out to the primary
+   heir, and to nobody else.
 7. A false or malicious confirmation is not a catastrophe: the envelope is
    **useless without enough metal shares**.
 
@@ -498,12 +493,12 @@ removable, and the vault is the path that always works.
 
 #### Security model
 
-- **It never holds plaintext.** It holds only envelope ciphertext, encrypted to
-  the recipients' GPG keys, and on release it merely sends it. Who can open an
-  envelope is decided **offline when you encrypt it**, by which key you encrypt
-  to; the config only says where it is sent.
-- **Fail-safe:** if the self-test fails (mail unreachable, an envelope missing or
-  not PGP, state not writable), the switch **alerts but does not fire**.
+- **It holds nothing usable on its own.** The envelope is a text that says
+  nothing without the database, so a compromised server, a read mailbox or a
+  wrong Signal recipient gives away an article, not the passphrase. That is why
+  it is sent unencrypted, with no keys to manage.
+- **Fail-safe:** if the self-test fails (mail unreachable, the envelope missing or
+  not a PDF, state not writable), the switch **alerts but does not fire**.
 - **Two-step links:** check-in and confirm are a GET page plus a POST button, so
   that automatic link prefetching by mail scanners cannot trigger them.
 - **Confirmation links are bound to one waiting cycle.** A check-in invalidates
@@ -513,8 +508,8 @@ removable, and the vault is the path that always works.
   safe: a check-in only delays release, and a confirmation still needs a human,
   the grace period and the metal shares.
 - **The secondary channel never blocks release.** A broken Signal is an e-mail
-  alert, not a fault; each envelope goes out if **at least one** channel delivers
-  it, and whatever fails is retried on the next tick.
+  alert, not a fault; the envelope goes out if **at least one** channel delivers
+  it, and if none does, it is retried on the next tick.
 - **Plaintext to a local postfix, TLS to anything else.** STARTTLS is
   deliberately skipped on loopback: the bytes never leave the machine, and
   postfix has no certificate for `127.0.0.1` and cannot have one, so Go would
@@ -529,72 +524,33 @@ removable, and the vault is the path that always works.
 ```
 monthly check-in → after 60 days of silence: ask the confirmers
 → confirmation (any of them) → 7-day delay with daily warnings to the owner
-→ release: envelopes mailed to their recipients.   A check-in cancels everything.
+→ release: the envelope sent to the primary heir.  A check-in cancels everything.
 switch → owner, weekly "healthy"; on a fault, an alert.
 ```
 
-#### Envelopes: how many and to whom
+#### Who gets the envelope
 
-There can be several, and **each has its own recipients**:
+The primary heir, and nobody else:
 
 ```json
-"envelopes": [
-  { "id": "passphrase", "path": "/data/envelope-passphrase.asc",
-    "to": [ {"name":"First","email":"first@…","signal":"+…"},
-            {"name":"Second","email":"second@…"} ] },
-  { "id": "credentials", "path": "/data/envelope-credentials.asc",
-    "note": "These are the remaining credentials, not the wallet passphrase.",
-    "to": [ {"name":"Third","email":"third@…"} ] }
-]
+"heir": { "name": "…", "email": "…", "signal": "+…", "lang": "sk" },
+"envelope_path": "/data/envelope.pdf"
 ```
 
-That covers two different intentions:
+It goes out as an attachment on every channel the heir has an address for, and
+one channel getting through is enough. If none does, the switch stays in the
+countdown and tries again on the next tick. The self-test reads the file on
+every tick, and a missing file or one that is not a PDF is a fault that stops
+the release, so the wrong file (the map, say) is caught while you can still
+replace it rather than on the day it is sent.
 
-- **the same envelope to several people**, as a backup, so that one unreachable
-  person does not cut off the whole path (for instance if you and they die
-  together),
-- **different envelopes to different people**, so that nobody holds everything.
+The envelope is the PDF from **Passphrase in a text** in the offline tool, the
+same one you print for the vault. It goes to `/data` on the server and never
+into git. When you change the text or the passphrase, replace the printout, the
+PDF on the server and the map in the database together.
 
-What the service enforces: an envelope with no recipients, or two sharing an
-`id`, is refused at startup; the self-test checks **every** file, and a missing
-or non-PGP one is a fault that stops the release **entirely** rather than
-delivering half of it; on release it remembers which envelopes went out, so only
-the rest is retried and nobody receives the same one twice. A check-in clears
-that memory, so a later real release delivers everything again.
-
-The older `envelope_path` plus `friend_email` form still works, as a single
-envelope with a single recipient.
-
-> **When splitting the contents, the bank vault must hold everything.** The
-> switch is best-effort and the vault is the sure path. Otherwise you have built
-> a case where one unresponsive recipient cuts off part of the inheritance.
-
-#### Where the recipient's public GPG key goes
-
-Into `keys/`, which is only a convention; `*.asc` is gitignored so the repository
-does not reveal who is involved. The switch never sees that key. You need it only
-when you make the envelope:
-
-```
-gpg --export --armor <key-id> > keys/friend.asc
-```
-
-#### Making the envelopes, offline and by hand
-
-Put only the **wallet passphrase** in the file, plus a short instruction if you
-like, and encrypt it to the recipient's public GPG key. Verify the fingerprint
-independently, not through the same channel the key arrived on.
-
-```
-gpg --import keys/friend.asc
-gpg --armor --encrypt --recipient friend@example.com passphrase.txt
-mv passphrase.txt.asc envelope.asc      # this goes to /data, never to git
-shred -u passphrase.txt
-```
-
-If several people should be able to open the same envelope, encrypt it to
-several keys at once (`--recipient A --recipient B`). That is independent of who
-it gets delivered to.
+A config that still has `envelopes`, `friend_email` or `friend_signal` in it is
+refused at startup, rather than started with those recipients silently dropped.
 
 #### Deployment
 
@@ -610,17 +566,16 @@ compose file, so accepting it would break a deployment half way through.
 
 ```bash
 ./deploy.sh --check                              # preflight only, changes nothing
-./deploy.sh --envelope ~/envelope.asc            # real deployment (e-mail)
-./deploy.sh --envelope passphrase=~/a.asc --envelope credentials=~/b.asc
-./deploy.sh --envelope ~/envelope.asc --signal   # + Signal channel
+./deploy.sh --envelope ~/envelope.pdf            # real deployment (e-mail)
+./deploy.sh --envelope ~/envelope.pdf --signal   # + Signal channel
 ./deploy.sh --config-only --force-config         # rewrite config.json only
-./deploy.sh --envelope ~/envelope.asc --no-compose
-./deploy.sh --envelope ~/envelope.asc --test-timings   # rehearsal, see below
+./deploy.sh --envelope ~/envelope.pdf --no-compose
+./deploy.sh --envelope ~/envelope.pdf --test-timings   # rehearsal, see below
 ```
 
 What it does: check docker, compose, postfix and ports → create
-`/opt/coldwill-switch/data` (0700) → copy the envelopes, refusing any that is not
-ASCII-armored PGP → ask for addresses, numbers and confirmers and write
+`/opt/coldwill-switch/data` (0700) → copy the envelope, refusing a file that is
+not a PDF → ask for your address, the primary heir's, numbers and confirmers and write
 `config.json` (0600, with `hmac_secret` from `openssl rand -hex 32`) → **validate
 the config through `coldwill-switch --validate`** → build and start the container → check
 HTTP, the log and `state.json` → print the reverse proxy config and **your
@@ -638,7 +593,7 @@ instance is running alongside, the script says so at startup.
 
 On top of that: intervals in minutes instead of days, a clean start (the old
 `state.json` is deleted), links pointing at `http://127.0.0.1:8188` over an SSH
-tunnel, and **envelopes and confirmation requests all addressed to you**. A
+tunnel, and **the envelope and confirmation requests all addressed to you**. A
 rehearsal must never write to real people, because in the waiting phase the
 request repeats every few minutes. The whole chain, check-in through silence,
 confirmation, countdown and release, can be walked in a few minutes without
@@ -650,7 +605,7 @@ rm -rf /opt/coldwill-switch-test
 ```
 
 By hand it is the same: `mkdir -p /opt/coldwill-switch/data`, a `config.json` from
-`config.example.json` (`hmac_secret` = `openssl rand -hex 32`), envelopes into
+`config.example.json` (`hmac_secret` = `openssl rand -hex 32`), the envelope into
 `/opt/coldwill-switch/data/` (paths in the config are container-side, `/data/…`), then
 `COLDWILL_UID=$(id -u) COLDWILL_GID=$(id -g) docker compose up -d`, or the same with
 `--profile signal`. Without compose:
@@ -708,8 +663,8 @@ knowing:
 
 1. `curl -s https://dms.example.com/` answers that the service is running.
 2. Within a minute an **"all good"** e-mail arrives, and a Signal message too if
-   that channel is on. That is also proof the self-test passed and every envelope
-   is readable.
+   that channel is on. That is also proof the self-test passed and the envelope
+   is in place.
 3. Click the check-in link in it, and `last_check_in` changes in `state.json`.
 4. `docker logs coldwill-switch` contains no `failed`.
 5. **Bookmark the check-in link and put it in the KeePass database.** It is
@@ -730,8 +685,8 @@ See `config.example.json`, or have `deploy.sh` generate one. Durations accept
 exits, which is useful after editing by hand and before restarting.
 
 Required: `public_base_url`, `from_email`, `user_email`, `state_path`,
-`hmac_secret` (16 characters or more), at least one `confirmer`, and at least one
-envelope (`envelopes[]`, or the older `envelope_path` plus `friend_email`).
+`hmac_secret` (16 characters or more), at least one `confirmer`, the `heir` (with
+an e-mail or a Signal number) and `envelope_path`.
 
 Optional, but worth knowing:
 
@@ -751,12 +706,13 @@ system nobody looks at for years.
 
 ```json
 "signal": { "api_url": "http://127.0.0.1:8080", "from_number": "+…" },
-"user_signal": "+…", "friend_signal": "+…",
+"user_signal": "+…", "heir": { "…": "…", "signal": "+…" },
 "confirmers": [ { "id": "friend", "…": "…", "signal": "+…" } ]
 ```
 
 A `bbernhard/signal-cli-rest-api` container holds the linked device, and the
-switch only POSTs text to `/v2/send` over loopback. Linking, once, at deployment:
+switch only POSTs to `/v2/send` over loopback: text, and the envelope as an
+attachment. Linking, once, at deployment:
 
 ```
 docker compose --profile signal up -d
@@ -777,10 +733,8 @@ the price of messages coming from your own number, which is what makes a
 "confirm that he died" request credible to the recipient rather than looking like
 a scam.
 
-Envelopes go out over Signal too, since they are ciphertext and the channel does
-not matter. If one is too long for a single Signal message, Signal rejects it and
-e-mail delivers it, which is why e-mail is primary and an envelope should hold
-only the passphrase and a short instruction.
+The envelope goes out over Signal too, as a PDF attached to the message. The
+channel does not matter, since the text is worthless without the database.
 
 #### Correctness
 
@@ -819,7 +773,7 @@ Where the language comes from differs by tool, because the readers do:
   its own selector, since you may want to print a Slovak copy for one holder and
   an English one for another.
 - The switch takes it **per recipient**: `user_lang` for the owner, and `lang` on
-  each confirmer and each envelope recipient. One notification is rendered
+  each confirmer and on the heir. One notification is rendered
   separately for each person, so an English confirmer and a Slovak one each get
   their own.
 
@@ -832,7 +786,7 @@ If you fork this for your own inheritance, the one rule that matters:
 
 **Real secrets never go into the repository.** Not the seed words, the wallet
 passphrase, the key file or its SLIP-39 shares, the database password, a real
-`.kdbx`, or the contents of an envelope. Secrets are born and live offline, on
+`.kdbx`, or the envelope and its map. Secrets are born and live offline, on
 metal, in a bank vault and in the encrypted database. The `.gitignore` here stops
 the usual files from being committed by accident, but do not rely on it: the real
 defence is never bringing them near the repository.
@@ -841,8 +795,8 @@ defence is never bringing them near the repository.
 envelope is and which machine runs the switch belong in the **printed runbook**
 and the **KeePass database**, not in text in a repository, private or otherwise.
 The documentation here is deliberately generic (location A/B/C, "technical
-helper") for that reason, and `keys/*.asc` and `*.pdf` are gitignored so the
-repository never reveals who is involved.
+helper") for that reason, and `*.pdf` is gitignored so neither the envelope nor
+a printed runbook ends up in it.
 
 ## Licence
 
