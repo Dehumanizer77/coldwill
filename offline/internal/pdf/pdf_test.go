@@ -2,6 +2,10 @@ package pdf
 
 import (
 	"bytes"
+	"compress/zlib"
+	"reflect"
+
+	"coldwill/offline/internal/textmap"
 	"errors"
 	"fmt"
 	"io"
@@ -184,5 +188,123 @@ func TestWriteRefusesWhatItCannotPrint(t *testing.T) {
 	err = Write(io.Discard, nil, [][]string{{"krátke", strings.Repeat("x", 400)}})
 	if !errors.As(err, &tw) {
 		t.Errorf("a word wider than the line: got %v", err)
+	}
+}
+
+// Decode the actual content streams written by Write. This checks exported
+// boundaries against the PDF bytes, including page breaks and standalone marks.
+func TestLineEndsMatchPrintedPDF(t *testing.T) {
+	title := []string{"A", "title"}
+	paras := [][]string{{"a", "-", "b", "4\u00a0300", "c"}, strings.Fields(strings.Repeat("alpha - beta gamma delta ", 700)), {"Last", "paragraph."}}
+	ends, err := LineEnds(title, paras)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc bytes.Buffer
+	if err := Write(&doc, title, paras); err != nil {
+		t.Fatal(err)
+	}
+	f, err := loadFont()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decode := map[uint16]rune{}
+	for _, words := range append([][]string{title}, paras...) {
+		for _, r := range strings.Join(words, " ") {
+			g, _ := f.glyph(r)
+			decode[g] = r
+		}
+	}
+	// NBSP may share a glyph with the ordinary space in this font.
+	space, _ := f.glyph(' ')
+	decode[space] = ' '
+	var printed []string
+	streams := regexp.MustCompile(`(?s)stream\n(.*?)\nendstream`).FindAllSubmatch(doc.Bytes(), -1)
+	bodyLine := regexp.MustCompile(`BT /F1 11\.50 Tf[^\n]* <([0-9A-F]+)> Tj ET`)
+	for _, stream := range streams {
+		zr, err := zlib.NewReader(bytes.NewReader(stream[1]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(zr)
+		zr.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, line := range bodyLine.FindAllSubmatch(data, -1) {
+			var b strings.Builder
+			for i := 0; i < len(line[1]); i += 4 {
+				g, err := strconv.ParseUint(string(line[1][i:i+4]), 16, 16)
+				if err != nil {
+					t.Fatal(err)
+				}
+				b.WriteRune(decode[uint16(g)])
+			}
+			printed = append(printed, b.String())
+		}
+	}
+	var expected []string
+	for p, tokens := range paras {
+		start := 0
+		for i, end := range ends[p] {
+			if end {
+				expected = append(expected, strings.ReplaceAll(strings.Join(tokens[start:i+1], " "), "\u00a0", " "))
+				start = i + 1
+			}
+		}
+		if start != len(tokens) {
+			t.Fatalf("paragraph %d has no final boundary", p)
+		}
+	}
+	if len(printed) < 100 {
+		t.Fatalf("expected a multipage document, got %d lines", len(printed))
+	}
+	if !reflect.DeepEqual(printed, expected) {
+		t.Fatal("exported line boundaries differ from printed PDF")
+	}
+
+	// Exercise textmap with the exported token indexes, which include the dashes.
+	var body []string
+	for _, tokens := range paras {
+		body = append(body, strings.Join(tokens, " "))
+	}
+	text := textmap.Parse(strings.Join(body, "\n\n"))
+	lineEnd := func(p, token int) bool { return ends[p][token] }
+	positions, err := text.Hide(strings.Repeat(" ", 4000), func(int) int { return 0 }, lineEnd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pos := range positions {
+		words := 0
+		token := -1
+		for i, tok := range text.Paragraphs[pos.Paragraph-1] {
+			if tok.Word {
+				words++
+				if words == pos.Word {
+					token = i
+					break
+				}
+			}
+		}
+		if token < 0 {
+			t.Fatal("word missing")
+		}
+		tokens := paras[pos.Paragraph-1]
+		last := token
+		for !ends[pos.Paragraph-1][last] {
+			last++
+		}
+		lineTail := []rune(strings.Join(tokens[token:last+1], " "))
+		if pos.Character > len(lineTail) || lineTail[pos.Character-1] != ' ' {
+			t.Fatalf("position points outside printed line or to NBSP: %+v", pos)
+		}
+	}
+}
+
+func TestLineEndsRejectsUnprintableLayout(t *testing.T) {
+	for _, paras := range [][][]string{{{"🙂"}}, {{strings.Repeat("x", 400)}}} {
+		if _, err := LineEnds(nil, paras); err == nil {
+			t.Fatal("invalid layout accepted")
+		}
 	}
 }

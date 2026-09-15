@@ -90,6 +90,38 @@ func Write(w io.Writer, title []string, paras [][]string) error {
 	return err
 }
 
+// LineEnds returns one flag per input token, true at each printed line end.
+// Paragraph and token indexes are zero-based, including standalone marks.
+// It uses the same layout and validation as Write, including title and page breaks.
+func LineEnds(title []string, paras [][]string) ([][]bool, error) {
+	f, err := loadFont()
+	if err != nil {
+		return nil, err
+	}
+	if err := checkGlyphs(f, title, paras); err != nil {
+		return nil, err
+	}
+	pages, err := layout(f, title, paras)
+	if err != nil {
+		return nil, err
+	}
+	ends := make([][]bool, len(paras))
+	offsets := make([]int, len(paras))
+	for p := range paras {
+		ends[p] = make([]bool, len(paras[p]))
+	}
+	for _, pg := range pages {
+		for _, ln := range pg {
+			if ln.para < 0 {
+				continue
+			}
+			offsets[ln.para] += len(ln.words)
+			ends[ln.para][offsets[ln.para]-1] = true
+		}
+	}
+	return ends, nil
+}
+
 func checkGlyphs(f *ttf, title []string, paras [][]string) error {
 	var bad []rune
 	seen := map[rune]bool{}

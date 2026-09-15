@@ -1,13 +1,4 @@
-// Package textmap hides a passphrase in an ordinary text as a list of word
-// positions. Every character of the passphrase is the first letter or digit of
-// one word, and the list says where that word is: its paragraph, and its place
-// in that paragraph. The text alone does not say which words matter and the
-// list alone does not say which text it belongs to; together they give the
-// passphrase back to a person with a pencil and no tool.
-//
-// The list is only as good as the agreement between this package and that
-// person about what a paragraph and a word are. So the rules here are the ones
-// the list prints next to itself, and nothing cleverer.
+// Package textmap maps printable ASCII passphrase characters to positions in printed text.
 package textmap
 
 import (
@@ -25,9 +16,6 @@ type Token struct {
 	// Word is false for a mark standing on its own, such as a dash, which a
 	// person counting words skips.
 	Word bool
-	// Initial is the word's first letter or digit folded to a-z or 0-9, or 0
-	// when it has none that folds (a word in another script, say).
-	Initial byte
 }
 
 // Text is a text cut into paragraphs the way the printout shows them.
@@ -36,14 +24,21 @@ type Text struct {
 }
 
 // Position is where one character of the passphrase is: the Word-th word of the
-// Paragraph-th paragraph, both counted from 1, the way the heir counts.
+// Paragraph-th paragraph, at Character within the word. All three count from 1.
 type Position struct {
-	Paragraph, Word int
+	Paragraph, Word, Character int
 }
 
 // invisible removes characters that change nothing on paper but would make the
 // words here differ from the words a person sees.
 var invisible = strings.NewReplacer("\u00ad", "", "\u200b", "", "\u200c", "", "\u200d", "", "\u2060", "", "\ufeff", "")
+
+// Normalize makes typographic look-alikes unambiguous on paper.
+func Normalize(s string) string {
+	return typography.Replace(invisible.Replace(s))
+}
+
+var typography = strings.NewReplacer("„", "\"", "“", "\"", "”", "\"", "‚", "'", "‘", "'", "’", "'", "–", "-", "—", "-", "…", "...")
 
 // Parse cuts a text into paragraphs and words. Paragraphs are separated by an
 // empty line, and the lines inside one are joined. A text with no empty line
@@ -54,7 +49,7 @@ var invisible = strings.NewReplacer("\u00ad", "", "\u200b", "", "\u200c", "", "\
 func Parse(s string) Text {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = strings.ReplaceAll(s, "\r", "\n")
-	s = invisible.Replace(s)
+	s = Normalize(s)
 	lines := strings.Split(s, "\n")
 
 	var blocks []string
@@ -134,32 +129,10 @@ func tokenize(p string) []Token {
 func newToken(text string) Token {
 	for _, r := range text {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			return Token{Text: text, Word: true, Initial: fold(r)}
+			return Token{Text: text, Word: true}
 		}
 	}
 	return Token{Text: text}
-}
-
-// folds maps accented Latin letters to the plain letter a person writes when
-// told to leave the accents out: č → c, ľ → l, ô → o, ř → r.
-var folds = func() map[rune]byte {
-	const pairs = "àaáaâaãaäaåaçcèeéeêeëeìiíiîiïiñnòoóoôoõoöoøoùuúuûuüuýyÿy" +
-		"āaăaąaćcĉcċcčcďdđdēeĕeėeęeěeĝgğgġgģgĥhħhĩiīiĭiįiıiĵjķkĺlļlľlŀlłl" +
-		"ńnņnňnōoŏoőoŕrŗrřrśsŝsşsšsţtťtŧtũuūuŭuůuűuųuŵwŷyźzżzžz"
-	rs := []rune(pairs)
-	m := make(map[rune]byte, len(rs)/2)
-	for i := 0; i+1 < len(rs); i += 2 {
-		m[rs[i]] = byte(rs[i+1])
-	}
-	return m
-}()
-
-func fold(r rune) byte {
-	r = unicode.ToLower(r)
-	if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
-		return byte(r)
-	}
-	return folds[r]
 }
 
 func countWords(p []Token) int {
@@ -176,32 +149,31 @@ func countWords(p []Token) int {
 var ErrEmpty = errors.New("textmap: empty passphrase or text")
 
 // InvalidError lists passphrase characters no word can stand for, in the order
-// they first appear: a map only ever yields lowercase a-z and 0-9.
+// they first appear: a map only yields printable ASCII (0x20–0x7E).
 type InvalidError struct{ Chars []rune }
 
 func (e *InvalidError) Error() string {
-	return fmt.Sprintf("textmap: passphrase characters outside a-z and 0-9: %q", string(e.Chars))
+	return fmt.Sprintf("textmap: passphrase characters outside printable ASCII: %q", string(e.Chars))
 }
 
-// MissingError lists, sorted, the passphrase characters no word in the text
-// starts with.
+// MissingError lists, sorted, characters without a usable printed position.
 type MissingError struct{ Chars []byte }
 
 func (e *MissingError) Error() string {
-	return fmt.Sprintf("textmap: no word starts with %q", string(e.Chars))
+	return fmt.Sprintf("textmap: no usable position for %q", string(e.Chars))
 }
 
-// Hide finds a word for every character of the passphrase. pick(n) returns a
-// number in [0, n) and chooses among the words that fit. A character that
-// repeats gets a different word each time while the text has one to spare, so
-// the list does not show which characters are the same.
-func (t Text) Hide(passphrase string, pick func(n int) int) ([]Position, error) {
+// Hide finds a printed position for each character. pick(n) chooses in [0, n).
+// Repeated characters use different positions while any remain unused.
+// ends reports whether a zero-based paragraph/token ends a printed line.
+// With nil ends, only characters inside words are eligible.
+func (t Text) Hide(passphrase string, pick func(n int) int, ends func(paragraph, token int) bool) ([]Position, error) {
 	if passphrase == "" || len(t.Paragraphs) == 0 {
 		return nil, ErrEmpty
 	}
 	var invalid []rune
 	for _, r := range passphrase {
-		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9') && !strings.ContainsRune(string(invalid), r) {
+		if (r < ' ' || r > '~') && !strings.ContainsRune(string(invalid), r) {
 			invalid = append(invalid, r)
 		}
 	}
@@ -212,13 +184,15 @@ func (t Text) Hide(passphrase string, pick func(n int) int) ([]Position, error) 
 	where := map[byte][]Position{}
 	for p, para := range t.Paragraphs {
 		w := 0
-		for _, tok := range para {
+		for i, tok := range para {
 			if !tok.Word {
 				continue
 			}
 			w++
-			if tok.Initial != 0 {
-				where[tok.Initial] = append(where[tok.Initial], Position{Paragraph: p + 1, Word: w})
+			for c, r := range readable(para, p, i, ends) {
+				if r >= ' ' && r <= '~' {
+					where[byte(r)] = append(where[byte(r)], Position{p + 1, w, c + 1})
+				}
 			}
 		}
 	}
@@ -257,29 +231,72 @@ func (t Text) Hide(passphrase string, pick func(n int) int) ([]Position, error) 
 
 // Reveal reads the passphrase back from the text the way the heir does. The
 // server runs it on every map before handing the map out.
-func (t Text) Reveal(ps []Position) (string, error) {
-	b := make([]byte, 0, len(ps))
+func (t Text) Reveal(ps []Position, ends func(paragraph, token int) bool) (string, error) {
+	var b strings.Builder
 	for _, pos := range ps {
-		tok, ok := t.word(pos)
-		if !ok || tok.Initial == 0 {
-			return "", fmt.Errorf("textmap: no usable word at paragraph %d, word %d", pos.Paragraph, pos.Word)
+		if pos.Paragraph < 1 || pos.Paragraph > len(t.Paragraphs) || pos.Word < 1 || pos.Character < 1 {
+			return "", fmt.Errorf("textmap: invalid position: %+v", pos)
 		}
-		b = append(b, tok.Initial)
-	}
-	return string(b), nil
-}
-
-func (t Text) word(pos Position) (Token, bool) {
-	if pos.Paragraph < 1 || pos.Paragraph > len(t.Paragraphs) {
-		return Token{}, false
-	}
-	n := 0
-	for _, tok := range t.Paragraphs[pos.Paragraph-1] {
-		if tok.Word {
-			if n++; n == pos.Word {
-				return tok, true
+		para := t.Paragraphs[pos.Paragraph-1]
+		w := 0
+		var chars []rune
+		for i, tok := range para {
+			if tok.Word {
+				w++
+				if w == pos.Word {
+					chars = readable(para, pos.Paragraph-1, i, ends)
+					break
+				}
 			}
 		}
+		if pos.Character > len(chars) || chars[pos.Character-1] < ' ' || chars[pos.Character-1] > '~' {
+			return "", fmt.Errorf("textmap: no usable character at %+v", pos)
+		}
+		b.WriteRune(chars[pos.Character-1])
 	}
-	return Token{}, false
+	return b.String(), nil
+}
+
+// readable preserves rune offsets, including accents and internal no-break
+// spaces, but stops before counting through a potentially ambiguous digraph.
+// Standalone marks belong to the preceding word only on the same printed line.
+func readable(para []Token, p, i int, ends func(int, int) bool) []rune {
+	chars := []rune(para[i].Text)
+	// A selectable space must have another counted word on the same line.
+	nextWord := false
+	if ends != nil {
+		for j := i; j+1 < len(para) && !ends(p, j); j++ {
+			if para[j+1].Word {
+				nextWord = true
+				break
+			}
+		}
+		for j := i; j+1 < len(para) && !ends(p, j); j++ {
+			if nextWord {
+				chars = append(chars, ' ')
+			} else {
+				// Keep the offset for counting marks, but exclude this space.
+				chars = append(chars, 0)
+			}
+			if para[j+1].Word {
+				break
+			}
+			chars = append(chars, []rune(para[j+1].Text)...)
+		}
+	}
+	for j, r := range chars {
+		if unicode.IsMark(r) {
+			// A decomposed accent belongs to the preceding printed character.
+			// Neither its ASCII base nor later rune offsets are safe to select.
+			chars = chars[:max(0, j-1)]
+			break
+		}
+	}
+	for j := 1; j < len(chars); j++ {
+		a, b := unicode.ToLower(chars[j-1]), unicode.ToLower(chars[j])
+		if a == 'c' && b == 'h' || a == 'd' && (b == 'z' || b == 'ž') {
+			return chars[:j]
+		}
+	}
+	return chars
 }

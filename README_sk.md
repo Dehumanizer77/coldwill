@@ -188,62 +188,68 @@ passphrase v trezore, preto to patrí do ročnej obnovy nanečisto.
 
 #### Ukrytie passphrase v texte
 
-Passphrase je len z písmen a číslic a každý jej znak je prvé písmeno alebo prvá
-číslica jedného slova v obyčajnom texte, napríklad v krátkom článku z obecných
-novín. V trezore je vytlačený text. Zoznam, ktoré slová z neho vziať, je uložený
-inde.
+Každý znak passphrase sa vezme z ľubovoľnej pozície slova v obyčajnom texte,
+napríklad v článku z novín, alebo z medzery a znamienok za slovom. V trezore je
+vytlačený text. Mapa pozícií je uložená inde.
 
-Počítanie za teba urobí offline nástroj: **Passphrase v texte** vezme text aj
-passphrase, slová vyberie náhodne, overí, že zoznam vráti presne passphrase, a dá
-ti zoznam spolu s PDF textu. PDF vysádza sám nástroj, takže odseky a slová na
-papieri sú presne tie, ktoré počítal, nech tlačíš na čomkoľvek. Rovnako dobre sa
-to dá urobiť ručne podľa pravidiel nižšie.
+Offline nástroj **Passphrase v texte** vyberie pozície náhodne, prečíta mapu
+späť a overí presnú zhodu s passphrase. Dostaneš mapu a PDF textu. Opakovaný
+znak dostane iné miesto, kým má text z čoho. Mapa má pre všetky znaky rovnaký
+tvar, takže neoznačuje, ktoré sú veľké písmená, znamienka alebo medzery.
 
-**Passphrase.** Náhodné malé písmená a číslice 1 až 9. Bez písmen q, w, x a y,
-ktorými v slovenčine skoro žiadne slovo nezačína, a bez nuly, ktorou nezačína
-žiadne číslo. Zostane 31 znakov a 16 z nich dá asi 79 bitov. Veľké písmená sú
-vynechané zámerne: potrebovali by ďalšie pravidlo a pribudlo by chýb, pár znakov
-navyše to vynahradí.
+**Passphrase.** Povolené sú všetky tlačiteľné ASCII znaky (0x20–0x7E): malé aj
+veľké písmená, číslice 0–9, znamienka a medzera. Diakritika a € nie sú povolené.
+Každá medzera sa počíta, aj na začiatku a konci hesla. Znaky `\ | ~ ^ { } [ ] < >`
+a spätný apostrof sa v bežnom článku hľadajú ťažko; odporúčame ich vynechať.
 
-**Text.** Poslúži skutočný článok z novín, strana z knihy aj text, ktorý napíšeš
-sám. Samotný text nič neprezradí a samotný zoznam nepovie, k akému textu patrí.
-Tak to aj nechaj: pri zozname neuvádzaj zdroj (noviny, dátum, nadpis), lebo
-zverejnený text by sa potom dal dohľadať aj bez trezoru. Text od passphrase
-nezávisí. Stačí, aby bol každý povolený znak aspoň raz na začiatku slova, preto
-vyber taký, v ktorom je veľa čísel: roky, ceny, dátumy, výsledky. Keď potom
-passphrase zmeníš, mení sa len zoznam, papier v trezore ostáva.
+**Text.** Poslúži článok, strana z knihy aj vlastný text. Pri mape neuvádzaj
+zdroj (noviny, dátum, nadpis), podľa ktorého by sa dal text dohľadať bez trezoru.
+Každý znak hesla potrebuje použiteľnú pozíciu: číslo „1874“ poskytne všetky štyri
+číslice, veľké písmená nájdeš na začiatkoch viet a v skratkách. Odsek s kontaktom
+môže prirodzene doplniť e-mail (`@ _ .`), web (`/ : ? = &`), telefón (`+`),
+hashtag (`#`) či cenu (`$`). Pri zmene hesla môže papier ostať, ak obsahuje
+použiteľné pozície pre všetky nové znaky; vždy vytvor novú mapu.
 
-**Zoznam.** Jeden riadok na znak, vypísaný slovami, lebo „3.17“ vyzerá ako
-desatinné číslo:
+Nástroj v celom texte aj nadpise zmení typografické úvodzovky „ “ ” na `"`,
+‚ ‘ ’ na `'`, pomlčky – — na `-` a … na `...`. Vyberá len ASCII znaky a nikdy
+nepočíta cez „ch“, „dz“ či „dž“ bez ohľadu na veľkosť písmen. Medzeru vyberie
+len medzi slovami na tom istom riadku PDF, nikdy na konci riadku či odseku ani
+vnútri čísla „4 300“, kde je nezalomiteľná medzera. **Tlač dodané PDF**: jeho
+zalomenie riadkov je súčasťou mapy.
+
+**Pravidlá čítania mapy:**
+
+- **Odsek** je blok textu medzi prázdnymi riadkami; nadpis sa nepočíta.
+  Pri vložení textu bez prázdnych riadkov nástroj vytvorí z každého riadku odsek.
+- **Slová** počítaj v každom odseku od 1, vrátane krátkych slov a čísel.
+  Samostatná pomlčka či iné znamienko nie je slovo; „4 300“ je jedno slovo.
+- **Znaky slova** počítaj od 1 od začiatku slova vrátane interpunkcie,
+  úvodzoviek a medzery v „4 300“; „ch“, „dz“ aj „dž“ sú po dva znaky.
+- Pozícia hneď za posledným znakom slova je **medzera** za ním. Ak nasledujú
+  samostatné znamienka, pokračuj v počítaní ich znakov aj medzier medzi nimi
+  na tom istom vytlačenom riadku.
+- Znak odpíš **presne tak, ako je vytlačený**, vrátane veľkých písmen a medzier,
+  a znaky spoj v poradí mapy.
+
+Napríklad pre tento prvý odsek:
+
+> Obecné zastupiteľstvo minulý týždeň schválilo 86 tisíc eur na opravu budovy,
+> ktorú miestni odjakživa volajú starý mlyn. Stavba pri potoku pamätá ešte rok
+> 1874 a posledné roky chátrala.
+
+mapa znie:
 
 ```
-1. znak:  3. odsek, 17. slovo
-2. znak:  1. odsek, 7. slovo
-3. znak:  3. odsek, 27. slovo
-...
+1. znak hesla:  1. odsek, 18. slovo, 1. znak slova
+2. znak hesla:  1. odsek, 24. slovo, 3. znak slova
+3. znak hesla:  1. odsek, 11. slovo, 7. znak slova
+4. znak hesla:  1. odsek,  7. slovo, 6. znak slova
+5. znak hesla:  1. odsek, 17. slovo, 5. znak slova
 ```
 
-a k nemu pravidlá čítania:
-
-- **odsek** začína na novom riadku, za prázdnym riadkom alebo odsadením; nadpis
-  sa nepočíta a pravidlá majú povedať, či sa počíta tučný úvod pod ním. Prvý
-  odsek, ktorý sa počíta, je 1. odsek;
-- slová sa v každom odseku počítajú znova od 1 a počíta sa každé slovo, aj „a“,
-  „v“ a čísla; „7.“ aj „9:30“ sú po jednom slove, rovnako aj slovo rozdelené
-  spojovníkom na konci riadku;
-- samostatná pomlčka ani iné samostatné znamienko medzi medzerami sa nepočíta
-  a číslo s medzerami, napríklad „4 300“, je jedno slovo;
-- z každého slova sa berie prvé písmeno alebo číslica, malým písmenom, bez
-  mäkčeňov a dĺžňov („ch“ je c), a znaky sa píšu za sebou bez medzier.
-
-Napríklad ak je toto tretí odsek textu:
-
-> V mlynici zostalo pôvodné zariadenie aj s dvoma mlynskými kameňmi, každý váži
-> vyše 600 kilogramov. Starý bicykel opretý o múr patril poslednému mlynárovi,
-> ktorý tu pracoval 56 rokov.
-
-potom v 3. odseku je 14. slovo „600“ a dá `6`, 17. slovo „bicykel“ dá `b`,
-25. slovo „tu“ dá `t` a 27. slovo „56“ dá `5`.
+Výsledok je `S7, .`: `S` zo „Stavba“, `7` z „1874“, čiarka z „budovy,“, medzera
+za „tisíc“ a bodka z „mlyn.“. Medzera platí, len ak „tisíc“ a nasledujúce slovo
+sú na tom istom riadku PDF. V skutočnej mape sú len pozície a pravidlá čítania.
 
 **Kde je zoznam uložený**, rozhoduje o tom, pred čím text chráni:
 
@@ -413,7 +419,7 @@ round-trip); ak zlyhá, nástroj sa nespustí.
 - **Runbook** → vyplníš „kto-čo-kde“ → vygeneruje tlačiteľný návod pre rodinu
   (klik *Vytlačiť / Uložiť ako PDF*). Dokument **neobsahuje žiadne tajomstvá**.
 - **Passphrase v texte** → vložíš text a passphrase → dostaneš zoznam pozícií
-  slov do databázy a PDF textu na vytlačenie (viď
+  znakov (odsek, slovo, znak slova) do databázy a PDF textu na vytlačenie (viď
   [Ukrytie passphrase v texte](#ukrytie-passphrase-v-texte)). Passphrase sa už
   na žiadnej stránke nezobrazí a PDF nemá žiadne metadáta.
 

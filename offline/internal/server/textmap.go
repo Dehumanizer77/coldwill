@@ -34,8 +34,8 @@ type textmapData struct {
 }
 
 // handleTextmap hides the wallet passphrase in a text the person pastes. It
-// picks a word for every character, checks that the map reads back to the
-// passphrase, and hands out the map together with a PDF of the text laid out so
+// picks a printed position for every character, checks the map reads back to
+// the passphrase, and hands out the map together with a PDF of the text laid out so
 // that its paragraphs and words are the ones the map was counted on. The map
 // and the PDF come from the same request, so they cannot drift apart. The
 // passphrase is never written into a page, not even back into the form after a
@@ -46,7 +46,7 @@ func (s *Server) handleTextmap(w http.ResponseWriter, r *http.Request) {
 		s.render(w, "textmap_form.html", textmapForm{page: page{L: l}})
 		return
 	}
-	headline := strings.TrimSpace(r.FormValue("headline"))
+	headline := textmap.Normalize(strings.TrimSpace(r.FormValue("headline")))
 	body := r.FormValue("text")
 	passphrase := r.FormValue("passphrase")
 	again := func(key string, args ...any) {
@@ -56,7 +56,31 @@ func (s *Server) handleTextmap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	text := textmap.Parse(body)
-	positions, err := text.Hide(passphrase, randIndex)
+	paras := make([][]string, len(text.Paragraphs))
+	preview := make([]string, len(text.Paragraphs))
+	for i, p := range text.Paragraphs {
+		for _, tok := range p {
+			paras[i] = append(paras[i], tok.Text)
+		}
+		preview[i] = strings.Join(paras[i], " ")
+	}
+	ends, err := pdf.LineEnds(strings.Fields(headline), paras)
+	var unprintable *pdf.UnprintableError
+	var tooWide *pdf.TooWideError
+	switch {
+	case errors.As(err, &unprintable):
+		again("tm.err.print", quoteChars(unprintable.Chars))
+		return
+	case errors.As(err, &tooWide):
+		again("tm.err.wide", tooWide.Word)
+		return
+	case err != nil:
+		again("tm.err.pdf", err)
+		return
+	}
+
+	lineEnd := func(p, token int) bool { return ends[p][token] }
+	positions, err := text.Hide(passphrase, randIndex, lineEnd)
 	var invalid *textmap.InvalidError
 	var missing *textmap.MissingError
 	switch {
@@ -70,30 +94,13 @@ func (s *Server) handleTextmap(w http.ResponseWriter, r *http.Request) {
 		again("tm.err.empty")
 		return
 	}
-	if back, err := text.Reveal(positions); err != nil || back != passphrase {
+	if back, err := text.Reveal(positions, lineEnd); err != nil || back != passphrase {
 		again("tm.err.readback")
 		return
 	}
 
-	paras := make([][]string, len(text.Paragraphs))
-	preview := make([]string, len(text.Paragraphs))
-	for i, p := range text.Paragraphs {
-		for _, tok := range p {
-			paras[i] = append(paras[i], tok.Text)
-		}
-		preview[i] = strings.Join(paras[i], " ")
-	}
 	var doc bytes.Buffer
-	var unprintable *pdf.UnprintableError
-	var tooWide *pdf.TooWideError
-	switch err := pdf.Write(&doc, strings.Fields(headline), paras); {
-	case errors.As(err, &unprintable):
-		again("tm.err.print", quoteChars(unprintable.Chars))
-		return
-	case errors.As(err, &tooWide):
-		again("tm.err.wide", tooWide.Word)
-		return
-	case err != nil:
+	if err := pdf.Write(&doc, strings.Fields(headline), paras); err != nil {
 		again("tm.err.pdf", err)
 		return
 	}
@@ -118,9 +125,9 @@ func passphraseMap(l i18n.Lang, ps []textmap.Position, headline bool) string {
 	var b strings.Builder
 	b.WriteString(i18n.S(l, "tm.map.head") + "\n\n")
 	for i, p := range ps {
-		b.WriteString(i18n.S(l, "tm.map.line", pad2(i+1), pad2(p.Paragraph), pad2(p.Word)) + "\n")
+		b.WriteString(i18n.S(l, "tm.map.line", pad2(i+1), pad2(p.Paragraph), pad2(p.Word), pad2(p.Character)) + "\n")
 	}
-	rules := []string{"tm.rule.para", "tm.rule.first", "tm.rule.words", "tm.rule.marks", "tm.rule.initial"}
+	rules := []string{"tm.rule.para", "tm.rule.first", "tm.rule.words", "tm.rule.marks", "tm.rule.chars", "tm.rule.space", "tm.rule.exact"}
 	if headline {
 		rules[1] = "tm.rule.headline"
 	}
@@ -134,7 +141,7 @@ func passphraseMap(l i18n.Lang, ps []textmap.Position, headline bool) string {
 func pad2(n int) string { return fmt.Sprintf("%2d", n) }
 
 // randIndex picks a number in [0, n) from the system's CSPRNG. The choice among
-// the words that start with the same character has to be random: a rule such as
+// the positions with the same character has to be random: a rule such as
 // "the first one" puts common letters early in their paragraphs, and the list
 // alone would start to hint at the characters.
 func randIndex(n int) int {

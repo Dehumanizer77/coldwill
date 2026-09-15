@@ -191,66 +191,73 @@ lost with it, so walk through it during the annual dry run.
 
 #### Hiding the passphrase in a text
 
-The passphrase is made of letters and digits only, and each of its characters is
-the first letter or digit of one word in an ordinary text, such as a short
-article from a local newspaper. The vault holds the printed text. The list of
-which words to take is kept elsewhere.
+Each passphrase character comes from any position in a word of an ordinary
+text, such as a newspaper article, or from the space and marks after the word.
+The vault holds the printed text. The map of positions is kept elsewhere.
 
-The offline tool can do the counting: **Passphrase in a text** takes the text and
-the passphrase, picks the words at random, checks that the list reads back to the
-passphrase, and gives you the list together with a PDF of the text. The tool lays
-the PDF out itself, so the paragraphs and words on paper are exactly the ones it
-counted, whatever printer you use. Doing it by hand works just as well, by the
-rules below.
+The offline tool **Passphrase in a text** picks positions at random, reads the
+map back and checks that it matches the passphrase exactly. It gives you the
+map and a PDF of the text. Repeated characters use different positions while
+any remain available. Every map row has the same format, so it does not label
+which characters are uppercase, punctuation or spaces.
 
-**The passphrase.** Random lowercase letters and the digits 1 to 9. Leave out
-the letters that hardly any word in the text's language starts with (q, x and z
-in English; q, w, x and y in Slovak), and 0, which no number starts with. That
-leaves about 30 characters, and 16 of them give close to 80 bits. Uppercase is
-left out on purpose: it would need one more rule and invite mistakes, and a
-couple of extra characters make up for it.
+**The passphrase.** All printable ASCII characters (0x20–0x7E) are allowed:
+lowercase and uppercase letters, digits 0–9, punctuation and spaces. Accented
+letters and € are not allowed. Every space counts, including leading and
+trailing spaces. Avoid `\ | ~ ^ { } [ ] < >` and backticks: they are hard to
+find in an ordinary article.
 
-**The text.** A real newspaper article, a page from a book or a text you write
-yourself all work. The text alone gives nothing away, and the list alone does
-not say what kind of text it belongs to. Keep it that way: do not name the
-source next to the list (paper, date, headline), because a published text could
-then be looked up without ever going to the vault. The text does not depend on
-the passphrase. It only needs every allowed character at the start of at least
-one word, so pick one with plenty of numbers: years, prices, dates, scores.
-Changing the passphrase later then changes only the list, not the paper in the
-vault.
+**The text.** Use an article, a book page or your own text. Do not name the
+source next to the map (paper, date, headline), which could let someone find
+the text without visiting the vault. Every passphrase character needs a usable
+position: “1874” provides all four digits, while sentence beginnings and
+abbreviations provide capitals. A contact paragraph can naturally supply an
+email (`@ _ .`), website (`/ : ? = &`), phone (`+`), hashtag (`#`) or price (`$`).
+When changing the passphrase, the paper can stay if it has usable positions for
+all the new characters; always create a new map.
 
-**The list.** One line per character, written out in words, because "3.18"
-reads like a decimal number:
+The tool converts typographic quotes „ “ ” to `"`, ‚ ‘ ’ to `'`, dashes – — to
+`-` and … to `...` throughout the text and headline. It selects only ASCII
+characters and never counts through “ch”, “dz” or “dž”, regardless of case.
+Spaces are selected only between words on the same PDF line, never at a line
+or paragraph end, or inside “4 300”, which uses a nonbreaking space.
+**Print the supplied PDF**: its line breaks are part of the map.
+
+**Rules for reading the map:**
+
+- A **paragraph** is a block of text between empty lines; the headline does
+  not count. When pasted text has no empty lines, the tool makes each line a
+  separate paragraph.
+- Count **words** from 1 in each paragraph, including short words and numbers.
+  A standalone dash or another mark is not a word; “4 300” is one word.
+- Count **characters** from 1 at the start of the word, including punctuation,
+  quotes and the space inside “4 300”; “ch”, “dz” and “dž” each count as two
+  characters.
+- The position immediately after the last character is the **space** after
+  the word. If standalone marks follow, continue counting their characters
+  and the spaces between them on the same printed line.
+- Copy each character **exactly as printed**, preserving uppercase and spaces,
+  and join them in map order.
+
+For example, for this first paragraph:
+
+> The council approved 86 thousand euros to repair the old mill, which dates
+> from 1874. Work starts soon.
+
+use this map:
 
 ```
-character 1:  paragraph 3, word 18
-character 2:  paragraph 1, word 7
-character 3:  paragraph 3, word 32
-...
+passphrase character 1:  paragraph 1, word 16, character 1 of the word
+passphrase character 2:  paragraph 1, word 15, character 3 of the word
+passphrase character 3:  paragraph 1, word 11, character 5 of the word
+passphrase character 4:  paragraph 1, word 5, character 9 of the word
+passphrase character 5:  paragraph 1, word 15, character 5 of the word
 ```
 
-and next to it the rules for reading it:
-
-- a **paragraph** starts on a new line, after an empty line or with an indent;
-  the headline does not count, and the rules should say whether a bold lead
-  under it does. The first paragraph that counts is paragraph 1;
-- words are counted from 1 again in every paragraph, and every word counts,
-  including "a", "of" and numbers; "7." and "9:30" are one word each, and so is
-  a word split with a hyphen at the end of a line;
-- a dash or another mark standing on its own between spaces does not count, and
-  a number with spaces in it, such as "4 300", is one word;
-- from each word take its first letter or digit, in lowercase and without
-  accents, and write the characters together without spaces.
-
-For example, if this is the third paragraph of the text:
-
-> In the old mill the original machinery survived, including two millstones
-> weighing over 600 kilograms each. A bicycle leaning against the wall belonged
-> to the last miller, who worked there for 56 years.
-
-then in paragraph 3, word 14 is "600" and gives `6`, word 18 is "bicycle" and
-gives `b`, and word 32 is "56" and gives `5`.
+This gives `W7, .`: `W` from “Work”, `7` from “1874.”, the comma from “mill,”,
+the space after “thousand”, and the period from “1874.”. The space is valid
+only if “thousand” and the following word are on the same PDF line. The actual
+map contains only positions and counting rules.
 
 **Where the list is kept** decides what the text protects against:
 
@@ -422,7 +429,7 @@ refuses to start if that fails.
 - **Runbook** takes the who-has-what map and produces a printable set of
   instructions for the family. It contains **no secrets**.
 - **Passphrase in a text** takes a text you paste and the wallet passphrase, and
-  produces the list of word positions for the database plus a PDF of the text to
+  produces character positions (paragraph, word, character) for the database and a PDF to
   print (see [Hiding the passphrase in a text](#hiding-the-passphrase-in-a-text)).
   No page shows the passphrase again, and the PDF carries no metadata.
 
