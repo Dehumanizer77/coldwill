@@ -173,8 +173,10 @@ passphrase v trezore chrániť.
 Napísaná ako obyčajný text je passphrase v trezore chránená len tou schránkou.
 Ako ju uložiť lepšie, toto repo nerieši, ale možností je viac:
 
-- **zašifrovať ju na GPG kľúč hlavného dediča**, takže v trezore je ciphertext,
-  ktorý otvorí len dedič, rovnako ako to DMS robí so svojou obálkou;
+- **zašifrovať ju na GPG kľúče hlavného dediča aj technicky zdatných osôb**,
+  naraz na všetkých (rovnako `--recipient A --recipient B` ako pri obálke pre DMS),
+  takže v trezore je ciphertext, ktorý otvoria len oni. Zašifrovaná len na
+  dediča by bola nečitateľná, keby ste zomreli obaja naraz a DMS by už nebežal;
 - **ukryť ju v dlhšom texte** tak, aby ju vedel prečítať len dedič;
 - **rozdeliť ju**: časť v trezore, zvyšok niečo, čo vie len dedič;
 - **zašifrovať ju heslom, ktoré dedič pozná** a ktoré nikde nie je napísané.

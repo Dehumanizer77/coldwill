@@ -175,8 +175,11 @@ Written out in plain text, the passphrase in the vault is only as safe as the
 box. How to store it better is outside the scope of this repository, but there
 are several ways to go about it:
 
-- **encrypt it to the primary heir's GPG key**, so the vault holds ciphertext only
-  the heir can open, which is what the switch already does with its envelope;
+- **encrypt it to the GPG keys of the primary heir and the technical helpers**,
+  all at once (the same `--recipient A --recipient B` as for the switch's
+  envelope), so the vault holds ciphertext only they can open. Encrypted to the
+  heir alone, it becomes unreadable if you both die at once and the switch is no
+  longer running;
 - **hide it in a longer text**, in a way only the heir knows how to read back;
 - **split it**, with part in the vault and the rest something only the heir knows;
 - **encrypt it with a password the heir knows** and that is never written down.
