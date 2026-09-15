@@ -4,7 +4,7 @@ A Bitcoin inheritance system your family can actually use: simple enough for a
 non-technical heir, resistant to theft, loss and disaster, and fully
 self-custodial with no third parties, custodians or notaries. The repository
 holds the design and two tools, an offline key generator and recovery tool that
-also prints a runbook for the family, and an online dead man's switch.
+also prints a runbook for the family, and an online dead man's switch (DMS).
 
 *Slovensky: [README_sk.md](README_sk.md).*
 
@@ -18,7 +18,7 @@ N**), is chosen when you generate them. The drawing shows a common choice, 2 of 
 
 ```
     SHARE #1         SHARE #2         SHARE #3              ENVELOPE
-  metal, person A  metal, person B  metal, person C  vault text + switch PDF
+  metal, person A  metal, person B  metal, person C  vault text + PDF from DMS
        │                │                │                      │
        └────────┬───────┴────────────────┘                      │
                 │   any K of N (here 2 of 3)                    │
@@ -50,7 +50,7 @@ The **dead man's switch** is a convenience, not a dependency. It asks you
 periodically whether you are alive, and once you stop answering and someone you
 trust confirms, it sends the envelope to the primary heir after a grace period. How many
 confirmations it takes is configurable and defaults to one. The bank vault is
-the path that always works: the switch can be turned off at any time without
+the path that always works: the DMS can be turned off at any time without
 harming the inheritance.
 
 > **This is not audited software.** It has tests, and the SLIP-39 core is checked
@@ -106,7 +106,7 @@ The decisions everything else follows from:
 - **Factor A, the envelope.** An ordinary printed text with the **wallet
   passphrase** hidden in it, readable only with the map kept in the database. It
   lives only where the family gets to it after the owner's death: sealed in a
-  **bank vault**, and sent by the **dead man's switch** to the primary heir as a
+  **bank vault**, and sent by the **DMS** to the primary heir as a
   PDF. Nothing is encrypted, because the text without the database is worthless.
   While the owner lives, only he has the passphrase, so only he controls the
   coins.
@@ -154,14 +154,14 @@ An example for 2 of 3. The number of shares is up to you:
 
 | Location | Factor B (metal share) | Factor A (envelope) | Database (`.kdbx`) |
 |---|---|---|---|
-| **location A**, primary heir | share #1 | (PDF from the switch once triggered) | ✓ |
+| **location A**, primary heir | share #1 | (PDF from the DMS once triggered) | ✓ |
 | **bank vault** | optionally one of the shares | **envelope** (the printed text) | ✓ (optional) |
 | **location B**, trusted person | share #2 | – | – |
 | **location C**, technical helper | share #3 | – | – |
-| **Switch** | – | the envelope as a PDF, for the primary heir | – |
+| **DMS** | – | the envelope as a PDF, for the primary heir | – |
 
 Recovering the Bitcoin needs **K of N shares plus an envelope**, from the vault
-or from the switch, which in practice means the primary heir plus one trusted
+or from the DMS, which in practice means the primary heir plus one trusted
 helper. A single share on its own is worthless, which is what keeps the risk to
 each individual holder low.
 
@@ -180,7 +180,7 @@ text is worthless, which is what lets it lie in the vault as a plain printout
 and travel by e-mail and Signal as a plain PDF: there are no keys to make, keep
 or lose, and nothing for the heir to decrypt.
 
-The same text exists twice, printed in the vault and as a PDF on the switch,
+The same text exists twice, printed in the vault and as a PDF in the DMS,
 which sends it to the primary heir and nobody else. If you and the heir die
 together, that copy lands in a mailbox nobody reads, and the others use the
 printout in the vault.
@@ -189,7 +189,7 @@ printout in the vault.
 
 Each passphrase character comes from any position in a word of an ordinary
 text, such as a newspaper article, or from the space and marks after the word.
-The vault holds the printed text, the switch holds the same text as a PDF,
+The vault holds the printed text, the DMS holds the same text as a PDF,
 and the map of positions is kept in the database.
 
 The offline tool **Passphrase in a text** picks positions at random, reads the
@@ -271,7 +271,7 @@ database.
    trusted people.
 2. Call the **technical helper**, who walks them through it.
 3. Get the **envelope**: the printed text from the bank vault, or the PDF the
-   switch has already sent to the primary heir.
+   DMS has already sent to the primary heir.
 4. Collect **K shares** from their holders, one of which may be in the bank vault.
 5. In the **offline tool**: SLIP-39 words → key file → open the KeePass database
    (the heir's own, or the one in the vault) with a standard app → the seed and
@@ -297,8 +297,8 @@ a tool rejects abbreviations, the full words are in the official wordlist.
 - All shares present and legible, confirmed with their holders.
 - Envelope in the vault intact, and the database opens: the heir's, and the one
   in the vault if there is one.
-- Test the switch's check-in.
-- The PDF on the switch still matches the printout in the vault.
+- Test the DMS check-in.
+- The PDF in the DMS still matches the printout in the vault.
 - **A full dry-run recovery**, once a year, on a spare machine. At least once
   that should be on Windows, since that binary cannot be tested anywhere else.
 - Update the database when credentials change, replace the one in the vault if
@@ -448,7 +448,7 @@ refuses to start if that fails.
   opens the same database, and both a wrong key file and "the hex as text" are
   refused.
 - The **wallet passphrase is not in the database**, or written down anywhere:
-  the envelope (printed in the vault, a PDF on the switch) holds the text, and
+  the envelope (printed in the vault, a PDF in the DMS) holds the text, and
   the database holds the map that reads it.
 
 #### Correctness
@@ -471,14 +471,14 @@ message goes out on every channel the recipient has an address for.
 
 1. **Regular check-in** (click "I am alive").
 2. Miss one and **escalating reminders** go to the owner on every channel.
-3. After a long silence the switch **does not fire on its own**. It asks the
+3. After a long silence the DMS **does not fire on its own**. It asks the
    technical helper and another trusted person to confirm death or permanent
    incapacity, with a link valid only for this cycle and a confirmation button.
 4. Once confirmed, the **grace period** starts, during which the owner gets a
    daily warning that the envelope goes out in X days. One confirmation is enough
    by default (`confirm_quorum: 1`): a false alarm is survivable, because the
    envelope is worthless without the metal shares, whereas "nobody confirmed"
-   would stall the inheritance. With `confirm_quorum: 2` the switch counts
+   would stall the inheritance. With `confirm_quorum: 2` the DMS counts
    **distinct** confirmers, so the same person twice does not count twice.
 5. **The owner's check-in cancels everything, at any time**, including during the
    countdown.
@@ -487,8 +487,8 @@ message goes out on every channel the recipient has an address for.
 7. A false or malicious confirmation is not a catastrophe: the envelope is
    **useless without enough metal shares**.
 
-Safety nets: a stuck or unconfirmed switch **never blocks the inheritance**,
-because the envelope is also in the bank vault. The switch is best-effort and
+Safety nets: a stuck or unconfirmed DMS **never blocks the inheritance**,
+because the envelope is also in the bank vault. The DMS is best-effort and
 removable, and the vault is the path that always works.
 
 #### Security model
@@ -498,7 +498,7 @@ removable, and the vault is the path that always works.
   wrong Signal recipient gives away an article, not the passphrase. That is why
   it is sent unencrypted, with no keys to manage.
 - **Fail-safe:** if the self-test fails (mail unreachable, the envelope missing or
-  not a PDF, state not writable), the switch **alerts but does not fire**.
+  not a PDF, state not writable), the DMS **alerts but does not fire**.
 - **Two-step links:** check-in and confirm are a GET page plus a POST button, so
   that automatic link prefetching by mail scanners cannot trigger them.
 - **Confirmation links are bound to one waiting cycle.** A check-in invalidates
@@ -525,7 +525,7 @@ removable, and the vault is the path that always works.
 monthly check-in → after 60 days of silence: ask the confirmers
 → confirmation (any of them) → 7-day delay with daily warnings to the owner
 → release: the envelope sent to the primary heir.  A check-in cancels everything.
-switch → owner, weekly "healthy"; on a fault, an alert.
+DMS → owner, weekly "healthy"; on a fault, an alert.
 ```
 
 #### Who gets the envelope
@@ -538,7 +538,7 @@ The primary heir, and nobody else:
 ```
 
 It goes out as an attachment on every channel the heir has an address for, and
-one channel getting through is enough. If none does, the switch stays in the
+one channel getting through is enough. If none does, the DMS stays in the
 countdown and tries again on the next tick. The self-test reads the file on
 every tick, and a missing file or one that is not a PDF is a fault that stops
 the release, so the wrong file (the map, say) is caught while you can still
@@ -588,7 +588,7 @@ safe to run again. `--force-config` rewrites the config after backing it up.
 its own data directory (`/opt/coldwill-switch-test`), container names (`coldwill-switch-test`,
 `coldwill-signal-test`), ports (8188 and 8180) and Compose project
 (`-p coldwill-switch-test`). A rehearsal therefore cannot take down or replace a running
-production switch, and the proxy will not start pointing at it; if a production
+production DMS, and the proxy will not start pointing at it; if a production
 instance is running alongside, the script says so at startup.
 
 On top of that: intervals in minutes instead of days, a clean start (the old
@@ -670,7 +670,7 @@ knowing:
 5. **Bookmark the check-in link and put it in the KeePass database.** It is
    stable, but it depends on `hmac_secret`, so store that too; changing it makes
    different links.
-6. Record in the runbook and in the database that the switch exists and how to
+6. Record in the runbook and in the database that the DMS exists and how to
    turn it off (`docker compose down` removes it, and the inheritance does not
    suffer).
 
@@ -694,7 +694,7 @@ Optional, but worth knowing:
 |---|---|
 | `confirm_quorum` | how many **distinct** confirmers start the countdown (default 1) |
 | `checkin_key_version` | increment and restart if your check-in link leaks; the old links stop working |
-| `smtp_timeout` | bound on the whole SMTP conversation (default 30s), so a stalled relay cannot block the switch |
+| `smtp_timeout` | bound on the whole SMTP conversation (default 30s), so a stalled relay cannot block the DMS |
 
 #### Signal, the second channel
 
@@ -711,7 +711,7 @@ system nobody looks at for years.
 ```
 
 A `bbernhard/signal-cli-rest-api` container holds the linked device, and the
-switch only POSTs to `/v2/send` over loopback: text, and the envelope as an
+DMS only POSTs to `/v2/send` over loopback: text, and the envelope as an
 attachment. Linking, once, at deployment:
 
 ```
@@ -728,7 +728,7 @@ Incoming messages are not processed: the check-in is a link in the message and
 works from either channel.
 
 Note that linking makes the container a full Signal device on your number, which
-means it receives all your messages, not only the ones the switch sends. That is
+means it receives all your messages, not only the ones the DMS sends. That is
 the price of messages coming from your own number, which is what makes a
 "confirm that he died" request credible to the recipient rather than looking like
 a scam.
@@ -754,7 +754,7 @@ adding a language means adding one file and touching no template:
 | | |
 |---|---|
 | `offline/internal/i18n/` | the tool's interface and the runbook |
-| `dms/internal/i18n/` | the switch's e-mails and its two web pages |
+| `dms/internal/i18n/` | the DMS e-mails and its two web pages |
 
 English is the source of truth and the fallback. A key missing from a
 translation renders in English rather than blank, and a key missing everywhere
@@ -772,7 +772,7 @@ Where the language comes from differs by tool, because the readers do:
 - The offline tool takes it from the URL (`?lang=sk`), and the runbook form has
   its own selector, since you may want to print a Slovak copy for one holder and
   an English one for another.
-- The switch takes it **per recipient**: `user_lang` for the owner, and `lang` on
+- The DMS takes it **per recipient**: `user_lang` for the owner, and `lang` on
   each confirmer and on the heir. One notification is rendered
   separately for each person, so an English confirmer and a Slovak one each get
   their own.
@@ -792,7 +792,7 @@ the usual files from being committed by accident, but do not rely on it: the rea
 defence is never bringing them near the repository.
 
 **The map does not belong there either.** Who holds which share, where the
-envelope is and which machine runs the switch belong in the **printed runbook**
+envelope is and which machine runs the DMS belong in the **printed runbook**
 and the **KeePass database**, not in text in a repository, private or otherwise.
 The documentation here is deliberately generic (location A/B/C, "technical
 helper") for that reason, and `*.pdf` is gitignored so neither the envelope nor
