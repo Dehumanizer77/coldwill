@@ -98,3 +98,17 @@ func TestNoMessageSendsTheDatabaseToTheCloud(t *testing.T) {
 		}
 	}
 }
+
+// No USB stick sits beside the metal backups, so no message may say the tool is
+// kept on one there. Carrying a download over on a USB stick is another matter
+// and stays.
+func TestNoMessageKeepsTheToolOnUSBSticksByTheShares(t *testing.T) {
+	for l, msgs := range catalogs {
+		for k, v := range msgs {
+			low := strings.ToLower(v)
+			if strings.Contains(low, "usb") && (strings.Contains(low, "metal") || strings.Contains(low, "kov")) {
+				t.Errorf("%s %s puts USB sticks beside the shares: %q", l, k, v)
+			}
+		}
+	}
+}

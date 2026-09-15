@@ -48,4 +48,4 @@ done
 ( cd "$OUT" && sha256sum * > SHA256SUMS )
 echo
 echo "Done, in $(pwd)/$OUT."
-echo "release.sh uploads these; for a USB stick, copy the whole directory."
+echo "release.sh uploads these."

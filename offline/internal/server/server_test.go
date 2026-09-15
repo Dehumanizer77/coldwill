@@ -398,7 +398,7 @@ func TestRunbookNamesHelpersInTheSentences(t *testing.T) {
 		"person_name":    {"Alica", "Cyril", "Bob"},
 		"person_contact": {"a@example.com", "c@example.com", "b@example.com"},
 		"person_tech":    {"tech", "tech", "nontech"},
-		"tool_where":     {"a USB stick at the bank"},
+		"tool_where":     {"a copy in the bank vault"},
 		"threshold":      {"2"}, "count": {"3"},
 	})
 	body := rr.Body.String()
@@ -409,9 +409,9 @@ func TestRunbookNamesHelpersInTheSentences(t *testing.T) {
 	if strings.Contains(body, "(Bob") {
 		t.Errorf("a non-technical holder was offered as a helper")
 	}
-	// Where the tool is kept, likewise.
-	if !strings.Contains(body, "(a USB stick at the bank)") {
-		t.Errorf("the runbook does not say where the tool is kept")
+	// Where else the tool is kept, when the form says so.
+	if !strings.Contains(body, "also kept here: <strong>a copy in the bank vault</strong>") {
+		t.Errorf("the runbook does not say where else the tool is kept")
 	}
 	// And the download address. The default is a placeholder with angle
 	// brackets in it, so what reaches the page is the escaped form.
@@ -435,6 +435,9 @@ func TestRunbookDownloadURLIsOverridable(t *testing.T) {
 	}
 	if strings.Contains(body, ProjectURL) {
 		t.Errorf("the default address is still there alongside the override")
+	}
+	if strings.Contains(body, "also kept here") {
+		t.Errorf("with no other place given, the runbook promises one anyway")
 	}
 	// It has to survive the edit button, like every other field.
 	rr = do(s, http.MethodPost, "/runbook", url.Values{

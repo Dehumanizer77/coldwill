@@ -392,9 +392,9 @@ what saves you from having to.
 Releases rather than committed files, because a 34 MB rebuild in every commit
 would end up in the history of everyone who clones this.
 
-The same files also go onto a USB stick beside every metal backup and into the
-bank vault, so the inheritance does not depend on GitHub still existing. The
-runbook names both paths and tells the heir which file to run on which machine.
+The runbook tells the heir which file to run on which machine. If you keep
+another copy of the files somewhere, the runbook form has a field for it, and the
+printed runbook points there in case the download address stops working.
 
 Go cross-compiles on its own, with no extra toolchain. Only the binary for the
 build machine can be tested there, so **Windows and macOS must be tried on the

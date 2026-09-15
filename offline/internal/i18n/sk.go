@@ -96,7 +96,7 @@ var skMessages = map[string]string{
 	"rbform.bankkdbx":     "Databáza hesiel (.kdbx) je aj v bankovom trezore",
 	"rbform.toolurl":      "Odkiaľ sa nástroj dá stiahnuť (adresa repozitára)",
 	"rbform.toolwhere":    "Kde je uložený nástroj <em>coldwill</em>",
-	"rbform.ph.toolwhere": "napr. USB kľúč pri každom kovovom médiu a v bankovom trezore",
+	"rbform.ph.toolwhere": "nepovinné",
 	"rbform.extras":       "Doplnky",
 	"rbform.wallet":       "Peňaženka, poznámky",
 	"rbform.message":      "Odkaz pre rodinu (voľný text)",

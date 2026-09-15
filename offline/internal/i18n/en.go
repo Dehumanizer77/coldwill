@@ -103,7 +103,7 @@ var enMessages = map[string]string{
 	"rbform.bankkdbx":     "The password database (.kdbx) is also in the bank vault",
 	"rbform.toolurl":      "Where the tool can be downloaded (repository URL)",
 	"rbform.toolwhere":    "Where the <em>coldwill</em> tool is kept",
-	"rbform.ph.toolwhere": "e.g. a USB stick beside every metal backup and in the bank vault",
+	"rbform.ph.toolwhere": "optional",
 	"rbform.extras":       "Extras",
 	"rbform.wallet":       "Wallet, notes",
 	"rbform.message":      "A message for the family (free text)",

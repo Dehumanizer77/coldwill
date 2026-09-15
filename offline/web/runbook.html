@@ -105,7 +105,7 @@
       <li>{{t .L "rb.step.call"}}</li>
       <li>{{t .L "rb.step.parts" .Threshold}}{{if .BankShare}} {{t .L "rb.step.parts.bank"}}{{end}}</li>
       <li>{{t .L "rb.step.env" .TechSuffix}}</li>
-      <li>{{t .L "rb.step.pc" .ToolURL .ToolSuffix}}
+      <li>{{t .L "rb.step.pc" .ToolURL}}<br>{{if .ToolWhere}}{{t .L "rb.step.pc.where" .ToolWhere}}<br>{{end}}{{t .L "rb.step.pc.pick"}}
       <table>
         <tr><th>{{t .L "rb.step.pc.os"}}</th><th>{{t .L "rb.step.pc.file"}}</th></tr>
         <tr><td>{{t .L "rb.step.pc.win"}}</td><td><code>coldwill-windows-amd64.exe</code></td></tr>

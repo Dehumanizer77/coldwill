@@ -375,9 +375,9 @@ runneru s binárkou, ktorá skladá key-file, a zmysel lokálneho buildu je prá
 Releases namiesto commitnutých súborov preto, že 34 MB pri každom prebuilde by
 skončilo v histórii každého, kto si repo naklonuje.
 
-Tie isté súbory idú aj na USB kľúč ku každému kovovému médiu a do bankového
-trezoru, aby dedičstvo nezáviselo na tom, či GitHub ešte existuje. Runbook
-spomína obe cesty a hovorí, ktorý súbor na ktorom počítači spustiť.
+Runbook dedičovi povie, ktorý súbor na ktorom počítači spustiť. Ak máš tie súbory
+uložené aj inde, runbook má na to pole a vytlačený návod dediča tam nasmeruje,
+keby adresa na stiahnutie prestala fungovať.
 
 Go kríž-kompiluje samo, žiadny ďalší toolchain netreba. Otestovať sa tu dá len
 binárka pre tento stroj: **Windows a macOS treba vyskúšať na cieľovom systéme**,

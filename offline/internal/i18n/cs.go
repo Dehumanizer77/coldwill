@@ -100,7 +100,7 @@ var csMessages = map[string]string{
 	"rbform.bankkdbx":     "Databáze hesel (.kdbx) je i v bankovním trezoru",
 	"rbform.toolurl":      "Odkud se nástroj dá stáhnout (adresa repozitáře)",
 	"rbform.toolwhere":    "Kde je uložen nástroj <em>coldwill</em>",
-	"rbform.ph.toolwhere": "např. USB klíč u každého kovového média a v bankovním trezoru",
+	"rbform.ph.toolwhere": "nepovinné",
 	"rbform.extras":       "Doplňky",
 	"rbform.wallet":       "Peněženka, poznámky",
 	"rbform.message":      "Vzkaz pro rodinu (volný text)",
