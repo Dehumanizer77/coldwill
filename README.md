@@ -383,9 +383,6 @@ no CI build on purpose: a release pipeline would mean trusting somebody else's
 runner with the binary that reassembles the key file, and building locally is
 what saves you from having to.
 
-Releases rather than committed files, because a 34 MB rebuild in every commit
-would end up in the history of everyone who clones this.
-
 The runbook tells the heir which file to run on which machine. If you keep
 another copy of the files somewhere, the runbook form has a field for it, and the
 printed runbook points there in case the download address stops working.
@@ -763,9 +760,7 @@ enforce that: a translation must cover the English key set, must not invent keys
 of its own, and must carry the same format placeholders, which is what stops a
 `%!s(MISSING)` reaching a reader.
 
-English, Slovak and Czech are complete. The Czech translation has not been read
-by a native speaker, and a runbook is a document someone follows under stress, so
-have one check it before printing a Czech copy.
+English, Slovak and Czech are complete.
 
 Where the language comes from differs by tool, because the readers do:
 
@@ -787,16 +782,11 @@ If you fork this for your own inheritance, the one rule that matters:
 **Real secrets never go into the repository.** Not the seed words, the wallet
 passphrase, the key file or its SLIP-39 shares, the database password, a real
 `.kdbx`, or the envelope and its map. Secrets are born and live offline, on
-metal, in a bank vault and in the encrypted database. The `.gitignore` here stops
-the usual files from being committed by accident, but do not rely on it: the real
-defence is never bringing them near the repository.
+metal, in a bank vault and in the encrypted database.
 
 **The map does not belong there either.** Who holds which share, where the
 envelope is and which machine runs the DMS belong in the **printed runbook**
 and the **KeePass database**, not in text in a repository, private or otherwise.
-The documentation here is deliberately generic (location A/B/C, "technical
-helper") for that reason, and `*.pdf` is gitignored so neither the envelope nor
-a printed runbook ends up in it.
 
 ## Licence
 

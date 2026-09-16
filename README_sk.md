@@ -54,17 +54,6 @@ cez banku: DMS sa dá kedykoľvek vypnúť a dedičstvu to neublíži.
 Podrobnosti nižšie; kto chce len vedieť „ako sa k tomu rodina dostane“, môže
 skončiť tu a prečítať si [Recovery](#recovery-postup-pre-netechnického-dediča).
 
-> ⚠️ **BEZPEČNOSTNÉ PRAVIDLO č. 1**
->
-> Do tohto repozitára **nikdy** nepatria reálne tajomstvá:
-> seed slová (BIP-39), passphrase k peňaženke, key-file ani jeho SLIP-39 časti,
-> heslo ku KeePass DB, reálny `.kdbx`, obálka ani jej mapa.
->
-> Repozitár je len **kód a dokumentácia**. Tajomstvá vznikajú a žijú výhradne
-> offline (kov, bankový trezor, šifrovaný `.kdbx`). `.gitignore` je nastavený
-> tak, aby bežné tajné súbory nešlo omylom commitnúť, ale spoľahni sa hlavne na
-> to, že ich do repa vôbec neprinesieš.
-
 
 ## Obsah
 
@@ -73,7 +62,7 @@ skončiť tu a prečítať si [Recovery](#recovery-postup-pre-netechnického-ded
 - [Nástroje](#nástroje)
   - [Offline nástroj (`offline/`)](#offline-nástroj-offline): key-file, SLIP-39 časti, runbook
   - [Dead-man's switch (`dms/`)](#dead-mans-switch-dms): obálka, nasadenie, Signal
-- [Prevádzkové pravidlá repa](#prevádzkové-pravidlá-repa)
+- [Ak si to chceš spraviť sám](#ak-si-to-chceš-spraviť-sám)
 
 ## Návrh
 
@@ -365,9 +354,6 @@ adresa, ktorá funguje ďalej aj po vydaní novších). Binárky sa **buildia u 
 len sa nahrávajú**. CI build zámerne nie je: znamenal by dôverovať cudziemu
 runneru s binárkou, ktorá skladá key-file, a zmysel lokálneho buildu je práve to,
 že nemusíš.
-
-Releases namiesto commitnutých súborov preto, že 34 MB pri každom prebuilde by
-skončilo v histórii každého, kto si repo naklonuje.
 
 Runbook dedičovi povie, ktorý súbor na ktorom počítači spustiť. Ak máš tie súbory
 uložené aj inde, runbook má na to pole a vytlačený návod dediča tam nasmeruje,
@@ -718,13 +704,15 @@ prepínač, takže sa dá vytlačiť iná jazyková verzia pre každého držite
 berie jazyk **na príjemcovi**: `user_lang` pre teba, `lang` pri každom
 potvrdzovateľovi a pri dedičovi.
 
-**Českú verziu si pred ostrou tlačou daj prečítať rodenému Čechovi.**
+## Ak si to chceš spraviť sám
 
-## Prevádzkové pravidlá repa
+Ak si repo forkneš pre vlastné dedičstvo, platí jedno pravidlo:
 
-- **Reálna mapa do repa nepatrí.** Kto drží ktorú časť, kde je obálka a na akom
-  serveri beží DMS, to žije vo **vytlačenom runbooku** a v **KeePass DB**, nie
-  v texte v repe. Dokumentácia je zámerne zovšeobecnená (lokalita A/B/C,
-  „technicky zdatná osoba“).
-- Obálka a vytlačené runbooky (`*.pdf`) sú gitignorované, aby sa do repa
-  nedostali.
+**Reálne tajomstvá do repozitára nepatria.** Ani seed, passphrase k peňaženke,
+key-file či jeho SLIP-39 časti, heslo ku KeePass DB, reálny `.kdbx`, obálka ani
+jej mapa. Tajomstvá vznikajú a žijú offline: na kove, v bankovom trezore a
+v zašifrovanej databáze.
+
+**Reálna mapa tiež nie.** Kto drží ktorú časť, kde je obálka a na akom serveri
+beží DMS, to patrí do **vytlačeného runbooku** a do **KeePass DB**, nie do textu
+v repozitári, súkromnom či nie.
