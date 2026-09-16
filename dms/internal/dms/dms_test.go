@@ -21,6 +21,7 @@ func (c *clk) add(d time.Duration) { c.t = c.t.Add(d) }
 type sentMail struct {
 	to            []string
 	subject, body string
+	atts          []Attachment
 }
 
 type fakeMailer struct {
@@ -31,7 +32,7 @@ type fakeMailer struct {
 	failTo   map[string]bool // addresses whose delivery fails
 }
 
-func (m *fakeMailer) Send(to []string, subject, body string) error {
+func (m *fakeMailer) Send(to []string, subject, body string, atts ...Attachment) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.sendErr != nil {
@@ -42,7 +43,7 @@ func (m *fakeMailer) Send(to []string, subject, body string) error {
 			return errors.New("mailbox unavailable: " + t)
 		}
 	}
-	m.sent = append(m.sent, sentMail{to, subject, body})
+	m.sent = append(m.sent, sentMail{to, subject, body, atts})
 	return nil
 }
 func (m *fakeMailer) Check() error { return m.checkErr }
@@ -76,20 +77,23 @@ func (m *fakeMailer) sentTo(addr, subjContains string) (sentMail, bool) {
 	return sentMail{}, false
 }
 
+// testPDF stands in for the envelope; the self-test only checks that it is a PDF.
+const testPDF = "%PDF-1.4\n% test envelope\n%%EOF\n"
+
 // testConfig is an e-mail-only config over a fresh temp dir with a dummy
-// envelope, in the single-envelope form. Callers apply defaults themselves
-// after any edits, exactly as LoadConfig does.
+// envelope PDF. Callers apply defaults themselves after any edits, exactly as
+// LoadConfig does.
 func testConfig(t *testing.T) Config {
 	t.Helper()
 	dir := t.TempDir()
-	env := filepath.Join(dir, "envelope.asc")
-	if err := os.WriteFile(env, []byte("-----BEGIN PGP MESSAGE-----\nZHVtbXk=\n-----END PGP MESSAGE-----\n"), 0o600); err != nil {
+	env := filepath.Join(dir, "envelope.pdf")
+	if err := os.WriteFile(env, []byte(testPDF), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	cfg := Config{
 		ListenAddr: "127.0.0.1:0", PublicBaseURL: "https://dms.example",
 		SMTPAddr: "127.0.0.1:25", FromEmail: "dms@example", UserEmail: "me@example",
-		FriendEmail: "friend@example.com",
+		Heir: Heir{Name: "Heir", Email: "heir@example.com"},
 		Confirmers: []Confirmer{
 			{ID: "friend", Name: "Friend", Email: "friend@example.com"},
 			{ID: "brother", Name: "Brother", Email: "brother@example.com"},
@@ -114,7 +118,7 @@ func newSvc(t *testing.T) (*Service, *fakeMailer, *clk) {
 	t.Helper()
 	c, fm := newClock(), &fakeMailer{}
 	cfg := testConfig(t)
-	cfg.applyDefaults() // same order as LoadConfig: defaults (incl. envelope folding) then use
+	cfg.applyDefaults() // same order as LoadConfig: defaults, then use
 	svc, err := New(cfg, c.now, fm, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -199,12 +203,12 @@ func TestConfirmCountdownFire(t *testing.T) {
 	if svc.Phase() != PhaseFired {
 		t.Fatalf("phase = %s, want fired", svc.Phase())
 	}
-	m, ok := fm.sentTo("friend@example.com", "inheritance")
+	m, ok := fm.sentTo("heir@example.com", "inheritance")
 	if !ok {
-		t.Fatalf("envelope not sent to friend")
+		t.Fatalf("envelope not sent to the heir")
 	}
-	if !strings.Contains(m.body, "BEGIN PGP MESSAGE") {
-		t.Errorf("envelope body missing PGP ciphertext")
+	if len(m.atts) != 1 || m.atts[0].ContentType != "application/pdf" || string(m.atts[0].Data) != testPDF {
+		t.Errorf("envelope not attached as the PDF: %+v", m.atts)
 	}
 }
 
@@ -224,7 +228,7 @@ func TestCheckinCancels(t *testing.T) {
 	if svc.Phase() == PhaseFired {
 		t.Fatalf("must not fire after check-in")
 	}
-	if _, ok := fm.sentTo("friend@example.com", "inheritance"); ok {
+	if _, ok := fm.sentTo("heir@example.com", "inheritance"); ok {
 		t.Fatalf("envelope sent despite check-in")
 	}
 }

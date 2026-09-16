@@ -16,7 +16,7 @@ func init() {
 		"rb.intro.bankshare": "Jedna z častí je v <strong>bankovom trezore</strong>, spolu s obálkou.",
 
 		"rb.auto.h": "Ako to funguje (automatický systém)",
-		"rb.auto.p": "Kým žijem, chodia mi pravidelné kontrolné e-maily. Ak sa dlhšie neozvem a niektorá z dôveryhodných osôb to potvrdí, systém po ochrannej lehote (niekoľko dní) <strong>automaticky pošle obálku s passphrase e-mailom technicky zdatnej osobe%s</strong>. Keby to automatické posielanie zlyhalo, heslo (passphrase) je uložené aj v bankovom trezore (bod 2).",
+		"rb.auto.p": "Kým žijem, chodia mi pravidelné kontrolné e-maily. Ak sa dlhšie neozvem a niektorá z dôveryhodných osôb to potvrdí, systém po ochrannej lehote (niekoľko dní) <strong>automaticky pošle obálku e-mailom hlavnému dedičovi%s</strong>: PDF s tým istým textom, ktorý je uložený v bankovom trezore. Text sám o sebe nič neprezradí; ako z neho prečítať passphrase, je napísané v databáze hesiel. Keby to automatické posielanie zlyhalo, vytlačený text je v bankovom trezore (bod 3).",
 
 		"rb.call.h":      "1) Koho zavolať",
 		"rb.call.tech":   "<strong>Technicky zdatné osoby.</strong> Volaj ich, prevedú ťa celým postupom:",
@@ -26,7 +26,7 @@ func init() {
 		"rb.need.h":     "2) Čo treba získať (dve veci)",
 		"rb.need.p":     "Na prístup k Bitcoinu treba <strong>oboje</strong>:",
 		"rb.need.parts": "<strong>%s z %s častí</strong> (každá je 23 slov), z nich sa zloží „key-file“.",
-		"rb.need.env":   "<strong>Obálku s passphrase</strong>: druhé tajomstvo, bez ktorého sa k Bitcoinu nedá dostať.",
+		"rb.need.env":   "<strong>Obálku</strong>: vytlačený text s ukrytou passphrase, druhé tajomstvo, bez ktorého sa k Bitcoinu nedá dostať. Ako z neho passphrase prečítať, je napísané v databáze.",
 		"rb.need.note":  "Ani jedno samo o sebe nestačí, preto je to bezpečné.",
 
 		"rb.map.h":         "3) Mapa: kde čo je",
@@ -36,7 +36,7 @@ func init() {
 		"rb.map.held":      "drží: %s",
 		"rb.map.inbank":    "bankový trezor, spolu s obálkou",
 		"rb.map.heir":      "hlavný dedič",
-		"rb.map.env":       "Obálka (passphrase), banka",
+		"rb.map.env":       "Obálka (text), banka",
 		"rb.map.kdbx":      "Databáza hesiel (.kdbx)",
 		"rb.map.kdbx.bank": ", a tiež v bankovom trezore",
 
@@ -56,7 +56,7 @@ func init() {
 		"rb.step.call":       "Zavolaj technicky zdatnú osobu (bod 1). Poradí ti so všetkým, čomu nebudeš rozumieť.",
 		"rb.step.parts":      "Zožeň <strong>aspoň %s časti</strong> (bod 3). Slová si od držiteľov odpíš na papier alebo si ich nechaj nadiktovať. <strong>Nefoť ich telefónom</strong>, nie je to bezpečné.",
 		"rb.step.parts.bank": "Jedna z nich je v bankovom trezore spolu s obálkou, takže obe vyzdvihneš naraz.",
-		"rb.step.env":        "Zožeň <strong>obálku s heslom (passphrase)</strong>: buď zapečatenú z bankového trezoru, alebo od technicky zdatnej osoby%s, ktorej ju systém pošle e-mailom.",
+		"rb.step.env":        "Zožeň <strong>obálku</strong>: buď vytlačený text zapečatený v bankovom trezore, alebo PDF, ktoré systém pošle e-mailom hlavnému dedičovi%s. V oboch prípadoch je to ten istý text.",
 		"rb.step.pc":         "Priprav <strong>počítač odpojený od internetu</strong> (vytiahni kábel, vypni wifi). Je to dôležité: slová z častí sa naň budú písať a nesmú sa odtiaľ dostať von.<br>Nástroj sa volá <em>coldwill</em>. Na počítači, ktorý internet <em>má</em>, ho stiahni z <strong>%s</strong> a prenes ho na USB kľúči. Súbory sú na tej stránke dole, pod nadpisom <em>Assets</em>.",
 		"rb.step.pc.where":   "Ak tá adresa už nefunguje, tie isté súbory sú uložené aj tu: <strong>%s</strong>.",
 		"rb.step.pc.pick":    "Súborov je viac, jeden pre každý typ počítača. <strong>Spusti ten, ktorý sedí:</strong>",
@@ -78,7 +78,8 @@ func init() {
 		"rb.step.kdbx":       "Otvor databázu <code>.kdbx</code> programom <strong>KeePassXC</strong> (<a href=\"https://keepassxc.org/download/\">https://keepassxc.org/download</a>).<br><strong>Najlepšie je</strong> nainštalovať KeePassXC na ten istý odpojený počítač a databázu tam skopírovať. Seed potom nikdy neopustí stroj bez internetu.<br>Ak to nejde, prenes súbor s kľúčom na USB kľúči do počítača, kde KeePassXC máš, a ten počítač na ten čas <strong>odpoj od internetu</strong>.<br>V KeePassXC zvoľ ako ochranu <em>Key file</em> a vyber ten súbor s kľúčom. <strong>Do poľa Heslo nezadávaj nič.</strong> Dostaneš sa k <strong>seedu</strong> a ďalším informáciám a prístupom.",
 		"rb.step.kdbx.where": "Databázu má <strong>%s</strong>.",
 		"rb.step.kdbx.bank":  "Je aj v <strong>bankovom trezore</strong>.",
-		"rb.step.wallet":     "Na hardvérovej peňaženke obnov peňaženku <strong>zo seedu</strong> (tie slová z databázy). Heslo (passphrase) sa pri obnove <strong>nezadáva</strong>, peňaženka si oň povie až potom, pri odomykaní. Bez neho uvidíš prázdnu peňaženku, s ním Bitcoin. Prázdna peňaženka teda neznamená, že peniaze sú preč, ale že chýba heslo z obálky.",
+		"rb.step.pass":       "V databáze nájdi <strong>mapu k obálke</strong> a podľa nej prečítaj z textu <strong>passphrase</strong>: znak po znaku, v poradí mapy, presne tak, ako je vytlačený, vrátane veľkých písmen a medzier. Text nijako neupravuj, jeho zalomenie riadkov je súčasťou mapy.",
+		"rb.step.wallet":     "Na hardvérovej peňaženke obnov peňaženku <strong>zo seedu</strong> (tie slová z databázy). Heslo (passphrase) sa pri obnove <strong>nezadáva</strong>, peňaženka si oň povie až potom, pri odomykaní. Bez neho uvidíš prázdnu peňaženku, s ním Bitcoin. Prázdna peňaženka teda neznamená, že peniaze sú preč, ale že chýba passphrase z obálky.",
 		"rb.step.move":       "<em>(voliteľné, ale dôrazne odporúčané)</em> Presuň prostriedky do novej peňaženky, ktorú ovládaš ty.",
 
 		"rb.manual.h":      "5) Núdzový (manuálny) postup, ak nástroj nefunguje",
@@ -91,7 +92,7 @@ func init() {
 		"rb.safety.h":      "6) Bezpečnosť: na čo si dať pozor",
 		"rb.safety.seed":   "<strong>Seed zadávaj jedine do hardvérovej peňaženky.</strong> Nikdy ho nepíš do počítača, do mobilu, do e-mailu ani na žiadnu webovú stránku, ani keď o to niekto žiada.",
 		"rb.safety.words":  "<strong>Slová z častí</strong> zadávaj jedine do nástroja <em>coldwill</em> na počítači odpojenom od internetu (pri núdzovom postupe do iného SLIP-39 nástroja, tiež bez internetu).",
-		"rb.safety.nobody": "Nikomu cudziemu (ani „technickej podpore“) nedávaj slová, seed ani heslo z obálky.",
+		"rb.safety.nobody": "Nikomu cudziemu (ani „technickej podpore“) nedávaj slová, seed, mapu ani passphrase.",
 		"rb.safety.wipe":   "<strong>Po skončení</strong> zmaž súbor s kľúčom z počítača aj z USB kľúča. Kto ho má, otvorí si databázu. Papieriky so slovami spáľ alebo vráť držiteľom.",
 		"rb.safety.move":   "<em>(voliteľné, ale dôrazne odporúčané)</em> Po obnove presuň prostriedky do novej peňaženky.",
 		"rb.safety.slow":   "Neponáhľaj sa; ak niečo nesedí, zastav a poraď sa s technicky zdatnou osobou%s.",

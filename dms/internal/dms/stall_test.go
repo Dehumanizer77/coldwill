@@ -121,7 +121,7 @@ type blockingMailer struct {
 }
 
 func (m *blockingMailer) Check() error { return nil }
-func (m *blockingMailer) Send(to []string, subject, body string) error {
+func (m *blockingMailer) Send(to []string, subject, body string, atts ...Attachment) error {
 	if !m.once {
 		m.once = true
 		close(m.blocked)
@@ -130,15 +130,10 @@ func (m *blockingMailer) Send(to []string, subject, body string) error {
 	return nil
 }
 
-// A veto that lands while the envelopes are going out stops the rest of them.
-func TestVetoDuringReleaseStopsRemainingEnvelopes(t *testing.T) {
+// A veto that lands while the envelope is going out keeps the switch from
+// marking itself fired, and the owner is told the heir already has it.
+func TestVetoDuringReleaseIsNotMarkedFired(t *testing.T) {
 	cfg := testConfig(t)
-	dir := t.TempDir()
-	cfg.EnvelopePath, cfg.FriendEmail = "", ""
-	cfg.Envelopes = []Envelope{
-		{ID: "prva", Path: writeEnvelope(t, dir, "a.asc"), To: []EnvelopeRecipient{{Email: "a@example.com"}}},
-		{ID: "druha", Path: writeEnvelope(t, dir, "b.asc"), To: []EnvelopeRecipient{{Email: "b@example.com"}}},
-	}
 	cfg.applyDefaults()
 	c := newClock()
 	gate := &gateMailer{reached: make(chan struct{}), release: make(chan struct{})}
@@ -155,14 +150,14 @@ func TestVetoDuringReleaseStopsRemainingEnvelopes(t *testing.T) {
 	}
 	c.add(7 * 24 * time.Hour)
 
-	gate.arm("a@example.com")
+	gate.arm("heir@example.com")
 	done := make(chan struct{})
 	go func() { svc.Tick(); close(done) }()
 
 	select {
 	case <-gate.reached:
 	case <-time.After(5 * time.Second):
-		t.Fatal("release never reached the first envelope")
+		t.Fatal("release never reached the heir")
 	}
 	svc.CheckIn() // the owner turns up alive mid-delivery
 	close(gate.release)
@@ -171,11 +166,8 @@ func TestVetoDuringReleaseStopsRemainingEnvelopes(t *testing.T) {
 	if svc.Phase() != PhaseNormal {
 		t.Fatalf("phase = %s, want normal after the veto", svc.Phase())
 	}
-	if !gate.sawRecipient("a@example.com") {
-		t.Errorf("the first envelope should have gone out before the veto")
-	}
-	if gate.sawRecipient("b@example.com") {
-		t.Errorf("the second envelope was sent after the owner vetoed")
+	if gate.countSubj("cancelled") == 0 {
+		t.Errorf("the owner was not told the envelope had already reached the heir")
 	}
 }
 
@@ -189,23 +181,11 @@ type gateMailer struct {
 }
 
 func (m *gateMailer) arm(addr string) { m.on = addr }
-func (m *gateMailer) Send(to []string, subject, body string) error {
+func (m *gateMailer) Send(to []string, subject, body string, atts ...Attachment) error {
 	if !m.fired && len(to) == 1 && to[0] == m.on {
 		m.fired = true
 		close(m.reached)
 		<-m.release
 	}
-	return m.fakeMailer.Send(to, subject, body)
-}
-func (m *gateMailer) sawRecipient(addr string) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for _, s := range m.sent {
-		for _, t := range s.to {
-			if t == addr {
-				return true
-			}
-		}
-	}
-	return false
+	return m.fakeMailer.Send(to, subject, body, atts...)
 }

@@ -43,7 +43,7 @@ var csMessages = map[string]string{
 	"setupres.next.h":       "Dále",
 	"setupres.next.1":       "Přenes všechny části na kovové médium a rozdej je podle plánu.",
 	"setupres.next.2":       "V <strong>KeePassXC</strong> (<code>https://keepassxc.org/download</code>) vytvoř novou databázi a jako ochranu zvol <em>Key file</em> = stažený soubor (<strong>do pole Heslo nic nezadávej</strong>).",
-	"setupres.next.3":       "Do databáze ulož seed a ostatní přístupy. <strong>Passphrase k peněžence do databáze NEDÁVEJ</strong>, ta patří do posmrtné obálky.",
+	"setupres.next.3":       "Do databáze ulož seed a ostatní přístupy. <strong>Samotnou passphrase k peněžence do databáze NEDÁVEJ</strong>: ukryj ji v textu přes <em>Passphrase v textu</em> a do databáze ulož jen mapu.",
 	"setupres.next.4":       "<code>.kdbx</code> dej hlavnímu dědici a pokud chceš, jednu i do bankovního trezoru. Držitelům částí ne. Key-file z disku smaž.",
 
 	"recover.title":         "Obnova key-filu",
@@ -60,7 +60,7 @@ var csMessages = map[string]string{
 
 	"recoverres.title": "Klíč obnoven",
 	"recoverres.ok":    "✓ Z %s částí složen key-file.",
-	"recoverres.step":  "Pozor: toto je <strong>1. krok ze 3</strong>. Samotný key-file ještě není přístup k Bitcoinu: je potřeba ještě databáze <code>.kdbx</code> a passphrase z obálky.",
+	"recoverres.step":  "Pozor: toto je <strong>1. krok ze 3</strong>. Samotný key-file ještě není přístup k Bitcoinu: je potřeba ještě databáze <code>.kdbx</code> a obálka, tedy text, ze kterého se passphrase přečte.",
 	"recoverres.chain": `①  části
        │   nástroj je poskládá dohromady
        ▼
@@ -73,7 +73,7 @@ var csMessages = map[string]string{
 ③  obnova peněženky  →  Bitcoin ₿`,
 	"recoverres.next.h": "Dále",
 	"recoverres.next.1": "Otevři svou <code>.kdbx</code> v programu <strong>KeePassXC</strong> (stáhni ho na stroji s internetem z <code>https://keepassxc.org/download</code>); jako ochranu zvol <em>Key file</em> = tento soubor (<strong>do pole Heslo nic nezadávej</strong>).",
-	"recoverres.next.2": "Dostaneš se k <strong>seedu</strong> a dalším informacím a přístupům; <strong>passphrase k peněžence</strong> vezmi z obálky (banka nebo e-mail).",
+	"recoverres.next.2": "Dostaneš se k <strong>seedu</strong>, dalším přístupům a k mapě obálky. Podle mapy přečti <strong>passphrase k peněžence</strong> z obálky (vytištěný text z banky nebo PDF z e-mailu).",
 	"recoverres.next.3": "Na hardwarové peněžence obnov ze seedu, potom odemkni pomocí passphrase.",
 
 	"rbform.title":        "Runbook: návod pro rodinu",
@@ -88,14 +88,14 @@ var csMessages = map[string]string{
 	"rbform.count":        "Počet částí",
 	"rbform.bankshare":    "Jedna z částí jde do bankovního trezoru, spolu s obálkou",
 	"rbform.holders":      "Části a kdo je drží",
-	"rbform.holders.p":    "Počet řádků se řídí podle <strong>„Počet částí“</strong> výše, o jeden méně, pokud jedna část jde do bankovního trezoru. U každé části uveď, <strong>kdo ji drží</strong> a kontakt, a zda je <strong>technicky zdatná</strong> (volá se jí o pomoc, dostane obálku) nebo netechnická.",
+	"rbform.holders.p":    "Počet řádků se řídí podle <strong>„Počet částí“</strong> výše, o jeden méně, pokud jedna část jde do bankovního trezoru. U každé části uveď, <strong>kdo ji drží</strong> a kontakt, a zda je <strong>technicky zdatná</strong> (volá se jí o pomoc) nebo netechnická.",
 	"rbform.ph.name":      "kdo drží tuto část: jméno",
 	"rbform.ph.contact":   "kontakt (tel. nebo e-mail)",
 	"rbform.nontech":      "netechnická",
 	"rbform.tech":         "technicky zdatná",
 	"rbform.envelope":     "Bankovní trezor",
 	"rbform.tool":         "Nástroj",
-	"rbform.bank":         "Obálka (passphrase), banka",
+	"rbform.bank":         "Obálka, banka",
 	"rbform.ph.bank":      "název banky, pobočka, číslo schránky",
 	"rbform.bankkdbx":     "Databáze hesel (.kdbx) je i v bankovním trezoru",
 	"rbform.toolurl":      "Odkud se nástroj dá stáhnout (adresa repozitáře)",
@@ -145,9 +145,9 @@ var csMessages = map[string]string{
 	"tm.res.title":    "Mapa k passphrase",
 	"tm.res.ok":       "✓ Kontrola: z textu podle této mapy vyjde přesně passphrase, kterou jsi zadal (počet znaků: %s).",
 	"tm.res.map.h":    "Mapa do databáze",
-	"tm.res.map.p":    "Zkopíruj ji do databáze KeePass nebo na papír uložený mimo trezor. Nepřipisuj k ní, odkud text je (noviny, datum, nadpis).",
+	"tm.res.map.p":    "Zkopíruj ji do databáze KeePass. Nepřipisuj k ní, odkud text je (noviny, datum, nadpis).",
 	"tm.res.pdf.h":    "Text k vytištění",
-	"tm.res.pdf.p":    "Vytiskni toto PDF a výtisk dej do trezoru. Mapa sedí jen na tento výtisk: když změníš byť jediné slovo, je potřeba nová mapa.",
+	"tm.res.pdf.p":    "Vytiskni toto PDF a výtisk dej do trezoru. Totéž PDF patří do dead-man's switche, který ho pošle hlavnímu dědici. Mapa sedí jen na tento text a jeho zalomení řádků: když změníš byť jediné slovo, je potřeba nová mapa.",
 	"tm.res.download": "⬇ Stáhnout PDF",
 	"tm.res.paras.h":  "Jak se text rozdělil",
 	"tm.res.paras.p":  "Zkontroluj, že jsou to odstavce, které jsi myslel. PDF obsahuje tyto odstavce; při čtení mezer podle mapy použij jeho zalomení řádků.",

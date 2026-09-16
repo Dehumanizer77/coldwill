@@ -1,10 +1,10 @@
 package dms
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -50,7 +50,7 @@ type outgoing struct {
 }
 
 // Tick performs one evaluation: probes, phase transitions, and (when due and
-// healthy) releasing the envelopes. Safe to call on any cadence; it is
+// healthy) releasing the envelope. Safe to call on any cadence; it is
 // idempotent between meaningful time boundaries.
 //
 // Network work deliberately happens outside the state lock. Everything the DMS
@@ -145,7 +145,7 @@ func (s *Service) Tick() {
 
 	s.deliver(outbox)
 	if fireNow {
-		s.releaseEnvelopes(now)
+		s.releaseEnvelope(now)
 	}
 }
 
@@ -177,9 +177,6 @@ func (s *Service) CheckIn() {
 		// A veto invalidates every confirmation link that was sent out: the next
 		// waiting cycle gets a new id, so an old link cannot be replayed.
 		s.st.CycleID = ""
-		// If a partial fire had already sent something, forget it: after a veto
-		// the next real firing must deliver every envelope again.
-		s.st.Delivered = nil
 	}
 	log.Printf("dms: check-in recorded (phase now %s)", s.st.Phase)
 	s.persist()
@@ -258,89 +255,53 @@ func (s *Service) Phase() string {
 	return s.st.Phase
 }
 
-// releaseEnvelopes delivers the envelopes that have not gone out yet. It runs
-// without the state lock (delivery is network work) and re-reads the phase
-// under the lock around every envelope: if the owner vetoes while a slow relay
-// is chewing on the first envelope, the rest must not be sent.
-func (s *Service) releaseEnvelopes(now time.Time) {
-	var sent, failed []string
-	vetoed := false
+// envelopeName is the file name the heir sees on the attachment.
+const envelopeName = "envelope.pdf"
 
-	for _, e := range s.cfg.Envelopes {
-		s.mu.Lock()
-		skip := s.st.Phase != PhaseCountdown || s.st.wasDelivered(e.ID)
-		vetoed = s.st.Phase != PhaseCountdown
-		s.mu.Unlock()
-		if vetoed {
-			break
-		}
-		if skip {
-			continue
-		}
-
-		data, err := os.ReadFile(e.Path)
-		if err != nil || len(data) == 0 {
-			log.Printf("dms: envelope %s unreadable: %v", e.ID, err)
-			failed = append(failed, e.ID)
-			continue
-		}
-		// One channel through is enough for a given envelope; an envelope that
-		// reached nobody is retried on the next tick, one that got out is not.
-		note := ""
-		if e.Note != "" {
-			note = e.Note + "\n\n"
-		}
-		delivered, err := s.notifyEnvelope(e, note, string(data))
-
-		s.mu.Lock()
-		if s.st.Phase != PhaseCountdown {
-			// A check-in landed while this envelope was being delivered.
-			s.mu.Unlock()
-			vetoed = true
-			if delivered > 0 {
-				sent = append(sent, e.ID)
-			}
-			break
-		}
-		if delivered > 0 {
-			s.st.Delivered = append(s.st.Delivered, e.ID)
-			sent = append(sent, e.ID)
-			log.Printf("dms: envelope %s delivered on %d channel(s)", e.ID, delivered)
-		} else {
-			reason := e.ID
-			if err != nil {
-				reason += " (" + err.Error() + ")"
-			}
-			failed = append(failed, reason)
-		}
-		s.persist()
-		s.mu.Unlock()
-	}
-
+// releaseEnvelope sends the envelope to the primary heir. Delivery is network
+// work, so it runs without the state lock, and the phase is read again once the
+// send returns: a check-in that lands while a slow relay is still busy with the
+// message wins, and the switch does not mark itself fired.
+func (s *Service) releaseEnvelope(now time.Time) {
+	s.mu.Lock()
+	vetoed := s.st.Phase != PhaseCountdown
+	s.mu.Unlock()
 	if vetoed {
-		l := i18n.Parse(s.cfg.UserLang)
-		msg := i18n.S(l, "body.cancelled")
-		if len(sent) > 0 {
-			msg += i18n.S(l, "body.cancelled.some", strings.Join(sent, ", "))
-		}
-		s.notifyOwner("subj.cancelled", "body.raw", msg)
 		return
 	}
 
-	if len(failed) > 0 {
-		// Stay in countdown so the next tick retries what is left.
-		l := i18n.Parse(s.cfg.UserLang)
-		msg := i18n.S(l, "body.sendfail.list", strings.Join(failed, ", "))
-		if len(sent) > 0 {
-			msg = i18n.S(l, "body.sendfail.sent", strings.Join(sent, ", ")) + msg
+	data, err := os.ReadFile(s.cfg.EnvelopePath)
+	if err != nil || !isPDF(data) {
+		// The self-test passed moments ago, so the file changed underneath.
+		// Stay in the countdown; the next tick's self-test names the problem.
+		if err == nil {
+			err = fmt.Errorf("not a PDF")
 		}
-		s.notifyOwner("subj.sendfail", "body.raw", msg)
+		log.Printf("dms: envelope unusable at release: %v", err)
+		s.notifyOwner("subj.sendfail", "body.envfail")
 		return
 	}
+	// One channel getting through is enough; none is retried on the next tick.
+	delivered, sendErr := s.send([]Recipient{s.cfg.Heir.recipient()},
+		[]Attachment{{Name: envelopeName, ContentType: "application/pdf", Data: data}},
+		"subj.envelope", "body.envelope", nameOrOwner(s.cfg))
 
 	s.mu.Lock()
 	if s.st.Phase != PhaseCountdown {
+		// A check-in landed while the envelope was going out.
 		s.mu.Unlock()
+		if delivered > 0 {
+			s.notifyOwner("subj.cancelled", "body.cancelled", s.heirLabel())
+		}
+		return
+	}
+	if delivered == 0 {
+		s.mu.Unlock()
+		reason := "no channel reached the heir"
+		if sendErr != nil {
+			reason = sendErr.Error()
+		}
+		s.notifyOwner("subj.sendfail", "body.sendfail", reason)
 		return
 	}
 	s.st.Phase = PhaseFired
@@ -348,28 +309,25 @@ func (s *Service) releaseEnvelopes(now time.Time) {
 	s.persist()
 	s.mu.Unlock()
 
-	log.Printf("dms: FIRED — %d envelope(s) delivered", len(s.cfg.Envelopes))
-	s.notifyOwner("subj.sent", "body.sent", strings.Join(envelopeIDs(s.cfg.Envelopes), ", "))
+	log.Printf("dms: FIRED — envelope delivered to the heir on %d channel(s)", delivered)
+	s.notifyOwner("subj.sent", "body.sent", s.heirLabel())
 }
 
-// notifyEnvelope sends one envelope, honouring a subject the config set for it
-// and otherwise using the catalogue's, in each recipient's language.
-func (s *Service) notifyEnvelope(e Envelope, note, ciphertext string) (int, error) {
-	if e.Subject != "" {
-		return s.notifyWithSubject(e.recipients(), e.Subject, "body.envelope",
-			nameOrOwner(s.cfg), note, ciphertext)
+// heirLabel is how the owner's own messages name the heir.
+func (s *Service) heirLabel() string {
+	switch h := s.cfg.Heir; {
+	case h.Name != "":
+		return h.Name
+	case h.Email != "":
+		return h.Email
+	default:
+		return h.Signal
 	}
-	return s.notify(e.recipients(), "subj.envelope", "body.envelope",
-		nameOrOwner(s.cfg), note, ciphertext)
 }
 
-func envelopeIDs(es []Envelope) []string {
-	out := make([]string, len(es))
-	for i, e := range es {
-		out[i] = e.ID
-	}
-	return out
-}
+// isPDF is a sanity check rather than validation: it catches the wrong file,
+// the map saved as text for instance, while the owner can still replace it.
+func isPDF(b []byte) bool { return bytes.HasPrefix(b, []byte("%PDF-")) }
 
 // probeSignal asks the Signal container whether it is still usable. It is a
 // pure network probe: the result is recorded and alerted on by Tick, under the
@@ -396,17 +354,15 @@ func (s *Service) selfTest() (bool, string) {
 	if err := s.mail.Check(); err != nil {
 		return false, "mail transport: " + err.Error()
 	}
-	for _, e := range s.cfg.Envelopes {
-		data, err := os.ReadFile(e.Path)
-		if err != nil {
-			return false, "envelope " + e.ID + " cannot be read: " + err.Error()
-		}
-		if len(data) == 0 {
-			return false, "envelope " + e.ID + " is empty"
-		}
-		if !strings.Contains(string(data), "BEGIN PGP MESSAGE") {
-			return false, "envelope " + e.ID + " is not an ASCII-armored PGP message"
-		}
+	data, err := os.ReadFile(s.cfg.EnvelopePath)
+	if err != nil {
+		return false, "the envelope cannot be read: " + err.Error()
+	}
+	if len(data) == 0 {
+		return false, "the envelope is empty"
+	}
+	if !isPDF(data) {
+		return false, "the envelope is not a PDF"
 	}
 	if err := stateWritable(s.cfg.StatePath); err != nil {
 		return false, "state is not writable: " + err.Error()

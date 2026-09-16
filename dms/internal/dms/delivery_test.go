@@ -5,37 +5,28 @@ import (
 	"time"
 )
 
-// A relay that rejects one address must not cost the others their copy: an
-// envelope with two recipients has to reach the second one even when the first
-// is refused.
-func TestRejectedRecipientDoesNotBlockTheRest(t *testing.T) {
-	cfg := testConfig(t)
-	dir := t.TempDir()
-	cfg.EnvelopePath, cfg.FriendEmail = "", ""
-	cfg.Envelopes = []Envelope{{ID: "passphrase", Path: writeEnvelope(t, dir, "pass.asc"),
-		To: []EnvelopeRecipient{
-			{Email: "rejected@example.com"},
-			{Email: "accepted@example.com"},
-			{Email: "third@example.com"},
-		}}}
-	cfg.applyDefaults()
-	c, fm := newClock(), &fakeMailer{failTo: map[string]bool{"rejected@example.com": true}}
-	svc, err := New(cfg, c.now, fm, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+// The heir's mailbox refusing the envelope is not a release: the switch stays
+// in the countdown, tells the owner, and tries again on the next tick.
+func TestRejectedHeirMailboxIsRetried(t *testing.T) {
+	svc, fm, c := newSvc(t)
+	fm.failTo = map[string]bool{"heir@example.com": true}
 	fireIt(t, svc, c)
 
+	if svc.Phase() != PhaseCountdown {
+		t.Fatalf("phase = %s, want still counting down", svc.Phase())
+	}
+	if fm.countSubj("could not be sent") == 0 {
+		t.Errorf("the owner was not told the envelope did not go out")
+	}
+
+	fm.failTo = nil
+	fm.reset()
+	svc.Tick()
 	if svc.Phase() != PhaseFired {
-		t.Fatalf("phase = %s, want fired — one bad address must not stop the firing", svc.Phase())
+		t.Fatalf("phase = %s, want fired once the mailbox accepts it", svc.Phase())
 	}
-	for _, to := range []string{"accepted@example.com", "third@example.com"} {
-		if _, ok := fm.sentTo(to, "envelope"); !ok {
-			t.Errorf("%s did not get the envelope", to)
-		}
-	}
-	if _, ok := fm.sentTo("rejected@example.com", "envelope"); ok {
-		t.Errorf("the rejected address should not be recorded as delivered")
+	if _, ok := fm.sentTo("heir@example.com", "inheritance"); !ok {
+		t.Errorf("the retried envelope did not reach the heir")
 	}
 }
 

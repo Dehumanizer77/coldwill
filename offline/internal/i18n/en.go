@@ -44,7 +44,7 @@ var enMessages = map[string]string{
 	"setupres.next.h":       "Next",
 	"setupres.next.1":       "Transfer every share onto a metal medium and hand them out according to the plan.",
 	"setupres.next.2":       "In <strong>KeePassXC</strong> (<code>https://keepassxc.org/download</code>) create a new database and choose <em>Key file</em> as the protection, pointing at the downloaded file (<strong>leave the password field empty</strong>).",
-	"setupres.next.3":       "Store the seed and the other credentials in the database. <strong>Do not put the wallet passphrase in it</strong>; that goes into the sealed envelope.",
+	"setupres.next.3":       "Store the seed and the other credentials in the database. <strong>Do not put the wallet passphrase itself in it</strong>: hide it in a text with <em>Passphrase in a text</em>, and store only the map here.",
 	"setupres.next.4":       "Give the <code>.kdbx</code> to the primary heir, and if you like put one in the bank vault as well. Not to the share holders. Delete the key file from disk.",
 
 	// --- recovery form ---
@@ -63,7 +63,7 @@ var enMessages = map[string]string{
 	// --- recovery result ---
 	"recoverres.title": "Key recovered",
 	"recoverres.ok":    "✓ Key file reassembled from %s shares.",
-	"recoverres.step":  "Note: this is <strong>step 1 of 3</strong>. The key file alone is not access to the Bitcoin: you still need the <code>.kdbx</code> database and the passphrase from the envelope.",
+	"recoverres.step":  "Note: this is <strong>step 1 of 3</strong>. The key file alone is not access to the Bitcoin: you still need the <code>.kdbx</code> database and the envelope, the text the passphrase is read out of.",
 	"recoverres.chain": `①  shares
        │   the tool reassembles them
        ▼
@@ -76,7 +76,7 @@ var enMessages = map[string]string{
 ③  restore the wallet  →  Bitcoin ₿`,
 	"recoverres.next.h": "Next",
 	"recoverres.next.1": "Open your <code>.kdbx</code> in <strong>KeePassXC</strong> (download it on a machine with internet from <code>https://keepassxc.org/download</code>) and choose <em>Key file</em> as the protection, pointing at this file (<strong>leave the password field empty</strong>).",
-	"recoverres.next.2": "You reach the <strong>seed</strong> and the other credentials. Take the <strong>wallet passphrase</strong> from the envelope (bank or e-mail).",
+	"recoverres.next.2": "You reach the <strong>seed</strong>, the other credentials and the map for the envelope. Use the map to read the <strong>wallet passphrase</strong> out of the envelope (the printed text from the bank, or the PDF from e-mail).",
 	"recoverres.next.3": "On the hardware wallet, restore from the seed, then unlock with the passphrase.",
 
 	"rbform.title":        "Runbook: instructions for the family",
@@ -91,14 +91,14 @@ var enMessages = map[string]string{
 	"rbform.count":        "Number of shares",
 	"rbform.bankshare":    "One of the shares goes into the bank vault, together with the envelope",
 	"rbform.holders":      "Shares and who holds them",
-	"rbform.holders.p":    "The number of rows follows <strong>Number of shares</strong> above, one fewer if a share goes into the bank vault. For each share give <strong>who holds it</strong> and a contact, and whether they are <strong>technically capable</strong> (called for help, receives the envelope) or not.",
+	"rbform.holders.p":    "The number of rows follows <strong>Number of shares</strong> above, one fewer if a share goes into the bank vault. For each share give <strong>who holds it</strong> and a contact, and whether they are <strong>technically capable</strong> (called for help) or not.",
 	"rbform.ph.name":      "who holds this share: name",
 	"rbform.ph.contact":   "contact (phone or e-mail)",
 	"rbform.nontech":      "not technical",
 	"rbform.tech":         "technically capable",
 	"rbform.envelope":     "Bank vault",
 	"rbform.tool":         "The tool",
-	"rbform.bank":         "Envelope (passphrase), bank",
+	"rbform.bank":         "Envelope, bank",
 	"rbform.ph.bank":      "bank name, branch, box number",
 	"rbform.bankkdbx":     "The password database (.kdbx) is also in the bank vault",
 	"rbform.toolurl":      "Where the tool can be downloaded (repository URL)",
@@ -152,9 +152,9 @@ var enMessages = map[string]string{
 	"tm.res.title":    "Passphrase map",
 	"tm.res.ok":       "✓ Check: read back from the text by this map, it gives exactly the passphrase you typed (%s characters).",
 	"tm.res.map.h":    "Map for the database",
-	"tm.res.map.p":    "Copy it into the KeePass database, or onto paper kept away from the vault. Do not add where the text comes from (paper, date, headline).",
+	"tm.res.map.p":    "Copy it into the KeePass database. Do not add where the text comes from (paper, date, headline).",
 	"tm.res.pdf.h":    "Text to print",
-	"tm.res.pdf.p":    "Print this PDF and put the printout in the vault. The map fits this printout only: change a single word and you need a new map.",
+	"tm.res.pdf.p":    "Print this PDF and put the printout in the vault. The same PDF goes onto the dead man's switch, which sends it to the primary heir. The map fits this text and its line breaks only: change a single word and you need a new map.",
 	"tm.res.download": "⬇ Download the PDF",
 	"tm.res.paras.h":  "How the text was divided",
 	"tm.res.paras.p":  "Check that these are the paragraphs you meant. The PDF contains these paragraphs; use its line breaks when reading spaces from the map.",

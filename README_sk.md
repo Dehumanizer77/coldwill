@@ -18,18 +18,17 @@ Koľko častí vznikne a koľko ich treba na zloženie (**K z N**) si volíš pr
 generovaní; obrázok ukazuje bežnú voľbu 2 z 3.
 
 ```
-   ČASŤ #1          ČASŤ #2          ČASŤ #3            ZAPEČATENÁ OBÁLKA
- kov, osoba A     kov, osoba B     kov, osoba C       bankový trezor + DMS
+   ČASŤ #1          ČASŤ #2          ČASŤ #3                OBÁLKA
+ kov, osoba A     kov, osoba B     kov, osoba C   text v trezore + PDF z DMS
       │                │                │                      │
       └────────┬───────┴────────────────┘                      │
                │   stačia ľubovoľné K z N (tu 2 z 3)           │
                ▼                                               │
           KEY-FILE                                             │
                │                                               │
-               ▼   otvorí (bez hesla)                          │
-        KeePass databáza  ──►  SEED + ostatné heslá            │
+               ▼   otvorí (bez hesla)                          ▼
+        KeePass databáza  ──►  SEED + heslá + MAPA ──► PASSPHRASE
                                      │                         │
-                                     │                    PASSPHRASE
                                      └───────────┬─────────────┘
                                                  ▼
                                             ₿  BITCOIN
@@ -39,15 +38,17 @@ generovaní; obrázok ukazuje bežnú voľbu 2 z 3.
   miestach. Ktorýchkoľvek **K z N** (v príklade 2 z 3) zloží *key-file*: súbor,
   ktorým sa odomkne KeePass databáza so **seedom** a všetkými ostatnými
   prístupmi. Prah aj počet častí sú nastaviteľné: 3 z 5, 2 z 4, čo ti vyhovuje.
-- **Zapečatená obálka** obsahuje **passphrase k peňaženke**. Leží v bankovom
-  trezore a navyše ju po tvojej smrti pošle *dead-man's switch* e-mailom.
-- **Bitcoin = seed + passphrase.** Kto má len časti, vidí databázu, ale mince
-  neminie. Kto má len obálku, má heslo, ktoré bez seedu nie je na nič. Menej než
-  K častí je bezcenných.
+- **Obálka** je obyčajný vytlačený text, v ktorom je ukrytá **passphrase
+  k peňaženke**. **Mapa**, podľa ktorej sa z neho prečíta, je v databáze, takže
+  text sám o sebe nič neprezradí. Leží v bankovom trezore a po tvojej smrti ju
+  *dead-man's switch* navyše pošle hlavnému dedičovi ako PDF.
+- **Bitcoin = seed + passphrase.** Kto má len časti, vidí databázu aj mapu, ale
+  nemá text, z ktorého by čítal. Kto má len obálku, má článok a nemá ho čím
+  prečítať. Menej než K častí je bezcenných.
 
 **Dead-man's switch** je len pohodlie: pravidelne sa ťa pýta „žiješ?“, a keď sa
 dlho neozveš a dôveryhodná osoba to potvrdí, po ochrannej lehote pošle obálku
-(koľko potvrdení treba, si nastavuješ, štandardne stačí jedno). Istá cesta vedie
+hlavnému dedičovi (koľko potvrdení treba, si nastavuješ, štandardne stačí jedno). Istá cesta vedie
 cez banku: DMS sa dá kedykoľvek vypnúť a dedičstvu to neublíži.
 
 Podrobnosti nižšie; kto chce len vedieť „ako sa k tomu rodina dostane“, môže
@@ -57,7 +58,7 @@ skončiť tu a prečítať si [Recovery](#recovery-postup-pre-netechnického-ded
 >
 > Do tohto repozitára **nikdy** nepatria reálne tajomstvá:
 > seed slová (BIP-39), passphrase k peňaženke, key-file ani jeho SLIP-39 časti,
-> heslo ku KeePass DB, reálny `.kdbx`, obsah „posmrtnej obálky“.
+> heslo ku KeePass DB, reálny `.kdbx`, obálka ani jej mapa.
 >
 > Repozitár je len **kód a dokumentácia**. Tajomstvá vznikajú a žijú výhradne
 > offline (kov, bankový trezor, šifrovaný `.kdbx`). `.gitignore` je nastavený
@@ -71,7 +72,7 @@ skončiť tu a prečítať si [Recovery](#recovery-postup-pre-netechnického-ded
 - [Návrh](#návrh): čo to rieši, architektúra, rozmiestnenie, recovery, údržba
 - [Nástroje](#nástroje)
   - [Offline nástroj (`offline/`)](#offline-nástroj-offline): key-file, SLIP-39 časti, runbook
-  - [Dead-man's switch (`dms/`)](#dead-mans-switch-dms): obálky, nasadenie, Signal
+  - [Dead-man's switch (`dms/`)](#dead-mans-switch-dms): obálka, nasadenie, Signal
 - [Prevádzkové pravidlá repa](#prevádzkové-pravidlá-repa)
 
 ## Návrh
@@ -102,29 +103,30 @@ Návrhové rozhodnutia, z ktorých všetko ostatné vyplýva:
 | Geografia | Časti rozmiestnené po viacerých **lokalitách**, aby ich nezničila jedna udalosť. |
 | Údržba | Raz ročne. |
 | Ostatné prístupy | Patria do systému, stačí **jedna KeePass DB**. |
-| Gating | **Miernejší**: DB chráni len key-file; passphrase (v obálke) chráni len BTC. |
+| Gating | **Miernejší**: DB chráni len key-file; passphrase (ukrytá v obálke) chráni len BTC. |
 | Key-file | **160-bit** → 23 slov na SLIP-39 časť. |
 
 ### Architektúra: dva faktory
 
-- **Faktor A („posmrtná obálka“):** obsahuje **passphrase k peňaženke**. Uložená
-  len tam, kam sa rodina dostane až po smrti vlastníka: zapečatená v **bankovom
-  trezore** a doručí ju **DMS** (zašifrovaná na technicky zdatnú osobu). Kým
-  vlastník žije, passphrase má len on → **BTC kontroluje on**. Obálok môže byť
-  aj viac: tá istá viacerým ľuďom kvôli zálohe, alebo rôzne obálky rôznym ľuďom,
-  aby nikto sám nemal všetko (viď [Obálky](#obálky-koľko-ich-je-a-komu-idú)).
+- **Faktor A (obálka):** obyčajný vytlačený text, v ktorom je ukrytá **passphrase
+  k peňaženke**, čitateľná len s mapou uloženou v databáze. Je len tam, kam sa
+  rodina dostane až po smrti vlastníka: zapečatená v **bankovom trezore** a ako
+  PDF ju hlavnému dedičovi pošle **DMS**. Nič sa nešifruje, lebo text bez
+  databázy nemá cenu. Kým vlastník žije, passphrase má len on → **BTC
+  kontroluje on**.
 - **Faktor B (kovové časti):** key-file ku KeePass DB rozdelený cez **SLIP-39
   (K-z-N)** na slová, vyryté do kovu, časti rozmiestnené po lokalitách.
 
-**KeePass DB** (seed + všetky ostatné heslá a prístupy + návod) má u seba
+**KeePass DB** (seed + všetky ostatné heslá a prístupy + mapa k obálke + návod) má u seba
 **hlavný dedič** a voliteľne je jedna aj v bankovom trezore. Držitelia častí ju
 zámerne nemajú a v cloude nie je. Kto databázu nemá a nevie, kde je, tomu
 zložený key-file nepomôže, ani keď sa dá dokopy dosť držiteľov. A keby ju mal
 každý držiteľ, pri každej zmene prístupov by bolo treba obísť všetkých.
 
 ```
-KeePass DB sa otvorí  =  key-file (K z N kovových častí)        # -> seed + ostatné heslá
+KeePass DB sa otvorí  =  key-file (K z N kovových častí)        # -> seed + ostatné heslá + mapa
 BTC                   =  seed (z DB)  +  passphrase (z obálky)  # -> [K z N častí] + [obálka]
+Passphrase            =  obálka prečítaná podľa mapy            # samotný text nič nepovie
 
 Miernejší gating: K-z-N častí otvorí DB (aj za života vlastníka), ale BTC bez
 passphrase z obálky nikto neminie. Strata obálky => strata len BTC, nie DB.
@@ -152,11 +154,11 @@ Príklad pre 2-z-3; častí môže byť ľubovoľný počet:
 
 | Lokalita | Faktor B (kovová časť) | Faktor A (obálka) | Databáza (`.kdbx`) |
 |---|---|---|---|
-| **lokalita A**, hlavný dedič | časť #1 | – | ✓ |
-| **bankový trezor** | voliteľne jedna z častí | **zapečatená obálka** | ✓ (voliteľne) |
+| **lokalita A**, hlavný dedič | časť #1 | (PDF od DMS po spustení) | ✓ |
+| **bankový trezor** | voliteľne jedna z častí | **obálka** (vytlačený text) | ✓ (voliteľne) |
 | **lokalita B**, dôveryhodná osoba | časť #2 | – | – |
-| **lokalita C**, technicky zdatná osoba | časť #3 | (od DMS po spustení, šifrovaná na ňu) | – |
-| **DMS** | – | obálky šifrované na svojich príjemcov | – |
+| **lokalita C**, technicky zdatná osoba | časť #3 | – | – |
+| **DMS** | – | obálka ako PDF pre hlavného dediča | – |
 
 Recovery BTC vyžaduje **K z N častí + obálku** (z banky alebo od DMS) → čiže
 „hlavný dedič + jeden dôveryhodný pomocník“. Jedna časť sama o sebe je
@@ -164,33 +166,27 @@ bezcenná, preto je riziko u jednotlivých držiteľov nízke.
 
 Obe voľby pre trezor sú vo formulári runbooku ako zaškrtávacie políčka, takže ich
 vytlačená mapa uvedie. Každá z nich ale robí trezor lákavejším: s oboma má ten,
-kto sa dostane do schránky, jednu časť, obálku aj databázu, a ak je passphrase
-v nej čitateľná, chýba mu k minciam už len K−1 častí. Aj preto sa oplatí
-passphrase v trezore chrániť.
+kto sa dostane do schránky, jednu časť, obálku aj databázu, a databázu mu otvorí
+už K−1 ďalších častí; mapa v nej potom prečíta passphrase z obálky.
 
-#### Passphrase v trezore
+#### Obálka
 
-Napísaná ako obyčajný text je passphrase v trezore chránená len tou schránkou.
-Možností je viac a s druhou pomôže offline nástroj:
+Passphrase nie je nikde napísaná. Obálka je obyčajný text, napríklad článok
+z novín, v ktorého znakoch je passphrase ukrytá, a mapa, podľa ktorej sa z neho
+prečíta, je v KeePass databáze ([ako to funguje](#ukrytie-passphrase-v-texte)).
+Bez databázy je text bezcenný, a preto môže ležať v trezore ako obyčajný
+výtlačok a ísť e-mailom aj Signalom ako obyčajné PDF: nie sú žiadne kľúče, ktoré
+treba vyrobiť, uchovať a nestratiť, a dedič nič nerozšifrováva.
 
-- **zašifrovať ju na GPG kľúče hlavného dediča aj technicky zdatných osôb**,
-  naraz na všetkých (rovnako `--recipient A --recipient B` ako pri obálke pre DMS),
-  takže v trezore je ciphertext, ktorý otvoria len oni. Zašifrovaná len na
-  dediča by bola nečitateľná, keby ste zomreli obaja naraz a DMS by už nebežal;
-- **ukryť ju v dlhšom texte** tak, aby ju vedel prečítať len dedič
-  ([jeden spôsob](#ukrytie-passphrase-v-texte));
-- **rozdeliť ju**: časť v trezore, zvyšok niečo, čo vie len dedič;
-- **zašifrovať ju heslom, ktoré dedič pozná** a ktoré nikde nie je napísané.
-
-Každá z nich pridáva niečo, čo dedič musí mať alebo si pamätať práve vtedy, keď
-na tom záleží: kľúč, postup, spomienku. Keď sa to stratí, stratí sa s tým aj
-passphrase v trezore, preto to patrí do ročnej obnovy nanečisto.
+Ten istý text existuje dvakrát, vytlačený v trezore a ako PDF v DMS, ktorý ho
+pošle hlavnému dedičovi a nikomu inému. Keby ste zomreli obaja naraz, táto kópia
+skončí v schránke, ktorú nikto nečíta, a ostatní použijú výtlačok z trezoru.
 
 #### Ukrytie passphrase v texte
 
 Každý znak passphrase sa vezme z ľubovoľnej pozície slova v obyčajnom texte,
 napríklad v článku z novín, alebo z medzery a znamienok za slovom. V trezore je
-vytlačený text. Mapa pozícií je uložená inde.
+vytlačený text, v DMS ten istý text ako PDF a mapa pozícií je uložená v databáze.
 
 Offline nástroj **Passphrase v texte** vyberie pozície náhodne, prečíta mapu
 späť a overí presnú zhodu s passphrase. Dostaneš mapu a PDF textu. Opakovaný
@@ -251,30 +247,27 @@ Výsledok je `S7, .`: `S` zo „Stavba“, `7` z „1874“, čiarka z „budovy
 za „tisíc“ a bodka z „mlyn.“. Medzera platí, len ak „tisíc“ a nasledujúce slovo
 sú na tom istom riadku PDF. V skutočnej mape sú len pozície a pravidlá čítania.
 
-**Kde je zoznam uložený**, rozhoduje o tom, pred čím text chráni:
+**Mapa je uložená v databáze**, a práve preto je text sám o sebe bezcenný: kto
+sa pozrie do schránky alebo prečíta dedičov e-mail, vidí obyčajný článok. Kto
+otvorí databázu, má aj mapu, takže s časťou a databázou v trezore chýba k minciam
+stále len K−1 častí.
 
-- **v databáze**: kto sa pozrie do schránky, vidí obyčajný článok, ale viac to
-  nepridá. Kto otvorí databázu, má aj zoznam, takže s časťou a databázou
-  v trezore chýba k minciam stále len K−1 častí, rovnako ako pri čitateľnej
-  passphrase;
-- **na papieri, mimo trezoru aj databázy**, u dediča a v kópii u toho, kto má
-  vedieť passphrase obnoviť, keby ste zomreli obaja naraz: trezor potom nestačí
-  ani s K−1 časťami, za cenu ďalšej veci, ktorá sa nesmie stratiť.
-
-Tak či tak, kópia runbooku v tej istej schránke prezradí, že je v nej passphrase,
-takže článok sa skryje pred letmým pohľadom, nie pred tým, kto si runbook prečíta.
+Kópia runbooku v tej istej schránke prezradí, že je v nej obálka, takže článok sa
+skryje pred letmým pohľadom, nie pred tým, kto si runbook prečíta. Chráni ho až
+databáza.
 
 
 ### Recovery (postup pre netechnického dediča)
 
 1. Otvorí tlačený **runbook** (kópie sú v banke aj u dôveryhodných osôb).
 2. Zavolá **technicky zdatnej osobe**, ktorá ho prevedie postupom (aj cez video).
-3. Získa **obálku s passphrase**, buď z bankového trezoru, alebo ju už poslal DMS.
+3. Získa **obálku**: vytlačený text z bankového trezoru alebo PDF, ktoré mu už poslal DMS.
 4. Pozbiera **K častí** od držiteľov (jedna môže byť v bankovom trezore).
 5. V **offline nástroji**: SLIP-39 slová → key-file → otvorí KeePass DB (svoju,
    alebo tú z trezoru) štandardnou appkou → dostane sa k seedu a všetkým prístupom.
-6. Na peňaženke obnoví zo **seedu + passphrase** (z obálky) → BTC.
-7. (Voliteľné) presunie BTC do vlastnej novej peňaženky.
+6. Podľa mapy z databázy prečíta z obálky **passphrase**.
+7. Na peňaženke obnoví zo **seedu + passphrase** → BTC.
+8. (Voliteľné) presunie BTC do vlastnej novej peňaženky.
 
 Na kove sú slová spravidla len ako **4-písmenové skratky**, kovové médium viac
 pozícií nemá. Nie je to problém: SLIP-39 zoznam je navrhnutý tak, že prvé štyri
@@ -293,6 +286,7 @@ v oficiálnom SLIP-39 zozname.
 - Čitateľnosť a prítomnosť **všetkých častí** (potvrdiť s držiteľmi).
 - Obálka v banke neporušená a databáza sa otvára: dedičova, aj tá v trezore, ak tam je.
 - Test check-inu DMS.
+- PDF v DMS sa zhoduje s výtlačkom v trezore.
 - **Raz za rok nanečisto celá obnova** na náhradnom zariadení, aspoň raz aj na
   Windows (tá binárka sa inde otestovať nedá).
 - Aktualizácia DB pri zmene prístupov (aj tej v trezore, ak tam je) + re-tlač runbooku.
@@ -300,7 +294,7 @@ v oficiálnom SLIP-39 zozname.
 ### Čo systém nerieši
 
 Ak zomrú obaja rodičia a deti sú maloleté, **technicky** je to pokryté: dve
-dôveryhodné osoby zložia K z N častí a obálku a k mincám sa dostanú. Čo systém
+dôveryhodné osoby zložia K z N častí, vezmú obálku z trezoru a k mincám sa dostanú. Čo systém
 vyriešiť **nemôže**, je kto ich potom drží a spravuje, kým deti dospejú: kto
 zloží časti, môže nimi disponovať. Je to otázka dôvery a dedičského práva, nie
 kryptografie. Ak sa to má riešiť, patrí to do **závetu** (vlastnoručný, bez
@@ -310,7 +304,7 @@ a držiteľov častí, lebo závet končí v súdnom spise.
 ### Princípy životnosti
 
 1. **Otvorené štandardy na kritickej ceste** = softvér je nahraditeľný: SLIP-39
-   (s test vektormi), `.kdbx`, GPG. Aj bez tohto kódu sa dá recovery spraviť
+   (s test vektormi), `.kdbx`, vytlačený text. Aj bez tohto kódu sa dá recovery spraviť
    štandardnými nástrojmi, runbook to popisuje.
 2. **Self-contained artefakty:** statický Go binár (offline; závisí len na kernel
    ABI a prehliadači), Docker image (online; zmrazený userland).
@@ -440,7 +434,7 @@ round-trip); ak zlyhá, nástroj sa nespustí.
 - Overené na **KeePassXC 2.7.10** (`keepassxc-cli`): key-file vytvorí a otvorí
   `.kdbx` bez hesla, kľúč obnovený z ľubovoľných 2 z 3 častí otvorí tú istú DB,
   nesprávny key-file aj „hex ako text“ ju neotvoria.
-- **Passphrase k peňaženke NIE je v DB**, je v posmrtnej obálke (banka / DMS).
+- **Passphrase k peňaženke NIE je v DB** ani nikde napísaná: obálka (výtlačok v trezore, PDF v DMS) nesie text a databáza mapu, ktorá ho prečíta.
 
 #### Korektnosť
 
@@ -451,7 +445,7 @@ SLIP-39 test vektorom** + round-trip pre 128/192/256-bit. `go test ./...`.
 
 Online služba: pravidelne žiada vlastníka o **check-in**; po dlhom tichu požiada
 **dôveryhodné osoby** o potvrdenie; po potvrdení + ochrannej lehote pošle
-**GPG-zašifrované obálky** (ktoré sama nikdy nevie prečítať) ich príjemcom.
+**obálku**, PDF bez databázy bezcenné, **hlavnému dedičovi**.
 
 **Kanály:** e-mail (primárny) + voliteľne **Signal** (druhý kanál). Každá správa
 ide na všetky kanály, ktoré má daný adresát nastavené.
@@ -471,8 +465,7 @@ ide na všetky kanály, ktoré má daný adresát nastavené.
    človek dvakrát sa neráta.
 5. **Check-in vlastníka kedykoľvek všetko ruší.** Veto vždy vyhráva, aj počas
    odpočtu.
-6. Po uplynutí lehoty bez veta → odošlú sa obálky (GPG, rozšifruje ich len ten,
-   na koho kľúč boli zašifrované).
+6. Po uplynutí lehoty bez veta → obálka odíde hlavnému dedičovi a nikomu inému.
 7. Falošné či zlomyseľné potvrdenie nie je katastrofa: obálka je **bez dostatku
    kovových častí zbytočná**.
 
@@ -482,20 +475,20 @@ cesta vedie cez banku.
 
 #### Bezpečnostný model
 
-- **Nikdy nedrží plaintext.** Drží len ciphertext obálok (zašifrovaných na GPG
-  kľúče príjemcov) a pri výstrele ich len pošle. Kto obálku otvorí, sa rozhoduje
-  **offline pri jej výrobe**, tým, na ktorý kľúč ju zašifruješ. Config hovorí
-  len, kam sa pošle.
-- **Fail-safe:** ak self-test zlyhá (mail nedostupný, niektorá obálka chýba
-  alebo nie je PGP, stav sa nedá zapísať), DMS **alertuje, ale NEODPÁLI**.
+- **Nedrží nič, čo by samo osebe niečo znamenalo.** Obálka je text, ktorý bez
+  databázy nič nepovie, takže napadnutý server, prečítaná schránka či zlý
+  príjemca na Signale prezradia článok, nie passphrase. Preto sa posiela
+  nešifrovaná a nie sú žiadne kľúče na správu.
+- **Fail-safe:** ak self-test zlyhá (mail nedostupný, obálka chýba
+  alebo nie je PDF, stav sa nedá zapísať), DMS **alertuje, ale NEODPÁLI**.
 - **Dvojkrokové odkazy:** check-in aj confirm sú GET stránka + POST tlačidlo, aby
   ich nespustil automatický „link prefetch“ e-mailových skenerov.
 - **Tokeny** v odkazoch sú HMAC z `hmac_secret`. Aj keby odkaz unikol, najhorší
   prípad je bezpečný (check-in len oddiali výstrel; confirm aj tak potrebuje
   človeka + lehotu + kovové podiely).
 - **Druhý kanál nikdy nezablokuje výstrel.** Nefunkčný Signal = alert e-mailom,
-  nie porucha; každá obálka odíde, ak ju doručí **aspoň jeden** kanál (čo sa
-  nedoručí, skúsi sa znova pri ďalšom tiku).
+  nie porucha; obálka odíde, ak ju doručí **aspoň jeden** kanál (ak žiadny,
+  skúsi sa znova pri ďalšom tiku).
 - **Lokálny postfix bez TLS, cudzí relay len s TLS.** Na loopbacku sa STARTTLS
   zámerne nepoužíva: bajty nikdy neopustia stroj a postfix nemá (a nemôže mať)
   certifikát na „127.0.0.1“. Go by inak každý e-mail vrátane obálky odmietol
@@ -508,70 +501,32 @@ cesta vedie cez banku.
 ```
 check-in mesačne → po 60 dňoch ticha: výzva potvrdzovateľom (dôveryhodné osoby)
 → potvrdenie (ktorýkoľvek) → 7-dňový odklad s dennými upozorneniami vlastníkovi
-→ výstrel: obálky e-mailom svojim príjemcom.   Check-in kedykoľvek všetko ruší.
+→ výstrel: obálka hlavnému dedičovi.   Check-in kedykoľvek všetko ruší.
 DMS → vlastníkovi týždenne „som zdravý“; pri poruche alert.
 ```
 
-#### Obálky: koľko ich je a komu idú
+#### Komu ide obálka
 
-Obálok môže byť viac a **každá má vlastných príjemcov**:
+Hlavnému dedičovi a nikomu inému:
 
 ```json
-"envelopes": [
-  { "id": "passphrase", "path": "/data/envelope-passphrase.asc",
-    "to": [ {"name":"Prvá","email":"prva@…","signal":"+…"},
-            {"name":"Druhá","email":"druha@…"} ] },
-  { "id": "credentials", "path": "/data/envelope-credentials.asc",
-    "note": "Vnútri sú ostatné prístupy, nie passphrase.",
-    "to": [ {"name":"Tretia","email":"tretia@…"} ] }
-]
+"heir": { "name": "…", "email": "…", "signal": "+…", "lang": "sk" },
+"envelope_path": "/data/envelope.pdf"
 ```
 
-Pokrýva to dva rôzne zámery:
+Ide ako príloha na všetky kanály, na ktoré má dedič adresu, a stačí, keď prejde
+jeden. Ak neprejde žiadny, DMS ostane v odpočte a skúsi to znova pri ďalšom
+tiku. Self-test číta súbor pri každom tiku a chýbajúci súbor alebo súbor, ktorý
+nie je PDF, je porucha, ktorá výstrel zastaví. Zlý súbor (napríklad mapa) sa tak
+odhalí, kým sa dá vymeniť, a nie v deň odoslania.
 
-- **tá istá obálka viacerým ľuďom** = záloha, aby jeden nedostupný človek
-  neodrezal celú DMS cestu (napr. keď zomrieš aj ty aj on),
-- **rôzne obálky rôznym ľuďom** = rozdelenie znalostí; nikto sám nemá všetko.
+Obálka je PDF z nástroja **Passphrase v texte** v offline nástroji, to isté,
+ktoré tlačíš do trezoru. Na serveri patrí do `/data`, nikdy nie do gitu. Keď
+meníš text alebo passphrase, vymeň naraz výtlačok, PDF na serveri aj mapu
+v databáze.
 
-Pravidlá, ktoré si služba stráži: obálka bez príjemcu alebo dve s rovnakým `id`
-sa odmietnu pri štarte; self-test kontroluje **každý** súbor (chýbajúci alebo
-nie-PGP = porucha a **nevystrelí sa vôbec**, nie polovica); pri výstrele si
-pamätá, ktoré obálky už odišli, takže sa doposiela len zvyšok a nikomu nepríde
-tá istá dvakrát. Check-in (veto) túto pamäť **zmaže**, po ňom musí ísť pri
-ďalšom ostrom výstrele von zase všetko.
-
-Starý zápis `envelope_path` + `friend_email` naďalej funguje ako jedna obálka
-s jedným príjemcom.
-
-> **Pozor pri rozdeľovaní obsahu:** v bankovom trezore musí byť **všetko**. DMS
-> je best-effort, banka je istá cesta. Inak si rozdelením vyrobíš scenár, kde
-> jeden nereagujúci príjemca odreže časť dedičstva.
-
-#### Kam patrí verejný GPG kľúč príjemcu
-
-Do `keys/` (adresár je len konvencia, `*.asc` sú gitignorované, aby repo
-neprezrádzalo identity). DMS ten kľúč nikdy nevidí, potrebuješ ho len ty pri
-výrobe obálky:
-
-```
-gpg --export --armor <key-id> > keys/friend.asc
-```
-
-#### Vytvorenie obálok (offline, ručne)
-
-Do súboru daj len **passphrase k peňaženke** (+ prípadne krátky pokyn) a zašifruj na
-verejný GPG kľúč technicky zdatnej osoby (`keys/friend.asc`; fingerprint si over
-nezávisle, nie z toho istého kanála, ktorým kľúč prišiel):
-
-```
-gpg --import keys/friend.asc
-gpg --armor --encrypt --recipient friend@example.com passphrase.txt
-mv passphrase.txt.asc envelope.asc      # toto ide do /data, nie do gitu
-shred -u passphrase.txt
-```
-
-Ak má tú istú obálku vedieť otvoriť viac ľudí, zašifruj ju na viac kľúčov naraz
-(`--recipient A --recipient B`). To je nezávislé od toho, komu sa doručí.
+Config, v ktorom ešte zostali `envelopes`, `friend_email` alebo `friend_signal`,
+sa pri štarte odmietne, aby sa DMS nespustil s potichu zahodenými príjemcami.
 
 #### Deployment
 
@@ -586,22 +541,21 @@ Staré `docker-compose` v1 vedome ignoruje, lebo je EOL a nevie ani
 
 ```bash
 ./deploy.sh --check                              # len preflight, nič nemení
-./deploy.sh --envelope ~/envelope.asc            # ostré nasadenie (e-mail)
-./deploy.sh --envelope passphrase=~/a.asc --envelope credentials=~/b.asc  # viac obálok
-./deploy.sh --envelope ~/envelope.asc --signal   # + Signal kanál
+./deploy.sh --envelope ~/envelope.pdf            # ostré nasadenie (e-mail)
+./deploy.sh --envelope ~/envelope.pdf --signal   # + Signal kanál
 ./deploy.sh --config-only --force-config         # len prepíš config.json
-./deploy.sh --envelope ~/envelope.asc --no-compose      # bez compose
-./deploy.sh --envelope ~/envelope.asc --test-timings   # skúšobný beh, viď nižšie
+./deploy.sh --envelope ~/envelope.pdf --no-compose      # bez compose
+./deploy.sh --envelope ~/envelope.pdf --test-timings   # skúšobný beh, viď nižšie
 ```
 
 Čo skript spraví: overí docker/compose/postfix/porty → založí `/opt/coldwill-switch/data`
-(0700) → skopíruje obálky (a odmietne tú, ktorá nie je ASCII-armored PGP) →
-interaktívne vypýta adresy, čísla a potvrdzovateľov a zapíše `config.json`
+(0700) → skopíruje obálku (a odmietne súbor, ktorý nie je PDF) →
+interaktívne vypýta tvoju adresu, adresu hlavného dediča, čísla a potvrdzovateľov a zapíše `config.json`
 (0600, `hmac_secret` z `openssl rand -hex 32`) → **overí config cez `coldwill-switch
 --validate`** → zbuildí a spustí kontajner → skontroluje HTTP, log a `state.json`
 → vypíše Apache vhost a **tvoj check-in odkaz do záložiek**.
 
-Beží idempotentne: existujúci `config.json` ani obálky neprepíše (na to je
+Beží idempotentne: existujúci `config.json` ani obálku neprepíše (na to je
 `--force-config`, ktorý starý config zálohuje), takže sa dá pustiť znova.
 
 `--test-timings` je skúšobná inštancia a je **úplne oddelená od ostrej**: iný
@@ -613,7 +567,7 @@ vypíše.
 
 K tomu: intervaly v minútach namiesto dní, štart z čistého stavu (starý
 `state.json` zmaže), odkazy mieria na `http://127.0.0.1:8188` (cez SSH tunel) a
-**obálky aj výzvy potvrdzovateľom idú tebe**, skúška nesmie napísať skutočným
+**obálka aj výzvy potvrdzovateľom idú tebe**, skúška nesmie napísať skutočným
 ľuďom, lebo vo fáze čakania sa výzva opakuje každých pár minút. Celý reťazec
 (check-in → ticho → potvrdenie → odpočet → výstrel) sa tak dá prejsť za pár
 minút bez toho, aby si niekoho vystrašil. Po doskúšaní:
@@ -624,7 +578,7 @@ rm -rf /opt/coldwill-switch-test
 ```
 
 Ručne je to to isté: `mkdir -p /opt/coldwill-switch/data`, `config.json` z
-`config.example.json` (`hmac_secret` = `openssl rand -hex 32`), obálky do
+`config.example.json` (`hmac_secret` = `openssl rand -hex 32`), obálku do
 `/opt/coldwill-switch/data/` (cesty v configu sú z pohľadu kontajnera, `/data/…`), potom
 `COLDWILL_UID=$(id -u) COLDWILL_GID=$(id -g) docker compose up -d` (e-mail) alebo to isté
 s `--profile signal` (+ Signal). Bez compose:
@@ -680,7 +634,7 @@ Overenie po štarte (skript to kontroluje sám, ale vedieť to treba):
 
 1. `curl -s https://dms.example.com/` → „Služba beží.“
 2. do minúty príde e-mail **[DMS] v poriadku** (a ak je zapnutý Signal, aj správa
-   na Signale). To je zároveň dôkaz, že self-test prešiel a všetky obálky sú čitateľné,
+   na Signale). To je zároveň dôkaz, že self-test prešiel a obálka je na mieste,
 3. klikni v ňom check-in odkaz → „Ďakujem“ a v `state.json` sa zmení `last_check_in`,
 4. `docker logs coldwill-switch` neobsahuje `failed`,
 5. **check-in odkaz si ulož do záložiek / KeePass DB**. Je stabilný, ale závisí
@@ -697,8 +651,8 @@ Viď `config.example.json` (alebo si ho nechaj vygenerovať cez `deploy.sh`).
 Trvania prijímajú `30d`, `7d`, `12h`, `90m`. `coldwill-switch --validate` config načíta,
 skontroluje a skončí. Hodí sa po ručnej úprave, kým službu reštartneš.
 Povinné: `public_base_url`, `from_email`, `user_email`, `state_path`,
-`hmac_secret` (≥16 znakov), aspoň 1 `confirmer` a aspoň jedna obálka
-(`envelopes[]`, alebo starý `envelope_path` + `friend_email`).
+`hmac_secret` (≥16 znakov), aspoň 1 `confirmer`, `heir` (s e-mailom alebo
+Signal číslom) a `envelope_path`.
 
 Voliteľné, ale dobré vedieť:
 
@@ -720,12 +674,13 @@ kanál, čo je presne to, čo sa v systéme, do ktorého roky nikto nepozrie, st
 
 ```json
 "signal": { "api_url": "http://127.0.0.1:8080", "from_number": "+…" },
-"user_signal": "+…", "friend_signal": "+…",
+"user_signal": "+…", "heir": { "…": "…", "signal": "+…" },
 "confirmers": [ { "id": "friend", "…": "…", "signal": "+…" } ]
 ```
 
 Kontajner (`bbernhard/signal-cli-rest-api`) drží linknuté zariadenie; DMS mu len
-POSTuje text na `/v2/send` cez loopback. Linkovanie (raz, pri deployi):
+POSTuje na `/v2/send` cez loopback text a pri výstrele obálku ako prílohu.
+Linkovanie (raz, pri deployi):
 
 ```
 docker compose up -d signal
@@ -739,9 +694,8 @@ Self-test kontroluje presne toto `/v1/accounts`: realistické tiché zlyhanie je
 **odlinkované zariadenie**, nie spadnutý kontajner. Prichádzajúce správy
 nespracúvame (check-in je odkaz v správe, funguje z oboch kanálov).
 
-Obálka ide pri výstrele aj na Signal (je to ciphertext, kanál je jedno). Ak by
-bola príliš dlhá na jednu Signal správu, Signal ju odmietne a doručí ju e-mail.
-Preto je e-mail primárny a obálka má obsahovať len passphrase + krátky pokyn.
+Obálka ide pri výstrele aj na Signal, ako PDF príloha k správe. Kanál je jedno,
+lebo text je bez databázy bezcenný.
 
 #### Korektnosť
 
@@ -762,7 +716,7 @@ zdroj pravdy aj záloha pri chýbajúcom kľúči.
 Offline nástroj berie jazyk z URL (`?lang=sk`) a formulár runbooku má vlastný
 prepínač, takže sa dá vytlačiť iná jazyková verzia pre každého držiteľa. DMS
 berie jazyk **na príjemcovi**: `user_lang` pre teba, `lang` pri každom
-potvrdzovateľovi a príjemcovi obálky.
+potvrdzovateľovi a pri dedičovi.
 
 **Českú verziu si pred ostrou tlačou daj prečítať rodenému Čechovi.**
 
@@ -772,5 +726,5 @@ potvrdzovateľovi a príjemcovi obálky.
   serveri beží DMS, to žije vo **vytlačenom runbooku** a v **KeePass DB**, nie
   v texte v repe. Dokumentácia je zámerne zovšeobecnená (lokalita A/B/C,
   „technicky zdatná osoba“).
-- Verejné GPG kľúče príjemcov (`keys/*.asc`) a vytlačené runbooky (`*.pdf`) sú
-  gitignorované, aby repo neprezrádzalo identity.
+- Obálka a vytlačené runbooky (`*.pdf`) sú gitignorované, aby sa do repa
+  nedostali.

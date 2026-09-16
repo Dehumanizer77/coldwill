@@ -25,7 +25,7 @@ services:
     # where the reverse proxy (which terminates TLS) points.
     network_mode: host
     volumes:
-      - ${COLDWILL_DATA_DIR:-/opt/coldwill-switch}/data:/data   # config.json, envelope.asc, state.json
+      - ${COLDWILL_DATA_DIR:-/opt/coldwill-switch}/data:/data   # config.json, envelope.pdf, state.json
 
   signal:
     profiles: ["signal"]

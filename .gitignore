@@ -8,11 +8,7 @@
 *.shares
 shares/
 secrets/
-envelope*.asc
-envelope*.txt
-*.asc
 *passphrase*
-*.gpg
 *.age
 .env
 .env.*
@@ -28,7 +24,7 @@ state.json
 dms/data/
 
 # --- local only, never pushed: the real map, keys, notes ---
-keys/*.asc
+keys/
 *.pdf
 TODO.local.md
 *.local.md

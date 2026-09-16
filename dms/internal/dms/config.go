@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"coldwill/dms/internal/i18n"
 )
 
 // Duration is a time.Duration that unmarshals from JSON strings like "30d",
@@ -68,35 +66,12 @@ type SignalConfig struct {
 
 func (s SignalConfig) Enabled() bool { return s.APIURL != "" && s.FromNumber != "" }
 
-// EnvelopeRecipient is one person an envelope is delivered to. Who can actually
-// open it is decided when the envelope is encrypted, offline; this only says
-// where the ciphertext is sent.
-type EnvelopeRecipient struct {
-	Name   string `json:"name,omitempty"`
-	Email  string `json:"email,omitempty"`
-	Signal string `json:"signal,omitempty"`
-	Lang   string `json:"lang,omitempty"` // language for this person; default en
-}
-
-// Envelope is one sealed message with its own recipients. Several envelopes let
-// the same secret reach more than one person (redundancy) or different secrets
-// reach different people (separation), without the DMS ever reading any of them.
-type Envelope struct {
-	ID      string              `json:"id"`                // short, stable; used in state and logs
-	Path    string              `json:"path"`              // GPG ciphertext on disk
-	Subject string              `json:"subject,omitempty"` // optional, defaults below
-	Note    string              `json:"note,omitempty"`    // optional line for the recipients
-	To      []EnvelopeRecipient `json:"to"`
-}
-
-func (e Envelope) recipients() []Recipient {
-	out := make([]Recipient, 0, len(e.To))
-	for _, t := range e.To {
-		out = append(out, Recipient{
-			Name: t.Name, Email: t.Email, Signal: t.Signal, Lang: i18n.Parse(t.Lang),
-		})
-	}
-	return out
+// Heir is the primary heir, the one person the envelope is sent to.
+type Heir struct {
+	Name   string `json:"name,omitempty"`   // how the owner's messages refer to them
+	Email  string `json:"email,omitempty"`  // where the envelope is sent
+	Signal string `json:"signal,omitempty"` // optional E.164 number, second channel
+	Lang   string `json:"lang,omitempty"`   // language for this person; default en
 }
 
 type Config struct {
@@ -105,13 +80,11 @@ type Config struct {
 	SMTPAddr      string   `json:"smtp_addr"`              // local postfix, e.g. 127.0.0.1:25
 	SMTPTimeout   Duration `json:"smtp_timeout,omitempty"` // whole conversation; default 30s
 	FromEmail     string   `json:"from_email"`
-	UserEmail     string   `json:"user_email"`   // me (check-in / health / warnings)
-	FriendEmail   string   `json:"friend_email"` // envelope recipient on fire (the friend)
+	UserEmail     string   `json:"user_email"` // me (check-in / health / warnings)
 
-	UserLang     string       `json:"user_lang,omitempty"`     // language of the owner's own messages
-	UserSignal   string       `json:"user_signal,omitempty"`   // my E.164 number, second channel
-	FriendSignal string       `json:"friend_signal,omitempty"` // friend's E.164 number, second channel
-	Signal       SignalConfig `json:"signal,omitempty"`        // Signal transport (omit = e-mail only)
+	UserLang   string       `json:"user_lang,omitempty"`   // language of the owner's own messages
+	UserSignal string       `json:"user_signal,omitempty"` // my E.164 number, second channel
+	Signal     SignalConfig `json:"signal,omitempty"`      // Signal transport (omit = e-mail only)
 
 	Confirmers []Confirmer `json:"confirmers"`
 
@@ -122,13 +95,15 @@ type Config struct {
 	// you would rather risk the inheritance stalling than a premature release.
 	ConfirmQuorum int `json:"confirm_quorum,omitempty"`
 
-	// Envelopes is the general form. envelope_path + friend_email below are the
-	// older single-envelope config and still work; applyDefaults folds them in.
-	Envelopes []Envelope `json:"envelopes,omitempty"`
+	// Heir receives the envelope on release, and nobody else does.
+	Heir Heir `json:"heir"`
 
-	EnvelopePath string `json:"envelope_path,omitempty"` // GPG-encrypted envelope (ciphertext only)
-	StatePath    string `json:"state_path"`              // JSON state file
-	HMACSecret   string `json:"hmac_secret"`             // random secret for link tokens
+	// EnvelopePath is the PDF of the text the passphrase is hidden in. It says
+	// nothing without the map in the owner's password database, which is why
+	// it is stored and sent as it is.
+	EnvelopePath string `json:"envelope_path"`
+	StatePath    string `json:"state_path"`  // JSON state file
+	HMACSecret   string `json:"hmac_secret"` // random secret for link tokens
 
 	// CheckinKeyVersion revokes a leaked check-in link: bump it and restart,
 	// and every previously issued check-in URL stops working. The next reminder
@@ -145,11 +120,25 @@ type Config struct {
 	TickInterval       Duration `json:"tick_interval"`        // evaluation cadence
 }
 
+// retiredKeys come from the envelopes that could go to any number of people. A
+// config that still has them must fail at startup rather than run with those
+// recipients silently dropped.
+var retiredKeys = []string{"envelopes", "friend_email", "friend_signal"}
+
 func LoadConfig(path string) (Config, error) {
 	var c Config
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return c, err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return c, err
+	}
+	for _, k := range retiredKeys {
+		if _, ok := raw[k]; ok {
+			return c, fmt.Errorf("%s is no longer supported: the envelope goes to the primary heir only, set heir and envelope_path instead", k)
+		}
 	}
 	if err := json.Unmarshal(b, &c); err != nil {
 		return c, err
@@ -187,20 +176,6 @@ func (c *Config) applyDefaults() {
 	if c.ConfirmQuorum == 0 {
 		c.ConfirmQuorum = 1
 	}
-	// Single-envelope config keeps working: fold it into the general form so the
-	// rest of the service only ever deals with a list.
-	if len(c.Envelopes) == 0 && c.EnvelopePath != "" {
-		c.Envelopes = []Envelope{{
-			ID:   "default",
-			Path: c.EnvelopePath,
-			To:   []EnvelopeRecipient{{Email: c.FriendEmail, Signal: c.FriendSignal}},
-		}}
-	}
-	for i := range c.Envelopes {
-		if c.Envelopes[i].ID == "" {
-			c.Envelopes[i].ID = fmt.Sprintf("envelope-%d", i+1)
-		}
-	}
 }
 
 func (c Config) validate() error {
@@ -224,6 +199,10 @@ func (c Config) validate() error {
 	case c.ConfirmQuorum > len(c.Confirmers):
 		return fmt.Errorf("confirm_quorum %d exceeds the %d configured confirmers — nobody could ever release",
 			c.ConfirmQuorum, len(c.Confirmers))
+	case c.EnvelopePath == "":
+		return fmt.Errorf("envelope_path required")
+	case c.Heir.Email == "" && c.Heir.Signal == "":
+		return fmt.Errorf("heir needs an email or a signal number")
 	}
 	// Every interval must be positive. A negative release_delay would let a
 	// confirmation fire on the very next tick with no grace period at all, and a
@@ -250,52 +229,16 @@ func (c Config) validate() error {
 	if c.SilenceThreshold.D() <= c.CheckInInterval.D() {
 		return fmt.Errorf("silence_threshold must exceed check_in_interval")
 	}
-	if err := c.validateEnvelopes(); err != nil {
-		return err
-	}
 	return c.validateSignal()
-}
-
-// validateEnvelopes refuses anything that would fail silently years from now:
-// no envelope at all, an envelope nobody receives, or two envelopes sharing an
-// id (the id is how delivery is remembered across retries).
-func (c Config) validateEnvelopes() error {
-	if len(c.Envelopes) == 0 {
-		return fmt.Errorf("at least one envelope required (envelopes[], or envelope_path + friend_email)")
-	}
-	ids := make(map[string]bool, len(c.Envelopes))
-	for _, e := range c.Envelopes {
-		if ids[e.ID] {
-			return fmt.Errorf("duplicate envelope id %q", e.ID)
-		}
-		ids[e.ID] = true
-		if e.Path == "" {
-			return fmt.Errorf("envelope %q: path required", e.ID)
-		}
-		if len(e.To) == 0 {
-			return fmt.Errorf("envelope %q: at least one recipient required", e.ID)
-		}
-		for i, t := range e.To {
-			if t.Email == "" && t.Signal == "" {
-				return fmt.Errorf("envelope %q: recipient %d has neither email nor signal", e.ID, i+1)
-			}
-		}
-	}
-	return nil
 }
 
 // validateSignal refuses half-configured Signal: a number without a transport
 // would silently drop that channel, which is exactly what must not happen
 // quietly in a system nobody looks at for years.
 func (c Config) validateSignal() error {
-	numbers := map[string]string{"user_signal": c.UserSignal, "friend_signal": c.FriendSignal}
+	numbers := map[string]string{"user_signal": c.UserSignal, "heir signal": c.Heir.Signal}
 	for _, cf := range c.Confirmers {
 		numbers["confirmer "+cf.ID+" signal"] = cf.Signal
-	}
-	for _, e := range c.Envelopes {
-		for i, t := range e.To {
-			numbers[fmt.Sprintf("envelope %s recipient %d signal", e.ID, i+1)] = t.Signal
-		}
 	}
 	used := false
 	for what, n := range numbers {

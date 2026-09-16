@@ -18,7 +18,7 @@ func init() {
 		"rb.intro.bankshare": "One of the shares is in the <strong>bank vault</strong>, together with the envelope.",
 
 		"rb.auto.h": "How the automatic system works",
-		"rb.auto.p": "While I am alive I get regular check-in e-mails. If I go quiet for a long time and one of the trusted people confirms it, then after a grace period of a few days the system <strong>automatically mails the envelope with the passphrase to a technically capable person%s</strong>. If that automatic delivery ever fails, the passphrase is also kept in the bank vault (section 2).",
+		"rb.auto.p": "While I am alive I get regular check-in e-mails. If I go quiet for a long time and one of the trusted people confirms it, then after a grace period of a few days the system <strong>automatically e-mails the envelope to the primary heir%s</strong>: a PDF of the same text that is kept in the bank vault. On its own the text gives nothing away; how to read the passphrase out of it is written in the password database. If that automatic delivery ever fails, the printed text is in the bank vault (section 3).",
 
 		"rb.call.h":      "1) Who to call",
 		"rb.call.tech":   "<strong>Technically capable people.</strong> Call them, they will guide you through it:",
@@ -28,7 +28,7 @@ func init() {
 		"rb.need.h":     "2) What you need to obtain (two things)",
 		"rb.need.p":     "Reaching the Bitcoin needs <strong>both</strong>:",
 		"rb.need.parts": "<strong>%s of %s shares</strong> (each is 23 words), which reassemble the \"key file\".",
-		"rb.need.env":   "<strong>The envelope with the passphrase</strong>: the second secret, without which the Bitcoin cannot be reached.",
+		"rb.need.env":   "<strong>The envelope</strong>: a printed text with the passphrase hidden in it, the second secret, without which the Bitcoin cannot be reached. How to read the passphrase out of it is written in the database.",
 		"rb.need.note":  "Neither is enough on its own, which is what makes this safe.",
 
 		"rb.map.h":         "3) Map: where everything is",
@@ -38,7 +38,7 @@ func init() {
 		"rb.map.held":      "held by: %s",
 		"rb.map.inbank":    "bank vault, together with the envelope",
 		"rb.map.heir":      "the primary heir",
-		"rb.map.env":       "Envelope (passphrase), bank",
+		"rb.map.env":       "Envelope (the text), bank",
 		"rb.map.kdbx":      "Password database (.kdbx)",
 		"rb.map.kdbx.bank": ", and in the bank vault",
 
@@ -58,7 +58,7 @@ func init() {
 		"rb.step.call":       "Call the technically capable person (section 1). They will help with anything you do not understand.",
 		"rb.step.parts":      "Obtain <strong>at least %s shares</strong> (section 3). Copy the words down from the holders on paper, or have them read out to you. <strong>Do not photograph them with your phone</strong>, it is not safe.",
 		"rb.step.parts.bank": "One of them is in the bank vault, with the envelope, so you pick both up on the same visit.",
-		"rb.step.env":        "Obtain <strong>the envelope with the password (passphrase)</strong>: either sealed from the bank vault, or from the technically capable person%s, to whom the system mails it.",
+		"rb.step.env":        "Obtain <strong>the envelope</strong>: either the printed text sealed in the bank vault, or the PDF the system e-mails to the primary heir%s. It is the same text either way.",
 		"rb.step.pc":         "Prepare a <strong>computer disconnected from the internet</strong> (unplug the cable, turn off wifi). This matters: the words from the shares will be typed into it and must not leave it.<br>The tool is called <em>coldwill</em>. On a computer that <em>does</em> have internet, download it from <strong>%s</strong> and carry it over on a USB stick. The files are at the bottom of that page, under <em>Assets</em>.",
 		"rb.step.pc.where":   "If that address no longer works, the same files are also kept here: <strong>%s</strong>.",
 		"rb.step.pc.pick":    "There are several files, one for each kind of computer. <strong>Run the one that matches:</strong>",
@@ -80,7 +80,8 @@ func init() {
 		"rb.step.kdbx":       "Open the <code>.kdbx</code> database with <strong>KeePassXC</strong> (<a href=\"https://keepassxc.org/download/\">https://keepassxc.org/download</a>).<br><strong>Best</strong> is to install KeePassXC on that same disconnected computer and copy the database there, so the seed never leaves a machine without internet.<br>If that is not possible, carry the key file on a USB stick to the computer that has KeePassXC, and <strong>disconnect that computer from the internet</strong> for the duration.<br>In KeePassXC choose <em>Key file</em> as the protection and select the key file. <strong>Leave the password field empty.</strong> You reach the <strong>seed</strong> and the other credentials.",
 		"rb.step.kdbx.where": "The database is kept by <strong>%s</strong>.",
 		"rb.step.kdbx.bank":  "It is also in the <strong>bank vault</strong>.",
-		"rb.step.wallet":     "On the hardware wallet, restore the wallet <strong>from the seed</strong> (those words from the database). The password (passphrase) is <strong>not</strong> entered during the restore; the wallet asks for it afterwards, when unlocking. Without it you see an empty wallet, with it the Bitcoin. An empty wallet therefore does not mean the money is gone, it means the password from the envelope is missing.",
+		"rb.step.pass":       "In the database, find the <strong>map for the envelope</strong> and use it to read the <strong>passphrase</strong> out of the text: character by character, in the order of the map, exactly as printed, capitals and spaces included. Do not reformat the text, because its line breaks are part of the map.",
+		"rb.step.wallet":     "On the hardware wallet, restore the wallet <strong>from the seed</strong> (those words from the database). The password (passphrase) is <strong>not</strong> entered during the restore; the wallet asks for it afterwards, when unlocking. Without it you see an empty wallet, with it the Bitcoin. An empty wallet therefore does not mean the money is gone, it means the passphrase from the envelope is missing.",
 		"rb.step.move":       "<em>(optional, but strongly recommended)</em> Move the funds to a new wallet that you control.",
 
 		"rb.manual.h":      "5) Emergency procedure if the tool does not work",
@@ -93,7 +94,7 @@ func init() {
 		"rb.safety.h":      "6) Safety: what to watch out for",
 		"rb.safety.seed":   "<strong>Only ever type the seed into the hardware wallet.</strong> Never into a computer, a phone, an e-mail or any website, no matter who asks.",
 		"rb.safety.words":  "<strong>Only ever type the share words</strong> into <em>coldwill</em> on a computer disconnected from the internet (or, in the emergency procedure, into another SLIP-39 tool, also without internet).",
-		"rb.safety.nobody": "Give the words, the seed or the password from the envelope to nobody outside this document, not even to \"technical support\".",
+		"rb.safety.nobody": "Give the words, the seed, the map or the passphrase to nobody outside this document, not even to \"technical support\".",
 		"rb.safety.wipe":   "<strong>When you are done</strong>, delete the key file from the computer and from the USB stick. Whoever has it can open the database. Burn the pieces of paper with the words, or return them to the holders.",
 		"rb.safety.move":   "<em>(optional, but strongly recommended)</em> After recovering, move the funds to a new wallet.",
 		"rb.safety.slow":   "Take your time. If something does not add up, stop and ask the technically capable person%s.",

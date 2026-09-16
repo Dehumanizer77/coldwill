@@ -1,9 +1,9 @@
 // Command coldwill-switch is the online dead-man's switch for the Bitcoin inheritance
 // system. It periodically asks the owner to check in; after prolonged silence
 // it asks trusted confirmers to attest, and after a confirmation + release
-// delay it emails a GPG-encrypted envelope (which it can never read) to the
-// friend over every channel it has (e-mail, optionally Signal). It self-tests
-// and never fires while unhealthy.
+// delay it sends the envelope, a PDF that says nothing without the owner's
+// password database, to the primary heir over every channel it has (e-mail,
+// optionally Signal). It self-tests and never fires while unhealthy.
 //
 // Intended to run in Docker on the owner's server, behind Apache (TLS), bound
 // to a loopback port.
@@ -29,12 +29,12 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 	if *validate {
-		rcpts := 0
-		for _, e := range cfg.Envelopes {
-			rcpts += len(e.To)
+		heir := cfg.Heir.Email
+		if heir == "" {
+			heir = cfg.Heir.Signal
 		}
-		log.Printf("config OK: %s, %d envelope(s) to %d recipient(s), %d confirmer(s), signal %s",
-			cfg.PublicBaseURL, len(cfg.Envelopes), rcpts, len(cfg.Confirmers),
+		log.Printf("config OK: %s, envelope %s for the heir (%s), %d confirmer(s), signal %s",
+			cfg.PublicBaseURL, cfg.EnvelopePath, heir, len(cfg.Confirmers),
 			map[bool]string{true: "on", false: "off"}[cfg.Signal.Enabled()])
 		return
 	}
