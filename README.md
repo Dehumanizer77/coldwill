@@ -299,8 +299,7 @@ a tool rejects abbreviations, the full words are in the official wordlist.
   in the vault if there is one.
 - Test the DMS check-in.
 - The PDF in the DMS still matches the printout in the vault.
-- **A full dry-run recovery**, once a year, on a spare machine. At least once
-  that should be on Windows, since that binary cannot be tested anywhere else.
+- **A full dry-run recovery**, once a year, on a spare machine.
 - Update the database when credentials change, replace the one in the vault if
   there is one, and reprint the runbook.
 
@@ -387,11 +386,9 @@ The runbook tells the heir which file to run on which machine. If you keep
 another copy of the files somewhere, the runbook form has a field for it, and the
 printed runbook points there in case the download address stops working.
 
-Go cross-compiles on its own, with no extra toolchain. Only the binary for the
-build machine can be tested there, so **Windows and macOS must be tried on the
-real thing**, which belongs in the annual maintenance. The binaries are unsigned,
-so Windows SmartScreen and macOS Gatekeeper will both complain; the runbook
-explains how to click through.
+Go cross-compiles on its own, with no extra toolchain. The binaries are
+unsigned, so Windows SmartScreen and macOS Gatekeeper will both complain; the
+runbook explains how to click through.
 
 #### Running it
 

@@ -276,8 +276,7 @@ v oficiálnom SLIP-39 zozname.
 - Obálka v banke neporušená a databáza sa otvára: dedičova, aj tá v trezore, ak tam je.
 - Test check-inu DMS.
 - PDF v DMS sa zhoduje s výtlačkom v trezore.
-- **Raz za rok nanečisto celá obnova** na náhradnom zariadení, aspoň raz aj na
-  Windows (tá binárka sa inde otestovať nedá).
+- **Raz za rok nanečisto celá obnova** na náhradnom zariadení.
 - Aktualizácia DB pri zmene prístupov (aj tej v trezore, ak tam je) + re-tlač runbooku.
 
 ### Čo systém nerieši
@@ -359,10 +358,9 @@ Runbook dedičovi povie, ktorý súbor na ktorom počítači spustiť. Ak máš 
 uložené aj inde, runbook má na to pole a vytlačený návod dediča tam nasmeruje,
 keby adresa na stiahnutie prestala fungovať.
 
-Go kríž-kompiluje samo, žiadny ďalší toolchain netreba. Otestovať sa tu dá len
-binárka pre tento stroj: **Windows a macOS treba vyskúšať na cieľovom systéme**,
-patrí to do ročnej údržby. Binárky nie sú podpísané, takže Windows SmartScreen aj
-macOS Gatekeeper zahlásia varovanie. Runbook popisuje, ako ho preklikať.
+Go kríž-kompiluje samo, žiadny ďalší toolchain netreba. Binárky nie sú
+podpísané, takže Windows SmartScreen aj macOS Gatekeeper zahlásia varovanie.
+Runbook popisuje, ako ho preklikať.
 
 #### Spustenie
 
