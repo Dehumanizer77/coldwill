@@ -626,9 +626,6 @@ Overenie po štarte (skript to kontroluje sám, ale vedieť to treba):
 6. do runbooku a do KeePass DB zapíš, že DMS existuje a ako sa vypína
    (`docker compose down` = DMS je preč, dedičstvo tým netrpí).
 
-Údržba: `docker compose pull && docker compose up -d` (Signal kontajner),
-`docker save coldwill-switch | gzip > coldwill-switch.tar.gz` do archívu k ostatným artefaktom.
-
 #### Konfigurácia
 
 Viď `config.example.json` (alebo si ho nechaj vygenerovať cez `deploy.sh`).

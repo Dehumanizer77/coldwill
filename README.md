@@ -668,10 +668,6 @@ knowing:
    turn it off (`docker compose down` removes it, and the inheritance does not
    suffer).
 
-Upkeep: `docker compose pull && docker compose up -d` for the Signal container,
-and `docker save coldwill-switch | gzip > coldwill-switch.tar.gz` into the archive with the other
-artifacts.
-
 #### Configuration
 
 See `config.example.json`, or have `deploy.sh` generate one. Durations accept
